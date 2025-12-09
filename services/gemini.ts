@@ -12,7 +12,7 @@ const readEnvValue = (...keys: string[]): string | undefined => {
   return undefined;
 };
 
-const apiKey = (readEnvValue('GEMINI_API_KEY', 'GEMINI_KEY') ?? '').trim();
+const apiKey = (readEnvValue('VITE_GEMINI_API_KEY', 'GEMINI_API_KEY', 'GEMINI_KEY') ?? '').trim();
 const featureToggle = (readEnvValue('VITE_ENABLE_GEMINI_PREFILL') ?? 'true').toString().toLowerCase();
 const searchApiKey = readEnvValue('GOOGLE_SEARCH_API_KEY', 'VITE_GOOGLE_SEARCH_API_KEY');
 const searchEngineId = readEnvValue('GOOGLE_SEARCH_ENGINE_ID', 'VITE_GOOGLE_SEARCH_ENGINE_ID');
@@ -142,9 +142,18 @@ export const enrichModelWithGemini = async (
   modelName: string,
   signal?: AbortSignal,
 ): Promise<Model> => {
+  console.log('[Gemini] Starting enrichment for:', { brand, modelName });
+  console.log('[Gemini] Config check:', {
+    isConfigured: isGeminiConfigured,
+    isEnabled: isGeminiEnabled,
+    hasApiKey: Boolean(apiKey),
+  });
+
   const client = await getClient();
 
   const prompt = buildGeminiPrompt(brand, modelName);
+  console.log('[Gemini] Sending prompt...');
+  
   const request = client.models.generateContent({
     model: GEMINI_MODEL.startsWith('models/') ? GEMINI_MODEL : `models/${GEMINI_MODEL}`,
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -158,37 +167,47 @@ export const enrichModelWithGemini = async (
       })
     : null;
 
-  const response = await withTimeout(abortPromise ? Promise.race([request, abortPromise]) : request, GEMINI_TIMEOUT_MS);
-
-  const text = (() => {
-    const structured =
-      (response as {
-        candidates?: { content?: { parts?: { text?: string }[] } }[];
-        response?: { candidates?: { content?: { parts?: { text?: string }[] } }[]; text?: () => string };
-      }) ?? {};
-
-    const candidateParts = structured.candidates ?? structured.response?.candidates;
-    const parts = candidateParts?.flatMap(candidate => candidate.content?.parts ?? []) ?? [];
-    const concatenated = parts
-      .map(part => part.text?.trim())
-      .filter((value): value is string => Boolean(value))
-      .join('\n')
-      .trim();
-
-    if (concatenated) return concatenated;
-
-    return structured.response?.text?.();
-  })();
-
-  if (!text || !text.trim()) {
-    throw new Error('Gemini returned an empty response.');
-  }
-
   try {
-    const parsed = JSON.parse(text) as Partial<Record<keyof Model, unknown>>;
-    return normalizeGeminiModel(parsed, brand, modelName);
+    const response = await withTimeout(abortPromise ? Promise.race([request, abortPromise]) : request, GEMINI_TIMEOUT_MS);
+    console.log('[Gemini] Response received');
+
+    const text = (() => {
+      const structured =
+        (response as {
+          candidates?: { content?: { parts?: { text?: string }[] } }[];
+          response?: { candidates?: { content?: { parts?: { text?: string }[] } }[]; text?: () => string };
+        }) ?? {};
+
+      const candidateParts = structured.candidates ?? structured.response?.candidates;
+      const parts = candidateParts?.flatMap(candidate => candidate.content?.parts ?? []) ?? [];
+      const concatenated = parts
+        .map(part => part.text?.trim())
+        .filter((value): value is string => Boolean(value))
+        .join('\n')
+        .trim();
+
+      if (concatenated) return concatenated;
+
+      return structured.response?.text?.();
+    })();
+
+    console.log('[Gemini] Raw text response length:', text?.length);
+
+    if (!text || !text.trim()) {
+      throw new Error('Gemini returned an empty response.');
+    }
+
+    try {
+      const parsed = JSON.parse(text) as Partial<Record<keyof Model, unknown>>;
+      console.log('[Gemini] Parsed JSON successfully:', parsed);
+      return normalizeGeminiModel(parsed, brand, modelName);
+    } catch (error) {
+      console.error('[Gemini] JSON parse error:', error, 'Raw text:', text);
+      throw new Error(`Gemini response parsing failed: ${(error as Error).message}`);
+    }
   } catch (error) {
-    throw new Error(`Gemini response parsing failed: ${(error as Error).message}`);
+    console.error('[Gemini] Request failed:', error);
+    throw error;
   }
 };
 

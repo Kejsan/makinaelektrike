@@ -86,6 +86,7 @@ const RegisterDealerPage: React.FC = () => {
 
       const currentUser = auth.currentUser;
       if (currentUser) {
+        console.log('[RegisterDealer] Current User ID:', currentUser.uid);
         const normalizedCity = city?.trim() ?? '';
         const normalizedNotes = notes?.trim() ?? '';
         const normalizedPhone = phone?.trim() ?? '';
@@ -115,28 +116,44 @@ const RegisterDealerPage: React.FC = () => {
           updatedAt: serverTimestamp(),
         };
 
-        await setDoc(
-          doc(firestore, 'dealers', currentUser.uid),
-          dealerDoc,
-          { merge: true }
-        );
+        console.log('[RegisterDealer] Writing to dealers collection:', dealerDoc);
+        try {
+          await setDoc(
+            doc(firestore, 'dealers', currentUser.uid),
+            dealerDoc,
+            { merge: true }
+          );
+          console.log('[RegisterDealer] Dealers collection write success.');
+        } catch (e) {
+          console.error('[RegisterDealer] Dealers collection write FAILED:', e);
+          throw e;
+        }
 
-        await setDoc(
-          doc(firestore, 'users', currentUser.uid),
-          {
-            companyName,
-            contactName,
-            phone: normalizedPhone,
-            city: normalizedCity,
-            website: normalizedWebsite,
-            notes: normalizedNotes,
-            status: 'pending',
-            role: 'pending',
-            is_active: false,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
+        try {
+          console.log('[RegisterDealer] Updating users collection role...');
+          await setDoc(
+            doc(firestore, 'users', currentUser.uid),
+            {
+              companyName,
+              contactName,
+              phone: normalizedPhone,
+              city: normalizedCity,
+              website: normalizedWebsite,
+              notes: normalizedNotes,
+              status: 'pending',
+              role: 'pending',
+              is_active: false,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+          console.log('[RegisterDealer] Users collection update success.');
+        } catch (e) {
+             console.error('[RegisterDealer] Users collection update FAILED:', e);
+             throw e;
+        }
+      } else {
+          console.error('[RegisterDealer] No current user found after registration!');
       }
 
       addToast(
