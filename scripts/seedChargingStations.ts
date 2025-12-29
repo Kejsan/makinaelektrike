@@ -1,4 +1,4 @@
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 import { chargingStationsData } from '../data/chargingStationsData';
 import 'dotenv/config';
 import { existsSync, readFileSync } from 'fs';
