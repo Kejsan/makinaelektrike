@@ -297,6 +297,18 @@ const createPopupContent = (
 };
 
 
+const customStationIcon = L.icon({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIconRetina,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  tooltipAnchor: [16, -28],
+  shadowSize: [41, 41],
+  className: 'custom-station-marker',
+});
+
 const ChargingStationsAlbaniaPage: React.FC = () => {
   const { t } = useTranslation();
   const { addToast } = useToast();
@@ -617,9 +629,13 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
       if (!Number.isFinite(latLng.lat) || !Number.isFinite(latLng.lng)) {
         return;
       }
+
+      const isCustom = feature.properties.isCustomStation === true;
+
       const marker = L.marker([latLng.lat, latLng.lng], {
         riseOnHover: true,
         title: feature.properties.title ?? 'Charging station',
+        icon: isCustom ? customStationIcon : undefined,
       });
 
       const handleCopy = () => {
