@@ -1,42 +1,50 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import * as admin from 'firebase-admin';
 import { chargingStationsData } from '../data/chargingStationsData';
 import 'dotenv/config';
-
-// Firebase configuration - you'll need to set these environment variables
-const firebaseConfig = {
-    apiKey: process.env.VITE_FIREBASE_API_KEY,
-    authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.VITE_FIREBASE_APP_ID,
-};
-
-// Diagnostic check
-const missingKeys = Object.entries(firebaseConfig)
-    .filter(([_, value]) => !value)
-    .map(([key]) => key);
-
-if (missingKeys.length > 0) {
-    console.error('❌ Missing Firebase configuration variables:', missingKeys.join(', '));
-    console.error('Ensure your .env file is present and contains these variables.');
-    process.exit(1);
-}
-
-const app = initializeApp(firebaseConfig);
-const firestore = getFirestore(app);
+import { existsSync, readFileSync } from 'fs';
+import path from 'path';
 
 async function seedChargingStations() {
-    console.log('Starting charging stations migration...');
+    console.log('🚀 Starting secure charging stations migration (Admin SDK)...');
     console.log(`Total stations to migrate: ${chargingStationsData.length}`);
 
-    const stationsCollection = collection(firestore, 'charging_stations');
+    const serviceAccountPath = path.join(process.cwd(), 'service-account.json');
+
+    if (existsSync(serviceAccountPath)) {
+        console.log('🔑 Using service-account.json for authentication...');
+        const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount)
+        });
+    } else {
+        console.error('❌ Missing service-account.json!');
+        console.log('\nTo run this script securely without changing database rules:');
+        console.log('1. Go to Firebase Console > Project Settings > Service Accounts');
+        console.log('2. Click "Generate new private key"');
+        console.log('3. Rename the downloaded file to "service-account.json"');
+        console.log('4. Place it in the root directory: ' + process.cwd());
+        process.exit(1);
+    }
+
+    const db = admin.firestore();
+    const stationsCollection = db.collection('charging_stations');
+
     let successCount = 0;
     let errorCount = 0;
 
     for (const station of chargingStationsData) {
         try {
+            // Check if station already exists by coordinates or address to prevent duplicates
+            const existing = await stationsCollection
+                .where('latitude', '==', station.latitude)
+                .where('longitude', '==', station.longitude)
+                .get();
+
+            if (!existing.empty) {
+                console.log(`⏭️ Skipping (already exists): ${station.address}`);
+                continue;
+            }
+
             const docData = {
                 address: station.address,
                 plugTypes: station.plugTypes,
@@ -45,13 +53,13 @@ async function seedChargingStations() {
                 googleMapsLink: station.googleMapsLink,
                 latitude: station.latitude,
                 longitude: station.longitude,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-                createdBy: 'migration_script',
-                updatedBy: 'migration_script',
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdBy: 'migration_script_admin',
+                updatedBy: 'migration_script_admin',
             };
 
-            await addDoc(stationsCollection, docData);
+            await stationsCollection.add(docData);
             successCount++;
             console.log(`✓ Added: ${station.address}`);
         } catch (error) {
@@ -61,21 +69,21 @@ async function seedChargingStations() {
     }
 
     console.log('\n=== Migration Summary ===');
-    console.log(`Total: ${chargingStationsData.length}`);
-    console.log(`Success: ${successCount}`);
+    console.log(`Total stations: ${chargingStationsData.length}`);
+    console.log(`Newly added: ${successCount}`);
     console.log(`Errors: ${errorCount}`);
     console.log('=========================\n');
 
-    if (successCount === chargingStationsData.length) {
-        console.log('✅ All stations migrated successfully!');
+    if (errorCount === 0) {
+        console.log('✅ Migration completed successfully!');
     } else {
-        console.log('⚠️  Some stations failed to migrate. Check errors above.');
+        console.log('⚠️ Migration finished with errors.');
     }
 
     process.exit(errorCount > 0 ? 1 : 0);
 }
 
 seedChargingStations().catch(error => {
-    console.error('Migration failed:', error);
+    console.error('❌ Migration failed:', error);
     process.exit(1);
 });
