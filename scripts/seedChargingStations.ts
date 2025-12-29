@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { chargingStationsData } from '../data/chargingStationsData';
+import 'dotenv/config';
 
 // Firebase configuration - you'll need to set these environment variables
 const firebaseConfig = {
@@ -11,6 +12,17 @@ const firebaseConfig = {
     messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.VITE_FIREBASE_APP_ID,
 };
+
+// Diagnostic check
+const missingKeys = Object.entries(firebaseConfig)
+    .filter(([_, value]) => !value)
+    .map(([key]) => key);
+
+if (missingKeys.length > 0) {
+    console.error('❌ Missing Firebase configuration variables:', missingKeys.join(', '));
+    console.error('Ensure your .env file is present and contains these variables.');
+    process.exit(1);
+}
 
 const app = initializeApp(firebaseConfig);
 const firestore = getFirestore(app);
