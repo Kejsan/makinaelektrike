@@ -632,11 +632,16 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
 
       const isCustom = feature.properties.isCustomStation === true;
 
-      const marker = L.marker([latLng.lat, latLng.lng], {
+      const markerOptions: L.MarkerOptions = {
         riseOnHover: true,
         title: feature.properties.title ?? 'Charging station',
-        icon: isCustom ? customStationIcon : undefined,
-      });
+      };
+
+      if (isCustom) {
+        markerOptions.icon = customStationIcon;
+      }
+
+      const marker = L.marker([latLng.lat, latLng.lng], markerOptions);
 
       const handleCopy = () => {
         const address = formatAddress(feature.properties);
