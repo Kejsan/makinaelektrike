@@ -180,3 +180,34 @@ export interface BlogPost extends BlogPostMetadata {
   faqs?: BlogPostFaq[];
   cta?: BlogPostCta;
 }
+
+// Charging Stations
+export interface ChargingStationDocument {
+  address: string;
+  plugTypes: string; // e.g., "CCS2, GB/T"
+  chargingSpeedKw: number;
+  pricingDetails: string | null;
+  googleMapsLink: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  createdAt?: Timestamp | null;
+  updatedAt?: Timestamp | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+}
+
+export interface ChargingStation extends ChargingStationDocument {
+  id: string;
+}
+
+export interface ChargingStationFormValues {
+  address: string;
+  plugTypes: string;
+  chargingSpeedKw: number | '';
+  pricingDetails: string;
+  googleMapsLink: string;
+  latitude: number | '';
+  longitude: number | '';
+}
+
+export type StationSource = 'custom' | 'ocm';

@@ -18,12 +18,20 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { DataContext } from '../contexts/DataContext';
-import { Dealer, DealerStatus, Model, BlogPost } from '../types';
+import { Dealer, DealerStatus, Model, BlogPost, ChargingStation } from '../types';
 import DealerForm, { DealerFormValues } from '../components/admin/DealerForm';
 import ModelForm, { ModelFormValues } from '../components/admin/ModelForm';
 import BlogPostForm, { BlogPostFormValues } from '../components/admin/BlogPostForm';
+import ChargingStationForm from '../components/admin/ChargingStationForm';
 import BulkImportModal, { BulkImportEntity } from '../components/admin/BulkImportModal';
 import OfflineQueuePanel from '../components/admin/OfflineQueuePanel';
+import {
+  fetchChargingStations,
+  createChargingStation,
+  updateChargingStation,
+  deleteChargingStation,
+} from '../services/chargingStations';
+import type { ChargingStationFormValues } from '../types';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import { listOfflineMutations, OFFLINE_QUEUE_EVENT } from '../services/offlineQueue';
@@ -62,7 +70,7 @@ const AdminModal: React.FC<ModalProps> = ({ title, onClose, children }) => (
 
 type FormState<T> = { mode: 'create' | 'edit'; entity?: T } | null;
 
-type TabKey = 'dealers' | 'models' | 'blog';
+type TabKey = 'dealers' | 'models' | 'blog' | 'stations';
 type DealerFilterKey = 'active' | 'inactive' | 'pending' | 'deleted';
 
 const formatDate = (value: Dealer['createdAt']) => {
@@ -120,10 +128,12 @@ const AdminPage: React.FC = () => {
   const [dealerFormState, setDealerFormState] = useState<FormState<Dealer>>(null);
   const [modelFormState, setModelFormState] = useState<FormState<Model>>(null);
   const [blogFormState, setBlogFormState] = useState<FormState<BlogPost>>(null);
+  const [stationFormState, setStationFormState] = useState<FormState<ChargingStation>>(null);
   const [bulkEntity, setBulkEntity] = useState<BulkImportEntity | null>(null);
   const [dealerSubmitting, setDealerSubmitting] = useState(false);
   const [modelSubmitting, setModelSubmitting] = useState(false);
   const [blogSubmitting, setBlogSubmitting] = useState(false);
+  const [stationSubmitting, setStationSubmitting] = useState(false);
   const [dealerAction, setDealerAction] = useState<
     { id: string; type: 'approve' | 'reject' | 'deactivate' | 'reactivate' } | null
   >(null);
@@ -132,6 +142,9 @@ const AdminPage: React.FC = () => {
   const [offlineQueueCount, setOfflineQueueCount] = useState(() =>
     typeof window !== 'undefined' ? listOfflineMutations().length : 0,
   );
+  const [stations, setStations] = useState<ChargingStation[]>([]);
+  const [stationsLoading, setStationsLoading] = useState(false);
+  const [stationsError, setStationsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -150,6 +163,7 @@ const AdminPage: React.FC = () => {
       { id: 'dealers' as TabKey, label: t('admin.manageDealers') },
       { id: 'models' as TabKey, label: t('admin.manageModels') },
       { id: 'blog' as TabKey, label: t('admin.manageBlog') },
+      { id: 'stations' as TabKey, label: 'Charging Stations' },
     ],
     [t]
   );
@@ -167,6 +181,7 @@ const AdminPage: React.FC = () => {
     setDealerFormState(null);
     setModelFormState(null);
     setBlogFormState(null);
+    setStationFormState(null);
   };
 
   const getBulkModalTitle = (entity: BulkImportEntity) => {
@@ -470,6 +485,58 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  const handleStationSubmit = async (values: ChargingStationFormValues) => {
+    if (!user?.uid) return;
+
+    setStationSubmitting(true);
+    try {
+      if (stationFormState?.mode === 'edit' && stationFormState.entity) {
+        await updateChargingStation(stationFormState.entity.id, values, user.uid);
+      } else {
+        await createChargingStation(values, user.uid);
+      }
+      closeAllModals();
+      // Refetch stations
+      const updatedStations = await fetchChargingStations();
+      setStations(updatedStations);
+    } catch (error) {
+      console.error('Failed to save charging station:', error);
+    } finally {
+      setStationSubmitting(false);
+    }
+  };
+
+  const handleDeleteStation = async (stationId: string) => {
+    try {
+      await deleteChargingStation(stationId);
+      // Refetch stations
+      const updatedStations = await fetchChargingStations();
+      setStations(updatedStations);
+    } catch (error) {
+      console.error('Failed to delete charging station:', error);
+    }
+  };
+
+  // Fetch charging stations on mount
+  useEffect(() => {
+    const loadStations = async () => {
+      setStationsLoading(true);
+      setStationsError(null);
+      try {
+        const data = await fetchChargingStations();
+        setStations(data);
+      } catch (error) {
+        console.error('Error loading charging stations:', error);
+        setStationsError('Failed to load charging stations');
+      } finally {
+        setStationsLoading(false);
+      }
+    };
+
+    loadStations();
+  }, []);
+
+
   const confirmAndDelete = async (action: () => Promise<void>) => {
     const confirmation = window.confirm(t('admin.deleteConfirm'));
     if (!confirmation) return;
@@ -516,27 +583,27 @@ const AdminPage: React.FC = () => {
       label: string;
       count: number;
     }> = [
-      {
-        key: 'active',
-        label: t('admin.dealerFilters.active', { defaultValue: 'Active' }),
-        count: dealerCounts.active,
-      },
-      {
-        key: 'inactive',
-        label: t('admin.dealerFilters.inactive', { defaultValue: 'Inactive' }),
-        count: dealerCounts.inactive,
-      },
-      {
-        key: 'pending',
-        label: t('admin.dealerFilters.pending', { defaultValue: 'Pending' }),
-        count: dealerCounts.pending,
-      },
-      {
-        key: 'deleted',
-        label: t('admin.dealerFilters.deleted', { defaultValue: 'Deleted' }),
-        count: dealerCounts.deleted,
-      },
-    ];
+        {
+          key: 'active',
+          label: t('admin.dealerFilters.active', { defaultValue: 'Active' }),
+          count: dealerCounts.active,
+        },
+        {
+          key: 'inactive',
+          label: t('admin.dealerFilters.inactive', { defaultValue: 'Inactive' }),
+          count: dealerCounts.inactive,
+        },
+        {
+          key: 'pending',
+          label: t('admin.dealerFilters.pending', { defaultValue: 'Pending' }),
+          count: dealerCounts.pending,
+        },
+        {
+          key: 'deleted',
+          label: t('admin.dealerFilters.deleted', { defaultValue: 'Deleted' }),
+          count: dealerCounts.deleted,
+        },
+      ];
 
     const emptyMessage = (() => {
       switch (dealerFilter) {
@@ -567,11 +634,10 @@ const AdminPage: React.FC = () => {
                 <button
                   key={option.key}
                   onClick={() => setDealerFilter(option.key)}
-                  className={`rounded-2xl border px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-cyan/60 ${
-                    isSelected
-                      ? 'border-gray-cyan/60 bg-gray-cyan/30 text-white shadow-lg'
-                      : 'border-white/10 bg-white/5 text-gray-200 hover:bg-white/10'
-                  }`}
+                  className={`rounded-2xl border px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-cyan/60 ${isSelected
+                    ? 'border-gray-cyan/60 bg-gray-cyan/30 text-white shadow-lg'
+                    : 'border-white/10 bg-white/5 text-gray-200 hover:bg-white/10'
+                    }`}
                   aria-pressed={isSelected}
                 >
                   <p className="text-sm font-semibold uppercase tracking-wide text-white/80">
@@ -614,22 +680,22 @@ const AdminPage: React.FC = () => {
                   const statusLabel = isDeleted
                     ? t('admin.statusDeleted', { defaultValue: 'Deleted' })
                     : isPendingDealer
-                    ? t('admin.statusPending', { defaultValue: 'Pending' })
-                    : isRejectedDealer
-                    ? t('admin.statusRejected', { defaultValue: 'Rejected' })
-                    : isActiveDealer
-                    ? t('admin.statusActive', { defaultValue: 'Active' })
-                    : t('admin.statusInactive', { defaultValue: 'Inactive' });
+                      ? t('admin.statusPending', { defaultValue: 'Pending' })
+                      : isRejectedDealer
+                        ? t('admin.statusRejected', { defaultValue: 'Rejected' })
+                        : isActiveDealer
+                          ? t('admin.statusActive', { defaultValue: 'Active' })
+                          : t('admin.statusInactive', { defaultValue: 'Inactive' });
 
                   const statusClasses = isDeleted
                     ? 'border-rose-500/40 bg-rose-500/20 text-rose-100'
                     : isPendingDealer
-                    ? 'border-amber-500/40 bg-amber-500/20 text-amber-100'
-                    : isRejectedDealer
-                    ? 'border-red-500/40 bg-red-500/20 text-red-100'
-                    : isActiveDealer
-                    ? 'border-emerald-500/40 bg-emerald-500/20 text-emerald-100'
-                    : 'border-slate-500/40 bg-slate-500/20 text-slate-100';
+                      ? 'border-amber-500/40 bg-amber-500/20 text-amber-100'
+                      : isRejectedDealer
+                        ? 'border-red-500/40 bg-red-500/20 text-red-100'
+                        : isActiveDealer
+                          ? 'border-emerald-500/40 bg-emerald-500/20 text-emerald-100'
+                          : 'border-slate-500/40 bg-slate-500/20 text-slate-100';
 
                   const isProcessing = dealerUpdateLoading && dealerAction?.id === dealer.id;
 
@@ -1014,6 +1080,111 @@ const AdminPage: React.FC = () => {
       </div>
     );
   };
+
+  const renderStationsPanel = () => {
+    let content: React.ReactNode;
+
+    if (stationsLoading) {
+      content = renderLoadingState();
+    } else if (stationsError) {
+      content = (
+        <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-6 py-10 text-center text-sm text-red-200">
+          <p className="text-base font-semibold">{stationsError}</p>
+        </div>
+      );
+    } else if (stations.length === 0) {
+      content = renderEmptyState('No charging stations found. Add your first station!');
+    } else {
+      content = (
+        <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-white/10 bg-white/5">
+              <tr>
+                <th className="px-4 py-3 font-semibold text-white">Address</th>
+                <th className="px-4 py-3 font-semibold text-white">Plug Types</th>
+                <th className="px-4 py-3 font-semibold text-white">Speed (kW)</th>
+                <th className="px-4 py-3 font-semibold text-white">Pricing</th>
+                <th className="px-4 py-3 font-semibold text-white">Coordinates</th>
+                <th className="px-4 py-3 text-right font-semibold text-white">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {stations.map(station => (
+                <tr key={station.id} className="transition hover:bg-white/5">
+                  <td className="px-4 py-3 text-gray-300">{station.address}</td>
+                  <td className="px-4 py-3 text-gray-400">{station.plugTypes}</td>
+                  <td className="px-4 py-3 text-gray-400">{station.chargingSpeedKw} kW</td>
+                  <td className="px-4 py-3 text-gray-400">
+                    {station.pricingDetails ? (
+                      <span className="line-clamp-1" title={station.pricingDetails}>
+                        {station.pricingDetails}
+                      </span>
+                    ) : (
+                      <span className="text-gray-500">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-gray-400">
+                    {station.latitude && station.longitude ? (
+                      <span className="text-xs">
+                        {station.latitude.toFixed(4)}, {station.longitude.toFixed(4)}
+                      </span>
+                    ) : (
+                      <span className="text-gray-500">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {station.googleMapsLink && (
+                        <a
+                          href={station.googleMapsLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-gray-cyan hover:underline"
+                        >
+                          Map
+                        </a>
+                      )}
+                      <button
+                        onClick={() => setStationFormState({ mode: 'edit', entity: station })}
+                        className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-gray-200 transition hover:bg-white/10"
+                      >
+                        <Pencil size={12} />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => confirmAndDelete(() => handleDeleteStation(station.id))}
+                        className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-200 transition hover:bg-red-500/30"
+                      >
+                        <Trash2 size={12} />
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold text-white">Charging Stations ({stations.length})</h2>
+          <button
+            onClick={() => setStationFormState({ mode: 'create' })}
+            className="inline-flex items-center gap-2 rounded-lg bg-gray-cyan px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-cyan/90"
+          >
+            <Plus size={16} />
+            <span>Add Station</span>
+          </button>
+        </div>
+        {content}
+      </div>
+    );
+  };
+
   if (!user) {
     return null;
   }
@@ -1082,11 +1253,10 @@ const AdminPage: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 rounded-lg px-4 py-2 transition ${
-                    activeTab === tab.id
-                      ? 'bg-gray-cyan text-white'
-                      : 'hover:bg-white/10 hover:text-white'
-                  }`}
+                  className={`flex-1 rounded-lg px-4 py-2 transition ${activeTab === tab.id
+                    ? 'bg-gray-cyan text-white'
+                    : 'hover:bg-white/10 hover:text-white'
+                    }`}
                 >
                   {tab.label}
                 </button>
@@ -1097,6 +1267,7 @@ const AdminPage: React.FC = () => {
               {activeTab === 'dealers' && renderDealersPanel()}
               {activeTab === 'models' && renderModelsPanel()}
               {activeTab === 'blog' && renderBlogPanel()}
+              {activeTab === 'stations' && renderStationsPanel()}
             </div>
           </div>
         </div>
@@ -1144,6 +1315,20 @@ const AdminPage: React.FC = () => {
             onSubmit={handleBlogSubmit}
             onCancel={closeAllModals}
             isSubmitting={blogSubmitting}
+          />
+        </AdminModal>
+      )}
+
+      {stationFormState && (
+        <AdminModal
+          title={stationFormState.mode === 'edit' ? 'Edit Charging Station' : 'Add New Charging Station'}
+          onClose={closeAllModals}
+        >
+          <ChargingStationForm
+            initialValues={stationFormState.entity}
+            onSubmit={handleStationSubmit}
+            onCancel={closeAllModals}
+            isSubmitting={stationSubmitting}
           />
         </AdminModal>
       )}

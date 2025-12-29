@@ -18,7 +18,6 @@ import markerIcon from 'leaflet/dist/images/marker-icon.png?url';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png?url';
 import {
   Copy,
-  Download,
   LocateFixed,
   Loader2,
   MapPin,
@@ -31,6 +30,7 @@ import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import { StationProperties, fetchStations } from '../services/ocm';
 import type { StationFeatureCollection } from '../services/ocm';
+import { fetchChargingStations, mergeStationsWithOCM } from '../services/chargingStations';
 import { useToast } from '../contexts/ToastContext';
 
 L.Icon.Default.mergeOptions({
@@ -117,15 +117,6 @@ const formatDateTime = (date: Date) => {
   }).format(date);
 };
 
-const downloadBlob = (blob: Blob, filename: string) => {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-};
-
 const createPopupContent = (
   feature: StationFeature,
   actions: { onCopy: () => void; onShare: () => void },
@@ -146,6 +137,14 @@ const createPopupContent = (
   container.className = 'space-y-3 text-sm text-gray-900';
 
   const header = document.createElement('div');
+
+  if (properties.isCustomStation) {
+    const badge = document.createElement('span');
+    badge.className = 'inline-block mb-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 uppercase tracking-wider border border-purple-200';
+    badge.textContent = 'Custom Station';
+    header.appendChild(badge);
+  }
+
   const title = document.createElement('h3');
   title.className = 'text-base font-semibold text-gray-900';
   title.textContent = properties.title ?? 'Charging location';
@@ -330,6 +329,8 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [pendingSearch, setPendingSearch] = useState(false);
   const [hoveredStationId, setHoveredStationId] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -364,32 +365,42 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
 
       const nextContext: { mode: 'country' | 'bounds'; bounds: BoundsTuple | null } = sourceBounds
         ? {
-            mode: 'bounds',
-            bounds: (() => {
-              const ne = sourceBounds.getNorthEast();
-              const sw = sourceBounds.getSouthWest();
-              return [
-                Number(ne.lat.toFixed(6)),
-                Number(sw.lng.toFixed(6)),
-                Number(sw.lat.toFixed(6)),
-                Number(ne.lng.toFixed(6)),
-              ];
-            })(),
-          }
+          mode: 'bounds',
+          bounds: (() => {
+            const ne = sourceBounds.getNorthEast();
+            const sw = sourceBounds.getSouthWest();
+            return [
+              Number(ne.lat.toFixed(6)),
+              Number(sw.lng.toFixed(6)),
+              Number(sw.lat.toFixed(6)),
+              Number(ne.lng.toFixed(6)),
+            ];
+          })(),
+        }
         : { mode: 'country', bounds: null };
 
       try {
-        const data = await fetchStations({
-          mode: nextContext.mode,
-          boundingBox: sourceBounds ? getBoundingBoxFromBounds(sourceBounds) : undefined,
-          signal: controller.signal,
-        });
+        // Fetch both OCM and custom stations in parallel
+        const [ocmData, customStations] = await Promise.all([
+          mode === 'country'
+            ? fetchStations({ mode: 'country', signal: controller.signal })
+            : fetchStations({
+              mode: 'bounds',
+              boundingBox: options.bounds ? getBoundingBoxFromBounds(options.bounds) : undefined,
+              signal: controller.signal,
+            }),
+          fetchChargingStations().catch(() => []), // Fallback to empty array on error
+        ]);
 
-        if (controller.signal.aborted || requestToken !== requestTokenRef.current) {
+        if (requestToken !== requestTokenRef.current) {
           return;
         }
 
-        const features = Array.isArray(data.features) ? data.features : [];
+        // Merge custom stations with OCM stations
+        const ocmFeatures = Array.isArray(ocmData.features) ? ocmData.features : [];
+        const mergedData = mergeStationsWithOCM(customStations, ocmFeatures);
+
+        const features = Array.isArray(mergedData) ? mergedData : [];
         const hasFeatures = features.length > 0;
 
         lastContextRef.current = nextContext;
@@ -550,6 +561,27 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
     });
   }, [searchTerm, stations]);
 
+  // Reset to page 1 when search term or stations change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, stations]);
+
+  const totalPages = Math.ceil(visibleStations.length / itemsPerPage);
+
+  const paginatedStations = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return visibleStations.slice(startIndex, endIndex);
+  }, [visibleStations, currentPage, itemsPerPage]);
+
+  const handlePreviousPage = () => {
+    setCurrentPage(prev => Math.max(1, prev - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(totalPages, prev + 1));
+  };
+
   const shareStation = useCallback(
     (feature: StationFeature) => {
       const latLng = getStationLatLng(feature);
@@ -700,56 +732,6 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
     }
   }, [autoUpdate, mapState, searchParams, searchTerm, selectedStationId, setSearchParams]);
 
-  const exportData = (format: 'csv' | 'json') => {
-    if (!visibleStations.length) {
-      addToast('No results to export right now.', 'info');
-      return;
-    }
-
-    const plain = visibleStations.map(station => {
-      const latLng = getStationLatLng(station);
-      return {
-        id: station.properties.id,
-        title: station.properties.title ?? 'Unknown station',
-        address: formatAddress(station.properties),
-        operator: station.properties.operatorInfo?.title ?? 'Unknown operator',
-        status: station.properties.statusType?.title ?? 'Unknown status',
-        usage: station.properties.usageType?.title ?? 'Unknown usage',
-        power: formatPowerRange(station.properties) ?? 'Unspecified',
-        latitude: latLng.lat,
-        longitude: latLng.lng,
-      };
-    });
-
-    if (format === 'json') {
-      const blob = new Blob([JSON.stringify(plain, null, 2)], {
-        type: 'application/json',
-      });
-      downloadBlob(blob, 'albania-charging-stations.json');
-      addToast('Exported visible results to JSON.', 'success');
-      return;
-    }
-
-    const headers = ['ID', 'Title', 'Address', 'Operator', 'Status', 'Usage', 'Power', 'Latitude', 'Longitude'];
-    const rows = plain.map(item =>
-      [
-        item.id,
-        item.title,
-        item.address,
-        item.operator,
-        item.status,
-        item.usage,
-        item.power,
-        item.latitude,
-        item.longitude,
-      ].map(value => `"${String(value).replace(/"/g, '""')}"`).join(','),
-    );
-    const csv = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    downloadBlob(blob, 'albania-charging-stations.csv');
-    addToast('Exported visible results to CSV.', 'success');
-  };
-
   const faqItems = useMemo(
     () => [
       {
@@ -795,7 +777,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
       {
         question: 'Do I need an account to use the map?',
         answer:
-          'No account is required. You can search, export visible results, and copy share links instantly without signing in.',
+          'No account is required. You can search, navigate through results, and copy share links instantly without signing in.',
       },
     ],
     [],
@@ -823,16 +805,28 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
     { label: 'Charging Stations in Albania', to: '/albania-charging-stations' },
   ];
 
-  const listHeading = visibleStations.length
-    ? `${visibleStations.length} stations currently shown`
-    : 'No stations to show yet';
+  const getListHeading = () => {
+    if (!visibleStations.length) {
+      return 'No stations to show yet';
+    }
+    const startIndex = (currentPage - 1) * itemsPerPage + 1;
+    const endIndex = Math.min(currentPage * itemsPerPage, visibleStations.length);
+    const searchQuery = searchTerm.trim();
+
+    if (searchQuery) {
+      return `Showing ${startIndex}-${endIndex} of ${visibleStations.length} results for "${searchQuery}"`;
+    }
+    return `Showing ${startIndex}-${endIndex} of ${visibleStations.length} stations`;
+  };
+
+  const listHeading = getListHeading();
 
   return (
     <div className="py-12">
       <SEO
         title={seoTitle}
         description={seoDescription}
-        canonical={`${BASE_URL}/albania-charging-stations/`}
+        canonical={`${BASE_URL} /albania-charging-stations/`}
         keywords={[
           'Albania EV charging map',
           'Open Charge Map Albania',
@@ -842,7 +836,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
         openGraph={{
           title: seoTitle,
           description: seoDescription,
-          url: `${BASE_URL}/albania-charging-stations/`,
+          url: `${BASE_URL} /albania-charging-stations/`,
           type: 'website',
           images: [DEFAULT_OG_IMAGE],
         }}
@@ -906,22 +900,6 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                   <LocateFixed className="h-4 w-4" aria-hidden="true" />
                   Locate me
                 </button>
-                <button
-                  type="button"
-                  onClick={() => exportData('csv')}
-                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                >
-                  <Download className="h-4 w-4" aria-hidden="true" />
-                  Export CSV
-                </button>
-                <button
-                  type="button"
-                  onClick={() => exportData('json')}
-                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                >
-                  <Download className="h-4 w-4" aria-hidden="true" />
-                  Export JSON
-                </button>
               </div>
             </div>
 
@@ -936,10 +914,10 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                   role="switch"
                   aria-checked={autoUpdate}
                   onClick={handleToggleAutoUpdate}
-                  className={`relative h-7 w-14 rounded-full transition ${autoUpdate ? 'bg-gray-cyan' : 'bg-gray-700'}`}
+                  className={`relative h - 7 w - 14 rounded - full transition ${autoUpdate ? 'bg-gray-cyan' : 'bg-gray-700'} `}
                 >
                   <span
-                    className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${autoUpdate ? 'right-1' : 'left-1'}`}
+                    className={`absolute top - 1 h - 5 w - 5 rounded - full bg - white transition ${autoUpdate ? 'right-1' : 'left-1'} `}
                   />
                 </button>
               </div>
@@ -963,7 +941,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="relative h-[460px] rounded-2xl border border-white/10 bg-gray-950/50 shadow-xl sm:h-[520px] lg:h-[580px]">
+          <div className="relative h-[400px] rounded-2xl border border-white/10 bg-gray-950/50 shadow-xl sm:h-[460px] lg:h-[510px]">
             <div ref={mapContainerRef} className="h-full w-full rounded-2xl" aria-label="Charging stations map" />
             {loadingStations && (
               <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-gray-950/60 backdrop-blur">
@@ -1001,23 +979,30 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
             )}
 
             <div className="space-y-4">
-              {visibleStations.map(station => {
+              {paginatedStations.map(station => {
                 const latLng = getStationLatLng(station);
                 const powerRange = formatPowerRange(station.properties);
                 const isHovered = hoveredStationId === station.properties.id;
+                const isCustomStation = station.properties.isCustomStation === true;
 
                 return (
                   <article
                     key={station.properties.id}
-                    className={`rounded-xl border px-4 py-4 transition ${
-                      isHovered ? 'border-gray-cyan bg-gray-950/70 shadow-lg' : 'border-white/10 bg-gray-950/40'
-                    }`}
+                    className={`rounded-xl border px-4 py-4 transition ${isHovered ? 'border-gray-cyan bg-gray-950/70 shadow-lg' : 'border-white/10 bg-gray-950/40'
+                      }`}
                     onMouseEnter={() => setHoveredStationId(station.properties.id)}
                     onMouseLeave={() => setHoveredStationId(current => (current === station.properties.id ? null : current))}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <h3 className="text-lg font-semibold text-white">{station.properties.title ?? 'Charging station'}</h3>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-lg font-semibold text-white">{station.properties.title ?? 'Charging station'}</h3>
+                          {isCustomStation && (
+                            <span className="inline-flex items-center rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 px-2.5 py-0.5 text-xs font-semibold text-purple-200">
+                              Custom
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-300">{formatAddress(station.properties) || 'Address unavailable'}</p>
                         <p className="text-xs text-gray-400">
                           Operator: {station.properties.operatorInfo?.title ?? 'Unknown'} · Status: {station.properties.statusType?.title ?? 'Unknown'}
@@ -1060,7 +1045,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                       >
                         <MapPin className="h-4 w-4" aria-hidden="true" />
                         Directions
-                      </a>
+                      </a >
                       <button
                         type="button"
                         onClick={() => {
@@ -1075,59 +1060,89 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                         <Copy className="h-4 w-4" aria-hidden="true" />
                         Copy address
                       </button>
-                    </div>
+                    </div >
 
-                    {station.properties.connections?.length ? (
-                      <div className="mt-4 overflow-hidden rounded-lg border border-white/10">
-                        <table className="min-w-full divide-y divide-white/10 text-left text-xs text-gray-200">
-                          <thead className="bg-white/5 text-[11px] uppercase tracking-wide text-gray-400">
-                            <tr>
-                              <th className="px-3 py-2">Connection</th>
-                              <th className="px-3 py-2">Level</th>
-                              <th className="px-3 py-2">Power</th>
-                              <th className="px-3 py-2">Quantity</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/10">
-                            {station.properties.connections.map(connection => (
-                              <tr key={connection.id ?? `${connection.connectionType?.id}-${connection.level?.id}`}
-                                className="bg-gray-950/60 hover:bg-gray-950/80">
-                                <td className="px-3 py-2">
-                                  {connection.connectionType?.title ?? 'Unknown'}
-                                </td>
-                                <td className="px-3 py-2">{connection.level?.title ?? 'Unknown'}</td>
-                                <td className="px-3 py-2">{connection.powerKW ? `${connection.powerKW} kW` : '—'}</td>
-                                <td className="px-3 py-2">{connection.quantity ?? '—'}</td>
+                    {
+                      station.properties.connections?.length ? (
+                        <div className="mt-4 overflow-hidden rounded-lg border border-white/10">
+                          <table className="min-w-full divide-y divide-white/10 text-left text-xs text-gray-200">
+                            <thead className="bg-white/5 text-[11px] uppercase tracking-wide text-gray-400">
+                              <tr>
+                                <th className="px-3 py-2">Connection</th>
+                                <th className="px-3 py-2">Level</th>
+                                <th className="px-3 py-2">Power</th>
+                                <th className="px-3 py-2">Quantity</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <p className="mt-3 text-xs text-gray-400">Connection details not provided.</p>
-                    )}
+                            </thead>
+                            <tbody className="divide-y divide-white/10">
+                              {station.properties.connections.map(connection => (
+                                <tr key={connection.id ?? `${connection.connectionType?.id}-${connection.level?.id}`}
+                                  className="bg-gray-950/60 hover:bg-gray-950/80">
+                                  <td className="px-3 py-2">
+                                    {connection.connectionType?.title ?? 'Unknown'}
+                                  </td>
+                                  <td className="px-3 py-2">{connection.level?.title ?? 'Unknown'}</td>
+                                  <td className="px-3 py-2">{connection.powerKW ? `${connection.powerKW} kW` : '—'}</td>
+                                  <td className="px-3 py-2">{connection.quantity ?? '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-xs text-gray-400">Connection details not provided.</p>
+                      )
+                    }
 
-                    {station.properties.generalComments && (
-                      <p className="mt-3 text-xs text-gray-400">{station.properties.generalComments}</p>
-                    )}
-                  </article>
+                    {
+                      station.properties.generalComments && (
+                        <p className="mt-3 text-xs text-gray-400">{station.properties.generalComments}</p>
+                      )
+                    }
+                  </article >
                 );
               })}
 
-              {!loadingStations && !visibleStations.length && !error && (
-                <div className="rounded-lg border border-white/10 bg-gray-950/60 px-4 py-6 text-center text-sm text-gray-300">
-                  Try searching a different area of Albania or zooming out to see more locations.
-                </div>
-              )}
+              {
+                !loadingStations && !visibleStations.length && !error && (
+                  <div className="rounded-lg border border-white/10 bg-gray-950/60 px-4 py-6 text-center text-sm text-gray-300">
+                    Try searching a different area of Albania or zooming out to see more locations.
+                  </div>
+                )
+              }
             </div>
-          </div>
-        </section>
+
+            {visibleStations.length > 0 && totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-white/10 pt-4">
+                <button
+                  type="button"
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gray-cyan disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/10"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-300">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gray-cyan disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/10"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div >
+        </section >
 
         <section className="space-y-6 rounded-2xl border border-white/10 bg-white/5 p-8 shadow-xl">
           <h2 className="text-3xl font-bold text-white">How to Use the Map</h2>
           <ol className="space-y-3 text-gray-300">
             <li>
-              <strong className="text-white">Search or browse:</strong> Use the search bar or simply pan around the country to reveal clusters of chargers.
+              <strong className="text-white">Search or browse:</strong> Use the search bar or simply pan around the country to reveal clusters of chargers. Results are paginated for easier navigation.
             </li>
             <li>
               <strong className="text-white">Move the map:</strong> Zoom in to inspect specific neighbourhoods. Auto-update keeps results fresh, or switch it off and press “Search this area”.
@@ -1136,7 +1151,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
               <strong className="text-white">Open station details:</strong> Tap any marker or list item to view connection types, power levels, usage costs, and photos.
             </li>
             <li>
-              <strong className="text-white">Plan your trip:</strong> Use the Directions, Share, and Export buttons to save the stations you want to visit.
+              <strong className="text-white">Plan your trip:</strong> Use the Directions and Share buttons to navigate to and save the stations you want to visit.
             </li>
           </ol>
         </section>
@@ -1167,8 +1182,8 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
             ))}
           </div>
         </section>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 
