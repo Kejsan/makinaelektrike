@@ -49,6 +49,7 @@ async function seedChargingStations() {
                 address: station.address,
                 plugTypes: station.plugTypes,
                 chargingSpeedKw: station.chargingSpeedKw,
+                operator: station.operator || null,
                 pricingDetails: station.pricingDetails,
                 googleMapsLink: station.googleMapsLink,
                 latitude: station.latitude,

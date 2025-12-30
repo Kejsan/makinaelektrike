@@ -50,6 +50,7 @@ export const createChargingStation = async (
             address: values.address.trim(),
             plugTypes: values.plugTypes.trim(),
             chargingSpeedKw: Number(values.chargingSpeedKw),
+            operator: values.operator.trim() || null,
             pricingDetails: values.pricingDetails.trim() || null,
             googleMapsLink: values.googleMapsLink.trim() || null,
             latitude: values.latitude !== '' ? Number(values.latitude) : null,
@@ -90,6 +91,7 @@ export const updateChargingStation = async (
             address: values.address.trim(),
             plugTypes: values.plugTypes.trim(),
             chargingSpeedKw: Number(values.chargingSpeedKw),
+            operator: values.operator.trim() || null,
             pricingDetails: values.pricingDetails.trim() || null,
             googleMapsLink: values.googleMapsLink.trim() || null,
             latitude: values.latitude !== '' ? Number(values.latitude) : null,
@@ -178,7 +180,7 @@ export const convertToOCMFormat = (station: ChargingStation) => {
             usageCost: station.pricingDetails || undefined,
             operatorInfo: {
                 id: 1,
-                title: 'Custom Station',
+                title: station.operator || 'Custom Station',
             },
             dateLastVerified: station.updatedAt?.toDate().toISOString(),
             // Custom flag to identify this as a custom station

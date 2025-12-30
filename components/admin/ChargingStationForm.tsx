@@ -13,6 +13,7 @@ const defaultState: ChargingStationFormValues = {
     address: '',
     plugTypes: '',
     chargingSpeedKw: '',
+    operator: '',
     pricingDetails: '',
     googleMapsLink: '',
     latitude: '',
@@ -55,6 +56,7 @@ const ChargingStationForm: React.FC<ChargingStationFormProps> = ({
             address: initialValues.address ?? '',
             plugTypes: initialValues.plugTypes ?? '',
             chargingSpeedKw: initialValues.chargingSpeedKw ?? '',
+            operator: initialValues.operator ?? '',
             pricingDetails: initialValues.pricingDetails ?? '',
             googleMapsLink: initialValues.googleMapsLink ?? '',
             latitude: initialValues.latitude ?? '',
@@ -163,6 +165,7 @@ const ChargingStationForm: React.FC<ChargingStationFormProps> = ({
                 </div>
 
                 {renderInput('Plug Types *', 'plugTypes', 'text', 'e.g., CCS2, GB/T')}
+                {renderInput('Operator', 'operator', 'text', 'e.g., iCharge Albania')}
                 {renderInput('Charging Speed (kW) *', 'chargingSpeedKw', 'number', '60', { step: '0.1' })}
 
                 <div className="sm:col-span-2">

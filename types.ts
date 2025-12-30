@@ -186,6 +186,7 @@ export interface ChargingStationDocument {
   address: string;
   plugTypes: string; // e.g., "CCS2, GB/T"
   chargingSpeedKw: number;
+  operator: string | null;
   pricingDetails: string | null;
   googleMapsLink: string | null;
   latitude: number | null;
@@ -204,6 +205,7 @@ export interface ChargingStationFormValues {
   address: string;
   plugTypes: string;
   chargingSpeedKw: number | '';
+  operator: string;
   pricingDetails: string;
   googleMapsLink: string;
   latitude: number | '';
