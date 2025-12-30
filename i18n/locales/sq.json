@@ -818,12 +818,6 @@
     "deactivate": "Çaktivizo",
     "reactivate": "Reaktivizo",
     "restoreDealer": "Rikthe shitësin",
-    "dealerFilters": {
-      "active": "Aktivë",
-      "inactive": "Jo aktivë",
-      "pending": "Në pritje",
-      "deleted": "Të fshirë"
-    },
     "filteredDealers": "Shitës",
     "noActiveDealers": "Nuk ka shitës aktivë.",
     "noInactiveDealers": "Nuk ka shitës jo aktivë.",
@@ -916,7 +910,37 @@
       "yearStart": "Viti i nisjes së prodhimit",
       "batteryUsableCapacity": "Kapaciteti i përdorshëm i baterisë",
       "batteryType": "Lloji i baterisë",
-      "batteryVoltage": "Voltazhi i baterisë"
+      "batteryVoltage": "Voltazhi i baterisë",
+      "sectionHeading": "Titulli i Seksionit",
+      "sectionContent": "Përmbajtja (rresht i ri = paragraf i ri)",
+      "sectionHighlight": "Highlight (Citat/Shënim)",
+      "sectionList": "Elementët e listës (një për rresht)",
+      "slug": "URL-ja (Slug)",
+      "readTime": "Koha e leximit",
+      "tags": "Etiketat",
+      "metaTitle": "Titulli SEO",
+      "metaDescription": "Përshkrimi SEO"
+    },
+    "tabs": {
+      "content": "Përmbajtja",
+      "faq": "Pyetje/Përgjigje",
+      "seo": "SEO & Cilësimet"
+    },
+    "sections": {
+      "contentSections": "Seksionet e Artikullit",
+      "faqs": "Pyetjet e Shpeshta",
+      "metaMetadata": "Parapamja e SEO"
+    },
+    "actions": {
+      "addSection": "Shto Seksion",
+      "addFaq": "Shto Pyetje"
+    },
+    "placeholders": {
+      "sectionHeading": "Titull opsional...",
+      "sectionContent": "Shkruani përmbajtjen këtu..."
+    },
+    "messages": {
+      "noFaqs": "Nuk ka ende pyetje të shtuara."
     },
     "bulkImport": {
       "missingMapping": "Plotësoni të gjitha kolonat e detyrueshme para importit.",

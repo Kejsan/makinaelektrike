@@ -99,7 +99,7 @@ const BlogPostPage: React.FC = () => {
     },
   }));
 
-  const structuredData = [
+  const structuredData: any[] = [
     {
       '@context': 'https://schema.org',
       '@type': 'BlogPosting',
@@ -189,8 +189,8 @@ const BlogPostPage: React.FC = () => {
           <section key={section.id} className="bg-white/5 border border-white/10 rounded-2xl p-8 shadow-lg">
             <h2 className="text-2xl font-bold text-white mb-4">{section.heading}</h2>
             <div className="space-y-4 text-gray-200 leading-relaxed">
-              {section.paragraphs.map(paragraph => (
-                <p key={paragraph}>{paragraph}</p>
+              {section.paragraphs.map((paragraph, pIdx) => (
+                <p key={pIdx}>{paragraph}</p>
               ))}
               {section.highlight && (
                 <div className="rounded-xl border border-gray-cyan/40 bg-gray-cyan/10 p-4 text-gray-100">

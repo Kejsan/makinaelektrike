@@ -818,12 +818,6 @@
     "deactivate": "Deactivate",
     "reactivate": "Reactivate",
     "restoreDealer": "Restore dealer",
-    "dealerFilters": {
-      "active": "Active",
-      "inactive": "Inactive",
-      "pending": "Pending",
-      "deleted": "Deleted"
-    },
     "filteredDealers": "Dealers",
     "noActiveDealers": "No active dealers found.",
     "noInactiveDealers": "No inactive dealers found.",
@@ -916,7 +910,37 @@
       "yearStart": "Production start year",
       "batteryUsableCapacity": "Usable battery capacity",
       "batteryType": "Battery type",
-      "batteryVoltage": "Battery voltage"
+      "batteryVoltage": "Battery voltage",
+      "sectionHeading": "Section Heading",
+      "sectionContent": "Content (new line = new paragraph)",
+      "sectionHighlight": "Highlight (Quote/Note)",
+      "sectionList": "List Items (one per line)",
+      "slug": "URL Slug",
+      "readTime": "Read Time",
+      "tags": "Tags",
+      "metaTitle": "SEO Title",
+      "metaDescription": "SEO Description"
+    },
+    "tabs": {
+      "content": "Main Content",
+      "faq": "FAQs",
+      "seo": "SEO & Settings"
+    },
+    "sections": {
+      "contentSections": "Content Sections",
+      "faqs": "Frequently Asked Questions",
+      "metaMetadata": "Search Engine Preview"
+    },
+    "actions": {
+      "addSection": "Add Section",
+      "addFaq": "Add Question"
+    },
+    "placeholders": {
+      "sectionHeading": "Optional heading...",
+      "sectionContent": "Write your content here..."
+    },
+    "messages": {
+      "noFaqs": "No FAQs added yet."
     },
     "bulkImport": {
       "missingMapping": "Please map all required columns before importing.",
