@@ -127,6 +127,13 @@ export const convertToOCMFormat = (station: ChargingStation) => {
         return null;
     }
 
+    // Generate a numeric ID from the string ID for OCM compatibility using a simple hash
+    const hash = station.id.split('').reduce((acc, char) => {
+        const code = char.charCodeAt(0);
+        return ((acc << 5) - acc) + code | 0;
+    }, 0);
+    const numericId = Math.abs(hash) + 1000000;
+
     return {
         type: 'Feature' as const,
         geometry: {
@@ -134,7 +141,7 @@ export const convertToOCMFormat = (station: ChargingStation) => {
             coordinates: [station.longitude, station.latitude],
         },
         properties: {
-            id: `custom-${station.id}`,
+            id: numericId,
             title: station.address,
             addressInfo: {
                 title: station.address,

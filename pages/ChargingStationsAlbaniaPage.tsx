@@ -46,21 +46,28 @@ type StationFeature = StationFeatureCollection['features'][number];
 
 type BoundsTuple = [topLat: number, leftLng: number, bottomLat: number, rightLng: number];
 
-const formatAddress = (properties: StationProperties) => {
-  const { addressInfo } = properties;
+const formatAddress = (properties: any) => {
+  // Handle both PascalCase (OCM GeoJSON default) and camelCase
+  const addressInfo = properties.addressInfo || properties.AddressInfo;
+  if (!addressInfo) return '';
+
   const segments = [
-    addressInfo?.title,
-    addressInfo?.addressLine1,
-    addressInfo?.town,
-    addressInfo?.stateOrProvince,
-    addressInfo?.postcode,
+    addressInfo.title || addressInfo.Title,
+    addressInfo.addressLine1 || addressInfo.AddressLine1,
+    addressInfo.town || addressInfo.Town,
+    addressInfo.stateOrProvince || addressInfo.StateOrProvince,
+    addressInfo.postcode || addressInfo.Postcode,
   ].filter(Boolean);
-  return segments.join(', ');
+
+  // Remove exact duplicates (e.g. if title and addressLine1 are the same)
+  const uniqueSegments = [...new Set(segments)];
+  return uniqueSegments.join(', ');
 };
 
-const formatPowerRange = (properties: StationProperties) => {
-  const powerValues = (properties.connections ?? [])
-    .map(connection => connection.powerKW ?? null)
+const formatPowerRange = (properties: any) => {
+  const connections = properties.connections || properties.Connections || [];
+  const powerValues = (connections as any[])
+    .map(connection => connection.powerKW ?? connection.PowerKW ?? null)
     .filter((value): value is number => value !== null && !Number.isNaN(value));
 
   if (!powerValues.length) {
@@ -104,9 +111,10 @@ const getStationLatLng = (feature: StationFeature) => {
       return { lat, lng };
     }
   }
+  const addressInfo = properties.addressInfo || (properties as any).AddressInfo;
   return {
-    lat: properties.addressInfo.latitude,
-    lng: properties.addressInfo.longitude,
+    lat: addressInfo?.latitude ?? addressInfo?.Latitude ?? 0,
+    lng: addressInfo?.longitude ?? addressInfo?.Longitude ?? 0,
   };
 };
 
@@ -116,186 +124,6 @@ const formatDateTime = (date: Date) => {
     timeStyle: 'short',
   }).format(date);
 };
-
-const createPopupContent = (
-  feature: StationFeature,
-  actions: { onCopy: () => void; onShare: () => void },
-) => {
-  const { properties } = feature;
-  const latLng = getStationLatLng(feature);
-  const address = formatAddress(properties) || 'Address unavailable';
-  const status = properties.statusType?.title ?? 'Status unknown';
-  const usage = properties.usageType?.title ?? 'Usage unknown';
-  const power = formatPowerRange(properties) ?? 'Unspecified power';
-  const lastVerified = properties.dateLastVerified
-    ? new Date(properties.dateLastVerified).toLocaleDateString()
-    : 'Not provided';
-  const operator = properties.operatorInfo?.title ?? 'Unknown operator';
-  const thumbnail = properties.mediaItems?.find(item => item.isEnabled);
-
-  const container = document.createElement('div');
-  container.className = 'space-y-3 text-sm text-gray-900';
-
-  const header = document.createElement('div');
-
-  if (properties.isCustomStation) {
-    const badge = document.createElement('span');
-    badge.className = 'inline-block mb-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 uppercase tracking-wider border border-purple-200';
-    badge.textContent = 'Custom Station';
-    header.appendChild(badge);
-  }
-
-  const title = document.createElement('h3');
-  title.className = 'text-base font-semibold text-gray-900';
-  title.textContent = properties.title ?? 'Charging location';
-  header.appendChild(title);
-
-  const addressParagraph = document.createElement('p');
-  addressParagraph.className = 'mt-1 text-xs text-gray-600';
-  addressParagraph.textContent = address;
-  header.appendChild(addressParagraph);
-  container.appendChild(header);
-
-  if (thumbnail?.itemURL) {
-    try {
-      const mediaUrl = new URL(thumbnail.itemURL);
-      if (mediaUrl.protocol === 'http:' || mediaUrl.protocol === 'https:') {
-        const image = document.createElement('img');
-        image.src = mediaUrl.toString();
-        image.alt = 'Station thumbnail';
-        image.className = 'h-28 w-full rounded-lg object-cover';
-        container.appendChild(image);
-      }
-    } catch (error) {
-      console.warn('Skipping invalid thumbnail URL', error);
-    }
-  }
-
-  const details = document.createElement('dl');
-  details.className = 'grid grid-cols-2 gap-2 text-xs text-gray-700';
-
-  const addDetail = (label: string, value: string) => {
-    const wrapper = document.createElement('div');
-    const dt = document.createElement('dt');
-    dt.className = 'font-semibold text-gray-800';
-    dt.textContent = label;
-    const dd = document.createElement('dd');
-    dd.textContent = value;
-    wrapper.appendChild(dt);
-    wrapper.appendChild(dd);
-    details.appendChild(wrapper);
-  };
-
-  addDetail('Operator', operator);
-  addDetail('Status', status);
-  addDetail('Usage', usage);
-  addDetail('Power', power);
-  addDetail('Last verified', lastVerified);
-
-  if (properties.usageCost) {
-    addDetail('Cost', properties.usageCost);
-  }
-
-  container.appendChild(details);
-
-  if (properties.connections && properties.connections.length) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'max-h-32 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-2';
-
-    const table = document.createElement('table');
-    table.className = 'min-w-full text-[11px] text-gray-700';
-
-    const thead = document.createElement('thead');
-    const headRow = document.createElement('tr');
-    const headers = ['Connector', 'Level', 'kW', 'Qty'];
-    headers.forEach(text => {
-      const th = document.createElement('th');
-      th.className = 'px-1 py-1 text-left font-semibold';
-      th.textContent = text;
-      headRow.appendChild(th);
-    });
-    thead.appendChild(headRow);
-    table.appendChild(thead);
-
-    const tbody = document.createElement('tbody');
-    properties.connections.forEach(connection => {
-      const row = document.createElement('tr');
-
-      const connectorCell = document.createElement('td');
-      connectorCell.className = 'px-1 py-1';
-      connectorCell.textContent = connection.connectionType?.title ?? '—';
-      row.appendChild(connectorCell);
-
-      const levelCell = document.createElement('td');
-      levelCell.className = 'px-1 py-1';
-      levelCell.textContent = connection.level?.title ?? '—';
-      row.appendChild(levelCell);
-
-      const powerCell = document.createElement('td');
-      powerCell.className = 'px-1 py-1';
-      powerCell.textContent =
-        connection.powerKW !== undefined && connection.powerKW !== null
-          ? String(connection.powerKW)
-          : '—';
-      row.appendChild(powerCell);
-
-      const qtyCell = document.createElement('td');
-      qtyCell.className = 'px-1 py-1';
-      qtyCell.textContent =
-        connection.quantity !== undefined && connection.quantity !== null
-          ? String(connection.quantity)
-          : '—';
-      row.appendChild(qtyCell);
-
-      tbody.appendChild(row);
-    });
-
-    table.appendChild(tbody);
-    wrapper.appendChild(table);
-    container.appendChild(wrapper);
-  }
-
-  const actionsRow = document.createElement('div');
-  actionsRow.className = 'flex flex-wrap gap-2 text-xs';
-
-  const createLinkButton = (label: string, href: string) => {
-    const link = document.createElement('a');
-    link.href = href;
-    link.target = '_blank';
-    link.rel = 'noreferrer';
-    link.className =
-      'inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-3 py-1 font-semibold text-gray-800';
-    link.textContent = label;
-    actionsRow.appendChild(link);
-  };
-
-  createLinkButton('Directions', `https://www.google.com/maps/dir/?api=1&destination=${latLng.lat},${latLng.lng}`);
-  createLinkButton('Apple Maps', `http://maps.apple.com/?daddr=${latLng.lat},${latLng.lng}`);
-
-  const createActionButton = (label: string, onClick: () => void, action: 'copy' | 'share') => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.dataset.popupAction = action;
-    button.className =
-      'inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-3 py-1 font-semibold text-gray-800';
-    button.textContent = label;
-    button.addEventListener('click', onClick);
-    actionsRow.appendChild(button);
-  };
-
-  createActionButton('Copy address', actions.onCopy, 'copy');
-  createActionButton('Share', actions.onShare, 'share');
-
-  container.appendChild(actionsRow);
-
-  const attribution = document.createElement('p');
-  attribution.className = 'text-[11px] text-gray-500';
-  attribution.textContent = 'Data © Open Charge Map contributors – OpenChargeMap.org';
-  container.appendChild(attribution);
-
-  return container;
-};
-
 
 const customStationIcon = L.icon({
   iconUrl: markerIcon,
@@ -326,14 +154,8 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
     zoom: Number.isFinite(zoomParam) ? zoomParam : DEFAULT_ZOOM,
   });
   const initialMapStateRef = useRef(mapState);
-  const [selectedStationId, setSelectedStationId] = useState<number | null>(() => {
-    const poiParam = searchParams.get('poi');
-    if (!poiParam) {
-      return null;
-    }
-    const parsed = Number.parseInt(poiParam, 10);
-    return Number.isFinite(parsed) ? parsed : null;
-  });
+  const [selectedStation, setSelectedStation] = useState<StationFeature | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const [stations, setStations] = useState<StationFeature[]>([]);
   const [loadingStations, setLoadingStations] = useState(false);
@@ -556,15 +378,22 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
   }, [handleMapMove]);
 
   const visibleStations = useMemo(() => {
+    // Sort custom stations to the top
+    const sorted = [...stations].sort((a, b) => {
+      const aIsCustom = a.properties.isCustomStation ? 1 : 0;
+      const bIsCustom = b.properties.isCustomStation ? 1 : 0;
+      return bIsCustom - aIsCustom;
+    });
+
     const query = searchTerm.trim().toLowerCase();
     if (!query) {
-      return stations;
+      return sorted;
     }
-    return stations.filter(feature => {
+    return sorted.filter(feature => {
       const { properties } = feature;
       const address = formatAddress(properties).toLowerCase();
-      const operator = properties.operatorInfo?.title?.toLowerCase() ?? '';
-      const title = (properties.title ?? '').toLowerCase();
+      const operator = (properties.operatorInfo?.title || (properties as any).OperatorInfo?.Title || '').toLowerCase();
+      const title = (properties.title || (properties as any).Title || '').toLowerCase();
       return (
         title.includes(query) ||
         operator.includes(query) ||
@@ -655,15 +484,9 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
         shareStation(feature);
       };
 
-      const popupContent = createPopupContent(feature, {
-        onCopy: handleCopy,
-        onShare: handleShare,
-      });
-
-      marker.bindPopup(popupContent, { maxWidth: 360, className: 'charging-popup' });
-
       marker.on('click', () => {
-        setSelectedStationId(feature.properties.id);
+        setSelectedStation(feature);
+        setPanelOpen(true);
         setHoveredStationId(feature.properties.id);
       });
 
@@ -676,18 +499,22 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
   }, [addToast, shareStation, visibleStations]);
 
   useEffect(() => {
-    if (!selectedStationId) {
+    if (!selectedStation) {
       return;
     }
-    const marker = markersRef.current.get(selectedStationId);
+    const marker = markersRef.current.get(selectedStation.properties.id);
     if (marker) {
-      marker.openPopup();
       const latLng = marker.getLatLng();
-      mapRef.current?.flyTo(latLng, Math.max(mapRef.current.getZoom(), 14), { animate: true });
-    } else if (!visibleStations.some(station => station.properties.id === selectedStationId)) {
-      setSelectedStationId(null);
+      const zoom = Math.max(mapRef.current?.getZoom() ?? DEFAULT_ZOOM, 14);
+
+      // Offset the map on desktop to make room for the side panel
+      if (window.innerWidth >= 1024) {
+        mapRef.current?.flyTo([latLng.lat, latLng.lng - 0.005], zoom, { animate: true });
+      } else {
+        mapRef.current?.flyTo(latLng, zoom, { animate: true });
+      }
     }
-  }, [selectedStationId, visibleStations]);
+  }, [selectedStation]);
 
   const handleSearchInput = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
@@ -745,13 +572,13 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
 
     if (searchTerm.trim()) params.set('q', searchTerm.trim());
     if (!autoUpdate) params.set('auto', 'false');
-    if (selectedStationId) params.set('poi', String(selectedStationId));
+    if (selectedStation) params.set('poi', String(selectedStation.properties.id));
 
     const next = params.toString();
     if (next !== searchParams.toString()) {
       setSearchParams(params, { replace: true });
     }
-  }, [autoUpdate, mapState, searchParams, searchTerm, selectedStationId, setSearchParams]);
+  }, [autoUpdate, mapState, searchParams, searchTerm, selectedStation, setSearchParams]);
 
   const faqItems = useMemo(
     () => [
@@ -964,6 +791,147 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
 
           <div className="relative h-[400px] rounded-2xl border border-white/10 bg-gray-950/50 shadow-xl sm:h-[460px] lg:h-[510px]">
             <div ref={mapContainerRef} className="h-full w-full rounded-2xl" aria-label="Charging stations map" />
+
+            {/* Map Detail Panel */}
+            {selectedStation && (
+              <div
+                className={`absolute inset-0 z-[1000] overflow-hidden pointer-events-none rounded-2xl`}
+              >
+                {/* Backdrop for mobile - only shows when panel is open */}
+                <div
+                  className={`absolute inset-0 bg-black/40 transition-opacity duration-300 lg:hidden pointer-events-auto ${panelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                    }`}
+                  onClick={() => setPanelOpen(false)}
+                />
+
+                <div
+                  className={`absolute right-0 top-0 h-full w-full bg-gray-950/95 shadow-2xl backdrop-blur-md border-l border-white/10 lg:w-96 flex flex-col transform transition-transform duration-300 ease-in-out pointer-events-auto ${panelOpen ? 'translate-x-0' : 'translate-x-full'
+                    }`}
+                >
+                  {/* Panel Header */}
+                  <div className="flex items-center justify-between border-b border-white/10 p-4 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold text-white leading-tight">Station Info</h2>
+                      {selectedStation.properties.isCustomStation && (
+                        <span className="rounded-full bg-purple-500/20 border border-purple-400/30 px-2 py-0.5 text-[10px] font-bold text-purple-200 uppercase tracking-wider">
+                          Custom
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setPanelOpen(false)}
+                      className="rounded-full bg-white/5 p-2 text-gray-400 transition hover:bg-white/10 hover:text-white"
+                      aria-label="Close details"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  {/* Panel Content */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white leading-snug">
+                        {selectedStation.properties.title || 'Charging station'}
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-400">
+                        {formatAddress(selectedStation.properties)}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">Operator</span>
+                        <p className="text-sm text-gray-200 truncate">
+                          {selectedStation.properties.operatorInfo?.title || (selectedStation.properties as any).OperatorInfo?.Title || 'Unknown'}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">Status</span>
+                        <p className="text-sm text-gray-200 truncate">
+                          {selectedStation.properties.statusType?.title || (selectedStation.properties as any).StatusType?.Title || 'Unknown'}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">Usage</span>
+                        <p className="text-sm text-gray-200 truncate">
+                          {selectedStation.properties.usageType?.title || (selectedStation.properties as any).UsageType?.Title || 'Unknown'}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">Cost</span>
+                        <p className="text-sm text-gray-200">
+                          {selectedStation.properties.usageCost || 'Not provided'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Connections Section */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-white uppercase tracking-widest opacity-60">Connectors</h4>
+                      <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+                        {(selectedStation.properties.connections || (selectedStation.properties as any).Connections || []).map((conn: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between border-b border-white/10 last:border-0 p-3 bg-gray-900/40">
+                            <div className="min-w-0 flex-1 pr-2">
+                              <p className="text-sm font-semibold text-white truncate">
+                                {conn.connectionType?.title || conn.ConnectionType?.Title || 'Unknown'}
+                              </p>
+                              <p className="text-[11px] text-gray-400">
+                                {conn.level?.title || conn.Level?.Title || 'Standard'} charging
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-sm font-bold text-gray-cyan-light">
+                                {conn.powerKW || conn.PowerKW ? `${conn.powerKW || conn.PowerKW} kW` : '—'}
+                              </p>
+                              <p className="text-[10px] text-gray-500">
+                                {conn.quantity || conn.Quantity || 1} available
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* CTA Actions */}
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${getStationLatLng(selectedStation).lat},${getStationLatLng(selectedStation).lng}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-bold text-black transition hover:bg-gray-cyan-light active:scale-95"
+                      >
+                        <MapPin className="h-4 w-4" />
+                        Go
+                      </a>
+                      <button
+                        onClick={() => shareStation(selectedStation)}
+                        className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10 active:scale-95"
+                      >
+                        <Share2 className="h-4 w-4" />
+                        Share
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        const address = formatAddress(selectedStation.properties);
+                        navigator.clipboard
+                          .writeText(address)
+                          .then(() => addToast('Address copied', 'success'));
+                      }}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10 active:scale-95"
+                    >
+                      <Copy className="h-4 w-4" />
+                      Copy Address
+                    </button>
+
+                    <p className="text-[10px] text-gray-500 text-center pb-2 opacity-50">
+                      ID: {selectedStation.properties.id} • Data via OCM
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             {loadingStations && (
               <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-gray-950/60 backdrop-blur">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-cyan" aria-hidden="true" />
@@ -1025,16 +993,38 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                           )}
                         </div>
                         <p className="text-sm text-gray-300">{formatAddress(station.properties) || 'Address unavailable'}</p>
-                        <p className="text-xs text-gray-400">
-                          Operator: {station.properties.operatorInfo?.title ?? 'Unknown'} · Status: {station.properties.statusType?.title ?? 'Unknown'}
-                        </p>
-                        {powerRange && <p className="text-xs text-gray-400">Power: {powerRange}</p>}
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <p className="text-xs text-gray-400">
+                            Operator: <span className="text-gray-200">{station.properties.operatorInfo?.title ?? (station.properties as any).OperatorInfo?.Title ?? 'Unknown'}</span>
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            Status: <span className="text-gray-200">{station.properties.statusType?.title ?? (station.properties as any).StatusType?.Title ?? 'Unknown'}</span>
+                          </p>
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-3">
+                          {powerRange && (
+                            <div className="flex items-center gap-1.5 rounded-md bg-gray-cyan/10 px-2 py-0.5 text-[11px] font-medium text-gray-cyan-light border border-gray-cyan/20">
+                              ⚡ {powerRange}
+                            </div>
+                          )}
+                          {station.properties.usageCost && (
+                            <div className="flex items-center gap-1.5 rounded-md bg-white/5 px-2 py-0.5 text-[11px] font-medium text-gray-300 border border-white/10">
+                              💰 {station.properties.usageCost}
+                            </div>
+                          )}
+                          {isCustomStation && (
+                            <div className="flex items-center gap-1.5 rounded-md bg-purple-500/10 px-2 py-0.5 text-[11px] font-medium text-purple-300 border border-purple-500/20">
+                              🔌 {station.properties.connections?.[0]?.connectionType?.title || 'Connectors'}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div className="flex flex-col items-end gap-2 text-right">
                         <button
                           type="button"
                           onClick={() => {
-                            setSelectedStationId(station.properties.id);
+                            setSelectedStation(station);
+                            setPanelOpen(true);
                             if (mapRef.current) {
                               mapRef.current.flyTo([latLng.lat, latLng.lng], Math.max(mapRef.current.getZoom(), 14), {
                                 animate: true,
