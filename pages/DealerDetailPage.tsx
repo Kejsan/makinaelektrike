@@ -174,12 +174,12 @@ const DealerDetailPage: React.FC = () => {
                 <div className="bg-white/5 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 overflow-hidden">
                     <div className="lg:grid lg:grid-cols-3">
                         <div className="lg:col-span-2 relative">
-                             <img src={heroImage} alt={dealer.name} className="w-full h-64 lg:h-full object-cover"/>
-                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent lg:bg-gradient-to-r"></div>
+                            <img src={heroImage} alt={dealer.name} className="w-full h-64 lg:h-full object-cover" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent lg:bg-gradient-to-r"></div>
                         </div>
 
                         <div className="p-8 space-y-6 relative">
-                             <button
+                            <button
                                 onClick={() => toggleFavorite(dealer.id)}
                                 className="absolute top-6 right-6 z-10 p-3 bg-white/10 rounded-full text-white hover:text-vivid-red transition-colors"
                                 aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
@@ -192,11 +192,6 @@ const DealerDetailPage: React.FC = () => {
                                     <ShieldCheck size={14} />
                                     {t('dealerDetails.approved', { defaultValue: 'Approved dealer' })}
                                 </span>
-                                {dealer.ownerUid && (
-                                    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-gray-200">
-                                        UID: {dealer.ownerUid}
-                                    </span>
-                                )}
                             </div>
                             <div className="space-y-4">
                                 <h2 className="text-xl font-bold text-white">{t('dealerDetails.contactInfo')}</h2>
@@ -242,19 +237,19 @@ const DealerDetailPage: React.FC = () => {
                                     {dealer.brands.map(brand => <span key={brand} className="text-sm bg-gray-700/50 rounded-full px-3 py-1">{brand}</span>)}
                                 </div>
                             </div>
-                            
+
                             <div>
                                 <h3 className="font-semibold text-white">{t('dealerDetails.languagesSpoken')}</h3>
                                 <p className="text-gray-300">{dealer.languages?.length ? dealer.languages.join(', ') : t('dealerDetails.noLanguages', { defaultValue: 'No languages specified' })}</p>
                             </div>
-                             {(dealer.description || dealer.notes) && <div>
+                            {(dealer.description || dealer.notes) && <div>
                                 <h3 className="font-semibold text-white">{t('dealerDetails.notes')}</h3>
                                 <p className="text-gray-300">{dealer.description || dealer.notes}</p>
                             </div>}
                         </div>
                     </div>
                 </div>
-                 
+
                 <div className="mt-16">
                     <h2 className="text-3xl font-bold text-center mb-8 text-white">{t('dealerDetails.locationOnMap')}</h2>
                     <GoogleMap
@@ -280,10 +275,10 @@ const DealerDetailPage: React.FC = () => {
                     <h2 className="text-3xl font-bold text-center mb-8 text-white">{t('dealerDetails.modelsAvailable')}</h2>
                     {dealerModels.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                           {dealerModels.map(model => <ModelCard key={model.id} model={model} />)}
+                            {dealerModels.map(model => <ModelCard key={model.id} model={model} />)}
                         </div>
                     ) : (
-                         <p className="text-center text-gray-400">No specific models listed for this dealer.</p>
+                        <p className="text-center text-gray-400">No specific models listed for this dealer.</p>
                     )}
                 </div>
 
@@ -308,7 +303,7 @@ const DealerDetailPage: React.FC = () => {
                     </div>
                 </section>
             </div>
-        </div>
+        </div >
     );
 };
 
