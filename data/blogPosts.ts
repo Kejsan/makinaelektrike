@@ -2,105 +2,6 @@ import { BlogPost } from '../types';
 
 const blogPosts: BlogPost[] = [
   {
-    id: 'post-001',
-    slug: 'makina-elektrike-apo-hibride-cilen-te-zgjedhesh',
-    title: 'Makina elektrike apo hibride – cilën të zgjedhësh?',
-    excerpt:
-      'Krahasimi i plotë mes makinave elektrike dhe atyre hibride për tregun shqiptar: kosto, infrastrukturë, modele të disponueshme dhe rekomandime sipas stilit të jetesës.',
-    author: 'Redaksia Makina Elektrike',
-    date: '2025-02-10',
-    readTime: '9 minuta lexim',
-    imageUrl:
-      'https://images.unsplash.com/photo-1617813489951-4b6be6c5f27f?auto=format&fit=crop&w=1200&q=80',
-    metaTitle:
-      'Makina elektrike apo hibride – cilën të zgjedhësh? Udhëzues për tregun shqiptar | Makina Elektrike',
-    metaDescription:
-      'Krahasojmë makinat elektrike dhe hibride në Shqipëri: kostot fillestare, kursimet, ndikimin në mjedis dhe disponueshmërinë e modeleve. Lexoni se cilin lloj të zgjidhni.',
-    tags: ['makina-elektrike', 'hibride', 'krahasim', 'udhëzues'],
-    sections: [
-      {
-        id: 'hyrje',
-        heading: 'Hyrje: pse ky krahasim ka rëndësi në Shqipëri',
-        paragraphs: [
-          'Rritja e interesit për makinat me emetime të ulëta ka sjellë në tregun shqiptar një gamë gjithnjë e më të gjerë modelesh elektrike (EV) dhe hibride (HEV). Në të njëjtën kohë, qytetet si Tirana dhe Durrësi po përballen me kosto të larta të karburantit dhe kufizime të parkimit, duke e bërë zgjedhjen më të kujdesshme se kurrë.',
-          'Ky artikull analizon dallimet kryesore mes EV-ve të pastra dhe automjeteve hibride, me shembuj dhe çmime orientuese për tregun tonë. Qëllimi është t’ju ndihmojmë të përcaktoni cilat karakteristika kanë vlerë të shtuar për udhëtimet tuaja të përditshme.'
-        ]
-      },
-      {
-        id: 'kosto',
-        heading: 'Kosto fillestare dhe kursimet afatgjata',
-        paragraphs: [
-          'Në Shqipëri, një EV i ri si BYD Dolphin ose MG4 fillon rreth 29–32 mijë euro, ndërsa një hibride si Toyota Corolla ose Hyundai Tucson Hybrid nis nga 25–28 mijë euro. Diferenca prej disa mijëra eurosh shpesh kompensohet brenda 4–6 viteve falë karikimit më të lirë (2–3 € për 100 km) dhe mirëmbajtjes më të ulët.',
-          'Hibridet klasike kanë avantazhin e çmimit pak më të ulët dhe nuk kërkojnë investim në karikues shtëpiak. Megjithatë, EV-të përfitojnë nga tarifa të reduktuara mirëmbajtjeje – nuk ka ndërrim vaji, filtra karburanti apo riparime të motorit termik.'
-        ]
-      },
-      {
-        id: 'mjedisi',
-        heading: 'Ndikimi në mjedis dhe cilësinë e ajrit',
-        paragraphs: [
-          'Një EV prodhon zero emetime gjatë përdorimit, çka ndikon drejtpërdrejt në uljen e ndotjes në zona urbane. Në qytetet shqiptare ku trafiku i rënduar rrit nivelin e NOx dhe PM2.5, kjo do të thotë ajër më i pastër dhe më pak shpenzime shëndetësore.',
-          'Automjetet hibride ende djegin karburant fosil, por falë motorit elektrik ulin konsumin total me 20–30 % krahasuar me një benzinë konvencionale. Ato janë zgjedhje më e mirë se një makinë tradicionale, por EV-të mbeten alternativa më e pastër nëse furnizohen me energji nga rrjeti ose fotovoltaikë.'
-        ]
-      },
-      {
-        id: 'performanca',
-        heading: 'Performanca, komoditeti dhe përvoja e drejtimit',
-        paragraphs: [
-          'EV-të ofrojnë çift rrotullues të menjëhershëm, përshpejtim të qetë dhe nivel zhurme shumë të ulët. Modele si Volkswagen ID.3 arrijnë 0–100 km/h në rreth 7.3 sekonda, ndërsa MG4 sjell një ndjesi sportive falë shpërndarjes së peshës 50/50.',
-          'Hibridet kanë motor termik dhe elektrik që punojnë së bashku. Kjo i bën fleksibël në udhëtime të gjata dhe më të lehtë për t’u furnizuar, por kalimi ndërmjet motorëve mund të ndihet i ngadaltë dhe zhurmshëm. Për drejtuesit që udhëtojnë kryesisht në qytet, qetësia e një EV-je është një plus i madh.'
-        ]
-      },
-      {
-        id: 'modele',
-        heading: 'Modelet e disponueshme në tregun shqiptar',
-        paragraphs: [
-          'Importuesit vendas ofrojnë tashmë një gamë të gjerë EV-sh. BYD (Atto 3, Dolphin, Seal), Volkswagen (ID.3, ID.4) dhe MG (MG4, MG ZS EV) po forcojnë praninë e tyre përmes dilerëve të autorizuar në Tiranë dhe Durrës. Garancia për baterinë shkon deri në 8 vjet / 160 000 km.',
-          'Në segmentin hibrid dominojnë Toyota (Corolla, RAV4) dhe Hyundai (Tucson Hybrid, Kona Hybrid), si dhe modele plug-in si Kia Niro PHEV. Për familjet që udhëtojnë shpesh jashtë vendit, një plug-in hibrid mund të ofrojë fleksibilitet për karikim dhe benzinë.'
-        ]
-      },
-      {
-        id: 'infrastruktura',
-        heading: 'Infrastruktura e karikimit dhe furnizimi me karburant',
-        paragraphs: [
-          'Shqipëria ka rreth 120 pika publike karikimi (2025), të përqendruara në Tiranë, Durrës, Korçë dhe Vlorë. Kompani si VEGA, E-VAI dhe dilerët e mëdhenj po shtojnë pika 50 kW dhe 120 kW, ndërsa wallbox-et shtëpiake Type 2 kushtojnë 600–900 €.',
-          'Hibridet mbështeten në rrjetin ekzistues të karburanteve, duke eliminuar ankthin për autonomi. Megjithatë, kostot e karburantit të lartësohen nga çmimet ndërkombëtare dhe taksat lokale, ndërsa çmimi i energjisë elektrike mbetet më stabël.'
-        ]
-      },
-      {
-        id: 'rekomandime',
-        heading: 'Rekomandime praktike sipas stilit të jetesës',
-        paragraphs: [
-          'Zgjedhja e duhur varet nga buxheti, kilometrat vjetore dhe qasja në karikim. EV-të shkëlqejnë për përdorim urban dhe periudha të gjata mbajtjeje, ndërsa hibridet janë të përshtatshme për udhëtime të shpeshta interurbane ose për ata që nuk kanë akses në garazh.'
-        ],
-        list: {
-          title: 'Zgjedhja në bazë të nevojave',
-          items: [
-            'Përdorim kryesisht urban dhe parkim privat: zgjidh një EV me bateri mbi 50 kWh.',
-            'Udhëtime javore jashtë qytetit pa akses në karikues: konsidero një plug-in hibrid me autonomi elektrike 50+ km.',
-            'Buxhet fillestar i kufizuar: një hibrid klasik ofron kursime karburanti pa investim në infrastrukturë.',
-            'Flotë biznesi: EV-të uljnë kostot operative dhe imazhin e gjelbër të kompanisë.'
-          ]
-        }
-      }
-    ],
-    faqs: [
-      {
-        question: 'Sa zgjasin bateritë e një EV-je në kushtet shqiptare?',
-        answer:
-          'Prodhuesit garantojnë 8 vjet ose 160 000 km. Në klimën mesdhetare të Shqipërisë degradimi mesatar është 1.5–2 % në vit, nëse respektohen ciklet e karikimit 20–80 %.'
-      },
-      {
-        question: 'A ka subvencione për makinat elektrike?',
-        answer:
-          'Qeveria ka hequr taksën doganore dhe TVSH-në për importin e EV-ve të reja, ndërsa bashkitë ofrojnë parkim preferencial. Këto masa ulin çmimin final me 10–15 %.'
-      }
-    ],
-    cta: {
-      text: 'Shikoni katalogun tonë të makinave elektrike dhe hibride',
-      url: '/models'
-    }
-  },
-  {
     id: 'post-002',
     slug: 'mite-per-makinat-elektrike-qe-duhet-ti-harroni',
     title: '5 mite të rreme për makinat elektrike që duhet t’i harroni',
@@ -202,10 +103,10 @@ const blogPosts: BlogPost[] = [
     sections: [
       {
         id: 'definicione',
-        heading: 'Llojet e automjeteve elektrike: EV, HEV, PHEV dhe BEV',
+        heading: 'Automjetet elektrike të plota (BEV)',
         paragraphs: [
-          'Automjetet elektrike të plota (BEV) përdorin vetëm energji elektrike të ruajtur në bateri. Hibridet (HEV) kombinojnë motorin me djegie të brendshme me një motor elektrik të vogël, ndërsa plug-in hibridet (PHEV) mund të karikohen nga rrjeti dhe të udhëtojnë 40–80 km vetëm me energji elektrike.',
-          'Termi EV shpesh përdoret për të gjitha format, por në këtë udhëzues fokusohemi te BEV-të, të cilat janë baza e transformimit të transportit.'
+          'Automjetet elektrike të plota (BEV) përdorin vetëm energji elektrike të ruajtur në bateri. Ato nuk kanë motor me djegie dhe nuk emetojnë gazra ndotës gjatë përdorimit.',
+          'Ky udhëzues fokusohet te BEV-të, të cilat janë baza e transformimit të transportit dhe ofrojnë efikasitetin më të lartë energjetik sot.'
         ]
       },
       {

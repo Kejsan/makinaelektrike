@@ -149,11 +149,11 @@ const RegisterDealerPage: React.FC = () => {
           );
           console.log('[RegisterDealer] Users collection update success.');
         } catch (e) {
-             console.error('[RegisterDealer] Users collection update FAILED:', e);
-             throw e;
+          console.error('[RegisterDealer] Users collection update FAILED:', e);
+          throw e;
         }
       } else {
-          console.error('[RegisterDealer] No current user found after registration!');
+        console.error('[RegisterDealer] No current user found after registration!');
       }
 
       addToast(
@@ -168,7 +168,7 @@ const RegisterDealerPage: React.FC = () => {
   };
 
   const metaTitle = 'Regjistro dilerin | Makina Elektrike';
-  const metaDescription = 'Apliko për t’u listuar si dealer i autorizuar i makinave elektrike dhe hibride në Shqipëri.';
+  const metaDescription = 'Apliko për t’u listuar si dealer i autorizuar i makinave elektrike në Shqipëri.';
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',

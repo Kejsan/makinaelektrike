@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { DataContext } from '../contexts/DataContext';
 import DealerCard from '../components/DealerCard';
 import CustomSelect from '../components/CustomSelect';
-import GoogleMap from '../components/GoogleMap';
 import { Building, Car, Globe, ListFilter } from 'lucide-react';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
@@ -102,11 +101,7 @@ const DealersListPage: React.FC = () => {
         { value: 'city_asc', label: t('dealersPage.sortOptions.city_asc') },
         { value: 'city_desc', label: t('dealersPage.sortOptions.city_desc') },
     ];
-    
-    const mapMarkers = useMemo(() => 
-        filteredDealers.map(d => ({ lat: d.lat, lng: d.lng, title: d.name })),
-        [filteredDealers]
-    );
+
 
     if (loading) {
         return <div className="py-10 text-center text-white">{t('dealersPage.loading')}</div>;
@@ -146,7 +141,12 @@ const DealersListPage: React.FC = () => {
                 </div>
 
                 <div className="relative z-30 mb-12 rounded-xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl">
-                    <h2 className="mb-4 text-xl font-bold text-white">{t('dealersPage.filters')}</h2>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold text-white">{t('common.filters')}</h2>
+                        <span className="text-gray-400 font-medium bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                            {filteredDealers.length} {t('common.results')}
+                        </span>
+                    </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 xl:items-end">
                         <CustomSelect
                             icon={<Building size={16} />}
@@ -163,7 +163,7 @@ const DealersListPage: React.FC = () => {
                             onChange={setSelectedBrand}
                         />
                         <CustomSelect
-                             icon={<Globe size={16} />}
+                            icon={<Globe size={16} />}
                             placeholder={t('dealersPage.allLanguages')}
                             options={[{ value: '', label: t('dealersPage.allLanguages') }, ...filterOptions.languages.map(l => ({ value: l, label: l }))]}
                             value={selectedLanguage}
@@ -185,18 +185,6 @@ const DealersListPage: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="mb-12">
-                    <h2 className="text-center text-2xl font-bold text-white">{t('dealersPage.mapTitle')}</h2>
-                    <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
-                        <GoogleMap
-                            center={{ lat: 41.3275, lng: 19.8187 }} // Centered on Tirana
-                            zoom={8}
-                            markers={mapMarkers}
-                            className="h-[420px] w-full sm:h-[500px]"
-                            enableClustering={true}
-                        />
-                    </div>
-                </div>
 
                 {filteredDealers.length > 0 ? (
                     <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

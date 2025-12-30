@@ -21,7 +21,7 @@
     "awaitingApproval": "Në pritje të miratimit"
   },
   "footer": {
-    "description": "Udhëzuesi juaj për automjetet elektrike dhe hibride në Shqipëri. Gjeni shitës, krahasoni modele dhe bashkohuni me revolucionin elektrik.",
+    "description": "Udhëzuesi juaj për automjetet elektrike në Shqipëri. Gjeni shitës, krahasoni modele dhe bashkohuni me revolucionin elektrik.",
     "explore": "Eksploro",
     "services": "Shërbimet",
     "aboutUs": "Rreth Nesh",
@@ -44,7 +44,9 @@
     "loading": "Duke u ngarkuar...",
     "cancel": "Anulo",
     "anyCity": "Çdo qytet",
-    "anyBrand": "Çdo markë"
+    "anyBrand": "Çdo markë",
+    "results": "Rezultate",
+    "filters": "Filtrat"
   },
   "home": {
     "heroTitle": "Ngisni të ardhmen.",
@@ -66,8 +68,7 @@
     "metaKeywords": [
       "makina elektrike Shqipëri",
       "shitës EV",
-      "direktori Makina Elektrike",
-      "automjete hibride"
+      "direktori Makina Elektrike"
     ],
     "valueTitle": "Gjithçka që ju duhet për të kaluar në elektrik",
     "valueSubtitle": "Makina Elektrike bashkon të dhëna, udhëzime dhe partnerë të verifikuar që zgjedhja juaj të jetë e sigurt.",
@@ -78,7 +79,7 @@
       },
       {
         "title": "Të dhëna të plota për modelet",
-        "description": "Krahasoni autonominë WLTP, shpejtësitë e karikimit, kapacitetin e baterisë dhe pajisjet e çdo modeli EV ose hibrid."
+        "description": "Krahasoni autonominë WLTP, shpejtësitë e karikimit, kapacitetin e baterisë dhe pajisjet e çdo modeli EV."
       },
       {
         "title": "Mbështetje për vendimmarrje",
@@ -135,7 +136,7 @@
   },
   "dealersPage": {
     "title": "Konçesionaret në Shqipëri",
-    "subtitle": "Filtroni dhe krahasoni shitës të autorizuar të automjeteve elektrike dhe hibride në gjithë vendin.",
+    "subtitle": "Filtroni dhe krahasoni shitës të autorizuar të automjeteve elektrike në gjithë vendin.",
     "filters": "Filtrat",
     "city": "Qyteti",
     "brand": "Marka",
@@ -157,7 +158,7 @@
       "city_desc": "Qyteti Zh–A"
     },
     "metaTitle": "Shitësit e makinave elektrike në Shqipëri | Makina Elektrike",
-    "metaDescription": "Eksploroni shitës të verifikuar EV dhe hibride në Tiranë, Durrës, Shkodër e më gjerë. Filtroni sipas markës, gjuhës dhe lokacionit.",
+    "metaDescription": "Eksploroni shitës të verifikuar EV në Tiranë, Durrës, Shkodër e më gjerë. Filtroni sipas markës, gjuhës dhe lokacionit.",
     "metaKeywords": [
       "shitës EV Shqipëri",
       "salon makina elektrike",
@@ -224,7 +225,7 @@
       "dealersDescription": "Një përzgjedhje konçesionarësh të verifikuar që janë përditësuar së fundmi në platformë.",
       "viewAllDealers": "Shiko të gjithë shitësit",
       "models": "Modele të njohura",
-      "modelsDescription": "Zbuloni modelet elektrike dhe hibride që po kërkohen më shumë nga drejtuesit në Shqipëri.",
+      "modelsDescription": "Zbuloni modelet elektrike që po kërkohen më shumë nga drejtuesit në Shqipëri.",
       "viewAllModels": "Shiko të gjitha modelet",
       "blog": "Nga blogu",
       "blogDescription": "Lexoni artikuj, udhëzues dhe lajme të reja për mobilitetin elektrik.",
@@ -438,7 +439,7 @@
     "officialBadge": "Shitës zyrtar"
   },
   "modelsPage": {
-    "title": "Modelet elektrike dhe hibride",
+    "title": "Modelet elektrike",
     "subtitle": "Krahasoni specifikimet, autonominë dhe shpejtësitë e karikimit për modelet e disponueshme në Shqipëri.",
     "filters": "Filtrat",
     "brand": "Marka",
@@ -461,11 +462,11 @@
       "range_asc": "Autonomia më e vogël"
     },
     "metaTitle": "Katalogu i makinave elektrike për Shqipërinë | Makina Elektrike",
-    "metaDescription": "Shfletoni të dhëna teknike për EV dhe hibride: autonomi WLTP, bateri, karikim dhe disponueshmëri te shitësit.",
+    "metaDescription": "Shfletoni të dhëna teknike për EV: autonomi WLTP, bateri, karikim dhe disponueshmëri te shitësit.",
     "metaKeywords": [
       "modele makina elektrike",
       "autonomi EV",
-      "automjete hibride Shqipëri"
+      "makina elektrike Shqipëri"
     ],
     "introTitle": "Eksploroni çdo opsion elektrik",
     "introSubtitle": "Filtroni sipas formës, autonomisë ose markës për të krijuar listën e shkurtër që përputhet me stilin tuaj të drejtimit dhe buxhetin.",
@@ -500,10 +501,6 @@
       {
         "question": "A mund të filtroj vetëm për karikim të shpejtë?",
         "answer": "Po, përdorni filtrat për të fokusuar modelet me karikim DC 100 kW+ ose shikoni specifikat në faqet e modeleve."
-      },
-      {
-        "question": "A përfshihen hibride plug-in?",
-        "answer": "Kur janë të disponueshme, listojmë PHEV me autonomi elektrike domethënëse për t’i krahasuar me modelet plotësisht elektrike."
       }
     ]
   },
@@ -596,7 +593,7 @@
       "direktori EV",
       "mobilitet elektrik Shqipëri"
     ],
-    "p1": "Makina Elektrike është drejtoria kryesore online për automjetet elektrike dhe hibride në Shqipëri. Misioni ynë është të përshpejtojmë adoptimin e transportit të qëndrueshëm duke ofruar një platformë gjithëpërfshirëse dhe të lehtë për t'u përdorur për blerësit.",
+    "p1": "Makina Elektrike është drejtoria kryesore online për automjetet elektrike në Shqipëri. Misioni ynë është të përshpejtojmë adoptimin e transportit të qëndrueshëm duke ofruar një platformë gjithëpërfshirëse dhe të lehtë për t'u përdorur për blerësit.",
     "p2": "Ne ju lidhim me një rrjet të gjerë konçesionaresh dhe importuesish zyrtarë, duke ofruar informacione të detajuara për modelet më të fundit të disponueshme në vend.",
     "p3": "Qoftë entuziast i hershëm i EV-ve apo sapo keni filluar të kërkoni, Makina Elektrike ju udhëheq drejt një të ardhmeje më të pastër në rrugë.",
     "p4": "Monitorojmë zhvillimet e tregut, infrastrukturën e karikimit dhe politikat për të ndihmuar konsumatorët dhe bizneset shqiptare të marrin vendime të informuara.",

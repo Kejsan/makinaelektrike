@@ -28,8 +28,6 @@ import CookiesPolicyPage from './pages/CookiesPolicyPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataContext, DataProvider } from './contexts/DataContext';
 import { ToastProvider, ToastContainer } from './contexts/ToastContext';
-import ChatButton from './components/ChatButton';
-import ChatWidget from './components/ChatWidget';
 import ScrollRestoration from './components/ScrollRestoration';
 
 const LoadingScreen = () => (
@@ -95,7 +93,6 @@ const DealerRoute: React.FC<{ children: React.ReactElement }> = ({ children }) =
 };
 
 const App: React.FC = () => {
-  const [isChatOpen, setIsChatOpen] = useState(false);
 
   return (
     <BrowserRouter>
@@ -147,8 +144,6 @@ const App: React.FC = () => {
               </main>
               <Footer />
               <ScrollToTopButton />
-              <ChatButton onClick={() => setIsChatOpen(true)} />
-              <ChatWidget isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
               <ToastContainer />
             </div>
           </DataProvider>

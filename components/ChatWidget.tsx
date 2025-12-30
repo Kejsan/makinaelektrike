@@ -19,8 +19,8 @@ const parseMarkdown = (text: string) => {
 
 
 interface ChatWidgetProps {
-  isOpen: boolean;
-  onClose: () => void;
+    isOpen: boolean;
+    onClose: () => void;
 }
 
 interface Message {
@@ -40,11 +40,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         if (isOpen && !chat) {
             try {
                 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_KEY as string });
-                
+
                 const modelDataSummary = models.map(m => `${m.brand} ${m.model_name} (Type: ${m.body_type}, Range: ${m.range_wltp}km)`).join(', ');
                 const dealerDataSummary = dealers.map(d => `${d.name} in ${d.city} (Brands: ${d.brands.join('/')})`).join(', ');
 
-                const systemInstruction = `You are a helpful and friendly AI assistant for "Makina Elektrike", an online directory for electric and hybrid vehicles in Albania.
+                const systemInstruction = `You are a helpful and friendly AI assistant for "Makina Elektrike", an online directory for electric vehicles in Albania.
                 Your goal is to help users find the perfect electric vehicle and dealership.
                 You have access to the following data from the website:
                 - AVAILABLE MODELS: ${modelDataSummary}
@@ -94,7 +94,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             setIsLoading(false);
         }
     };
-    
+
     const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -120,32 +120,31 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 <div className="flex-1 p-4 space-y-4 overflow-y-auto">
                     {messages.map((msg, index) => (
                         <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                           {msg.role === 'model' && <div className="w-8 h-8 rounded-full bg-gray-cyan flex items-center justify-center flex-shrink-0"><Sparkles size={16} className="text-white"/></div>}
-                            <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
-                                msg.role === 'user' 
-                                ? 'bg-vivid-red text-white rounded-br-none' 
-                                : 'bg-gray-700/50 text-gray-200 rounded-bl-none'
-                            }`}>
-                               <div dangerouslySetInnerHTML={{ __html: parseMarkdown(msg.text) }} />
+                            {msg.role === 'model' && <div className="w-8 h-8 rounded-full bg-gray-cyan flex items-center justify-center flex-shrink-0"><Sparkles size={16} className="text-white" /></div>}
+                            <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${msg.role === 'user'
+                                    ? 'bg-vivid-red text-white rounded-br-none'
+                                    : 'bg-gray-700/50 text-gray-200 rounded-bl-none'
+                                }`}>
+                                <div dangerouslySetInnerHTML={{ __html: parseMarkdown(msg.text) }} />
                             </div>
-                           {msg.role === 'user' && <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center flex-shrink-0"><User size={16} className="text-white"/></div>}
+                            {msg.role === 'user' && <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center flex-shrink-0"><User size={16} className="text-white" /></div>}
                         </div>
                     ))}
                     {isLoading && (
                         <div className="flex items-start gap-3 justify-start">
-                             <div className="w-8 h-8 rounded-full bg-gray-cyan flex items-center justify-center flex-shrink-0"><Sparkles size={16} className="text-white"/></div>
-                             <div className="max-w-[80%] rounded-2xl px-4 py-2 text-sm bg-gray-700/50 text-gray-200 rounded-bl-none">
+                            <div className="w-8 h-8 rounded-full bg-gray-cyan flex items-center justify-center flex-shrink-0"><Sparkles size={16} className="text-white" /></div>
+                            <div className="max-w-[80%] rounded-2xl px-4 py-2 text-sm bg-gray-700/50 text-gray-200 rounded-bl-none">
                                 <div className="flex items-center space-x-1">
                                     <span className="h-2 w-2 bg-gray-300 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
                                     <span className="h-2 w-2 bg-gray-300 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
                                     <span className="h-2 w-2 bg-gray-300 rounded-full animate-bounce"></span>
                                 </div>
-                             </div>
+                            </div>
                         </div>
                     )}
                     <div ref={messagesEndRef} />
                 </div>
-                
+
                 {/* Input */}
                 <div className="p-4 border-t border-white/10 flex-shrink-0">
                     <div className="relative flex items-center">

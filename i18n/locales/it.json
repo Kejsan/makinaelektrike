@@ -21,7 +21,7 @@
     "awaitingApproval": "In attesa di approvazione"
   },
   "footer": {
-    "description": "La tua guida ai veicoli elettrici e ibridi in Albania. Trova concessionari, confronta modelli e unisciti alla rivoluzione elettrica.",
+    "description": "La tua guida ai veicoli elettrici in Albania. Trova concessionari, confronta modelli e unisciti alla rivoluzione elettrica.",
     "explore": "Esplora",
     "services": "Servizi",
     "aboutUs": "Chi siamo",
@@ -44,7 +44,9 @@
     "loading": "Caricamento...",
     "cancel": "Annulla",
     "anyCity": "Qualsiasi città",
-    "anyBrand": "Qualsiasi marca"
+    "anyBrand": "Qualsiasi marca",
+    "results": "Risultati",
+    "filters": "Filtri"
   },
   "home": {
     "heroTitle": "Guida il futuro.",
@@ -66,8 +68,7 @@
     "metaKeywords": [
       "auto elettriche Albania",
       "concessionari EV",
-      "Makina Elektrike",
-      "veicoli ibridi"
+      "Makina Elektrike"
     ],
     "valueTitle": "Tutto ciò che serve per passare all'elettrico",
     "valueSubtitle": "Makina Elektrike riunisce dati, guide e partner certificati per accompagnarti nel passaggio alla mobilità elettrica.",
@@ -78,7 +79,7 @@
       },
       {
         "title": "Dati completi sui modelli",
-        "description": "Confronta autonomia WLTP, potenza di ricarica, capacità batteria e dotazioni di ogni EV o ibrida plug-in."
+        "description": "Confronta autonomia WLTP, potenza di ricarica, capacità batteria e dotazioni di ogni EV."
       },
       {
         "title": "Supporto alle decisioni",
@@ -135,7 +136,7 @@
   },
   "dealersPage": {
     "title": "Concessionari in Albania",
-    "subtitle": "Filtra e confronta i rivenditori autorizzati di veicoli elettrici e ibridi nel Paese.",
+    "subtitle": "Filtra e confronta i rivenditori autorizzati di veicoli elettrici nel Paese.",
     "filters": "Filtri",
     "city": "Città",
     "brand": "Marca",
@@ -241,7 +242,7 @@
     "officialBadge": "Concessionario ufficiale"
   },
   "modelsPage": {
-    "title": "Modelli elettrici e ibridi",
+    "title": "Modelli elettrici",
     "subtitle": "Confronta specifiche, autonomia e tempi di ricarica dei veicoli disponibili in Albania.",
     "filters": "Filtri",
     "brand": "Marca",
@@ -264,11 +265,10 @@
       "range_asc": "Autonomia minore"
     },
     "metaTitle": "Catalogo veicoli elettrici per l'Albania | Makina Elektrike",
-    "metaDescription": "Consulta i dati tecnici di EV e ibridi: autonomia WLTP, batteria, ricarica e disponibilità presso i concessionari.",
+    "metaDescription": "Consulta i dati tecnici di EV: autonomia WLTP, batteria, ricarica e disponibilità presso i concessionari.",
     "metaKeywords": [
       "modelli auto elettriche",
-      "autonomia EV",
-      "veicoli ibridi Albania"
+      "autonomia EV"
     ],
     "introTitle": "Esplora ogni opzione elettrica",
     "introSubtitle": "Filtra per carrozzeria, autonomia o marca e crea una short-list in linea con il tuo stile di guida e budget.",
@@ -303,10 +303,6 @@
       {
         "question": "Posso filtrare i modelli con ricarica rapida?",
         "answer": "Sì, usa i filtri per selezionare modelli oltre 100 kW in DC oppure consulta le specifiche di ogni scheda."
-      },
-      {
-        "question": "Includete anche le ibride plug-in?",
-        "answer": "Inseriamo i PHEV con autonomia elettrica significativa così da confrontarli con i modelli full electric."
       }
     ]
   },
@@ -399,7 +395,7 @@
       "directory EV",
       "mobilità elettrica Albania"
     ],
-    "p1": "Makina Elektrike è la principale directory online per veicoli elettrici e ibridi in Albania. La nostra missione è accelerare l'adozione del trasporto sostenibile con una piattaforma completa e intuitiva.",
+    "p1": "Makina Elektrike è la principale directory online per veicoli elettrici in Albania. La nostra missione è accelerare l'adozione del trasporto sostenibile con una piattaforma completa e intuitiva.",
     "p2": "Mettiamo in contatto con una rete di concessionari e importatori ufficiali offrendo informazioni dettagliate sui modelli più recenti disponibili nel Paese.",
     "p3": "Che tu sia un appassionato o stia muovendo i primi passi, Makina Elektrike ti guida verso una mobilità più pulita e verde.",
     "p4": "Monitoriamo mercato, infrastruttura di ricarica e politiche per aiutare consumatori e aziende a prendere decisioni informate.",
@@ -566,7 +562,7 @@
       "dealersDescription": "Una selezione di rivenditori verificati recentemente aggiornati sulla piattaforma.",
       "viewAllDealers": "Vedi tutti i concessionari",
       "models": "Modelli popolari",
-      "modelsDescription": "Scopri i modelli elettrici e ibridi più ricercati dagli automobilisti in Albania.",
+      "modelsDescription": "Scopri i modelli elettrici più ricercati dagli automobilisti in Albania.",
       "viewAllModels": "Vedi tutti i modelli",
       "blog": "Ultimi articoli",
       "blogDescription": "Leggi notizie, guide e approfondimenti sul mondo della mobilità elettrica.",
@@ -818,12 +814,6 @@
     "deactivate": "Disattiva",
     "reactivate": "Riattiva",
     "restoreDealer": "Ripristina concessionario",
-    "dealerFilters": {
-      "active": "Attivi",
-      "inactive": "Inattivi",
-      "pending": "In attesa",
-      "deleted": "Eliminati"
-    },
     "filteredDealers": "Concessionari",
     "noActiveDealers": "Nessun concessionario attivo.",
     "noInactiveDealers": "Nessun concessionario inattivo.",

@@ -354,7 +354,19 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
     clusterRef.current = clusterGroup;
     map.addLayer(clusterGroup);
 
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    resizeObserver.observe(mapContainerRef.current);
+
+    // Initial invalidation after a short delay to ensure layout is settled
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+
     return () => {
+      resizeObserver.disconnect();
+      clearTimeout(timer);
       clusterGroup.clearLayers();
       map.remove();
       clusterRef.current = null;
@@ -724,6 +736,12 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
 
         <section className="space-y-6">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl space-y-5">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-bold text-white">{t('common.filters')}</h2>
+              <span className="text-gray-400 font-medium bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                {visibleStations.length} {t('common.results')}
+              </span>
+            </div>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <label className="flex w-full flex-col gap-2 lg:max-w-md">
                 <span className="text-sm font-medium text-gray-300">Search</span>
@@ -762,10 +780,10 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                   role="switch"
                   aria-checked={autoUpdate}
                   onClick={handleToggleAutoUpdate}
-                  className={`relative h - 7 w - 14 rounded - full transition ${autoUpdate ? 'bg-gray-cyan' : 'bg-gray-700'} `}
+                  className={`relative h-7 w-14 rounded-full transition ${autoUpdate ? 'bg-gray-cyan' : 'bg-gray-700'}`}
                 >
                   <span
-                    className={`absolute top - 1 h - 5 w - 5 rounded - full bg - white transition ${autoUpdate ? 'right-1' : 'left-1'} `}
+                    className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${autoUpdate ? 'right-1' : 'left-1'}`}
                   />
                 </button>
               </div>
@@ -945,7 +963,12 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
 
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold text-white">{listHeading}</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-semibold text-white">{listHeading}</h2>
+                <span className="text-gray-400 text-xs font-medium bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                  {visibleStations.length} {t('common.results')}
+                </span>
+              </div>
               {lastUpdated && (
                 <p className="text-xs text-gray-400">
                   Last updated {formatDateTime(lastUpdated)}

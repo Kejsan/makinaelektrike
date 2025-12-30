@@ -21,7 +21,7 @@
     "awaitingApproval": "Awaiting approval"
   },
   "footer": {
-    "description": "Your guide to electric and hybrid vehicles in Albania. Find dealerships, compare models, and join the electric revolution.",
+    "description": "Your guide to electric vehicles in Albania. Find dealerships, compare models, and join the electric revolution.",
     "explore": "Explore",
     "services": "Services",
     "aboutUs": "About Us",
@@ -44,7 +44,9 @@
     "loading": "Loading...",
     "cancel": "Cancel",
     "anyCity": "Any city",
-    "anyBrand": "Any brand"
+    "anyBrand": "Any brand",
+    "results": "Results",
+    "filters": "Filters"
   },
   "home": {
     "heroTitle": "Drive the Future.",
@@ -61,13 +63,12 @@
     "seeAllDealers": "Browse all dealers",
     "seeAllModels": "Browse all models",
     "seeAllPosts": "Read all articles",
-    "metaTitle": "Makina Elektrike | Albania's Electric & Hybrid Vehicle Hub",
+    "metaTitle": "Makina Elektrike | Albania's Electric Vehicle Hub",
     "metaDescription": "Search verified electric vehicle dealers, compare EV models and learn about charging in Albania with Makina Elektrike.",
     "metaKeywords": [
       "electric cars Albania",
       "EV dealers",
-      "Makina Elektrike directory",
-      "hybrid vehicles"
+      "Makina Elektrike directory"
     ],
     "valueTitle": "Everything you need to go electric",
     "valueSubtitle": "Makina Elektrike combines data, editorial guidance and verified partners so you can make a confident switch to electric mobility.",
@@ -78,7 +79,7 @@
       },
       {
         "title": "Complete model data",
-        "description": "Compare WLTP range, charging speeds, battery sizes and equipment across dozens of EV and hybrid models."
+        "description": "Compare WLTP range, charging speeds, battery sizes and equipment across dozens of EV models."
       },
       {
         "title": "Decision support",
@@ -135,7 +136,7 @@
   },
   "dealersPage": {
     "title": "Dealerships in Albania",
-    "subtitle": "Filter and compare authorised electric and hybrid vehicle dealers across the country.",
+    "subtitle": "Filter and compare authorised electric vehicle dealers across the country.",
     "filters": "Filters",
     "city": "City",
     "brand": "Brand",
@@ -157,7 +158,7 @@
       "city_desc": "City Z–A"
     },
     "metaTitle": "Electric car dealerships in Albania | Makina Elektrike",
-    "metaDescription": "Explore verified EV and hybrid dealerships in Tirana, Durrës, Shkodër and more. Filter by brand, language and location.",
+    "metaDescription": "Explore verified EV dealerships in Tirana, Durrës, Shkodër and more. Filter by brand, language and location.",
     "metaKeywords": [
       "EV dealers Albania",
       "electric car showroom",
@@ -224,7 +225,7 @@
       "dealersDescription": "Browse a selection of verified dealerships recently featured on the platform.",
       "viewAllDealers": "View all dealers",
       "models": "Popular models",
-      "modelsDescription": "Discover electric and hybrid models drivers in Albania are researching right now.",
+      "modelsDescription": "Discover electric models drivers in Albania are researching right now.",
       "viewAllModels": "View all models",
       "blog": "Latest from the blog",
       "blogDescription": "Read fresh market updates, guides, and charging insights from Makina Elektrike.",
@@ -438,7 +439,7 @@
     "officialBadge": "Official Dealer"
   },
   "modelsPage": {
-    "title": "Electric & Hybrid Models",
+    "title": "Electric Models",
     "subtitle": "Compare specifications, range and charging speeds for vehicles available in Albania.",
     "filters": "Filters",
     "brand": "Brand",
@@ -461,11 +462,11 @@
       "range_asc": "Shortest range"
     },
     "metaTitle": "Electric car catalogue for Albania | Makina Elektrike",
-    "metaDescription": "Browse technical data for EV and hybrid models: WLTP range, battery size, charging speeds and dealer availability.",
+    "metaDescription": "Browse technical data for EV models: WLTP range, battery size, charging speeds and dealer availability.",
     "metaKeywords": [
       "electric car models",
       "EV range",
-      "hybrid vehicles Albania"
+      "electric vehicles Albania"
     ],
     "introTitle": "Explore every electric option",
     "introSubtitle": "Filter by body style, range or brand to build a shortlist that matches your driving habits and budget.",
@@ -500,10 +501,6 @@
       {
         "question": "Can I filter only by rapid-charging capability?",
         "answer": "Yes. Use the filters to focus on 100 kW+ DC charging or manually review the charging specifications on each model page."
-      },
-      {
-        "question": "Are plug-in hybrids included?",
-        "answer": "Where available, we include PHEVs with meaningful electric range so you can evaluate them alongside full battery-electric models."
       }
     ]
   },
@@ -596,7 +593,7 @@
       "EV directory Albania",
       "electric mobility mission"
     ],
-    "p1": "Makina Elektrike is the premier online directory for electric and hybrid vehicles in Albania. Our mission is to accelerate the adoption of sustainable transportation by providing a comprehensive, user-friendly platform for prospective buyers.",
+    "p1": "Makina Elektrike is the premier online directory for electric vehicles in Albania. Our mission is to accelerate the adoption of sustainable transportation by providing a comprehensive, user-friendly platform for prospective buyers.",
     "p2": "We connect you with a wide network of official dealerships and importers, offering detailed information on the latest EV models available in the country. From technical specifications to dealership locations, we aim to be your one-stop resource for everything electric.",
     "p3": "Whether you're a seasoned EV enthusiast or just starting to explore your options, Makina Elektrike is here to guide you on your journey towards a cleaner, greener future on the road.",
     "p4": "Our team monitors market developments, charging infrastructure and policy updates so Albanian consumers and businesses can make informed decisions at every step.",

@@ -93,7 +93,7 @@ const ModelsListPage: React.FC = () => {
         { value: '', label: t('modelsPage.rangeOptions.any') },
         ...rangeValues.map(value => ({ value: value.toString(), label: t('modelsPage.rangeOptions.min', { value }) })),
     ];
-    
+
     const sortOptions = [
         { value: 'model_asc', label: t('modelsPage.sortOptions.model_asc') },
         { value: 'model_desc', label: t('modelsPage.sortOptions.model_desc') },
@@ -142,7 +142,12 @@ const ModelsListPage: React.FC = () => {
                     </div>
 
                     <div className="relative z-30 mb-12 rounded-xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl">
-                        <h2 className="mb-4 text-xl font-bold text-white">{t('modelsPage.filters')}</h2>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-white">{t('common.filters')}</h2>
+                            <span className="text-gray-400 font-medium bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                                {filteredModels.length} {t('common.results')}
+                            </span>
+                        </div>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 xl:items-end">
                             <CustomSelect
                                 icon={<Car size={16} />}
