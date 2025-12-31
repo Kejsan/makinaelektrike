@@ -1,10 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+
+// Use a simpler mock structure
+const mockGenerateContent = vi.fn();
 
 vi.mock('@google/genai', () => {
-  const generateContent = vi.fn();
-  const getGenerativeModel = vi.fn(() => ({ generateContent }));
-  const GoogleGenAI = vi.fn(() => ({ getGenerativeModel }));
-  return { GoogleGenAI, __private__: { generateContent, getGenerativeModel } };
+  return {
+    GoogleGenAI: vi.fn().mockImplementation(() => ({
+      models: {
+        generateContent: mockGenerateContent
+      }
+    }))
+  };
 });
 
 const mockEnv = (key: string, value: string) => {
@@ -14,6 +20,7 @@ const mockEnv = (key: string, value: string) => {
 describe('gemini service', () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.clearAllMocks();
     mockEnv('GEMINI_API_KEY', 'test-key');
     mockEnv('VITE_ENABLE_GEMINI_PREFILL', 'true');
   });
@@ -47,13 +54,41 @@ describe('gemini service', () => {
     });
   });
 
+  it('strips markdown code blocks before parsing JSON', async () => {
+    const markdownResponse = '```json\n{"brand": "BYD", "model_name": "SEALION 7"}\n```';
+    // Success case: response.text() returns the markdown
+    mockGenerateContent.mockResolvedValueOnce({ 
+      response: { text: () => markdownResponse } 
+    });
+
+    const { enrichModelWithGemini } = await import('./gemini');
+    const result = await enrichModelWithGemini('BYD', 'SEALION 7');
+
+    expect(result).toMatchObject({
+      brand: 'BYD',
+      model_name: 'SEALION 7',
+    });
+  });
+
   it('throws a readable error when Gemini is enabled but the response cannot be parsed', async () => {
-    const { __private__ } = await import('@google/genai');
-    __private__.generateContent.mockResolvedValueOnce({ response: { text: () => 'not-json' } });
+    // Error case: response.text() returns non-json
+    mockGenerateContent.mockResolvedValueOnce({ 
+      response: { text: () => 'not-json' } 
+    });
 
     const { enrichModelWithGemini } = await import('./gemini');
 
-    await expect(enrichModelWithGemini('Test', 'Model')).rejects.toThrow(/parsing failed/i);
+    try {
+      await enrichModelWithGemini('Test', 'Model');
+      throw new Error('Should have thrown');
+    } catch (e: any) {
+      expect(e.message).toMatch(/parsing failed/i);
+      expect(e.message).toMatch(/Raw text:/i);
+    }
   });
 });
+
+
+
+
 

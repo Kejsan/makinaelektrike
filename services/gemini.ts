@@ -68,13 +68,20 @@ const parseBoolean = (value: unknown): boolean | undefined => {
 const cleanString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim() ? value.trim() : undefined;
 
+const stripMarkdown = (text: string): string => {
+  return text
+    .replace(/^```[a-z]*\n([\s\S]*?)\n```$/i, '$1') // Full-block match with newline
+    .replace(/^```[a-z]*\s*([\s\S]*?)\s*```$/i, '$1') // Single line or tight block
+    .trim();
+};
+
 export const buildGeminiPrompt = (brand: string, model: string) => {
   return `You are an EV data expert.
 Use Google Search to confirm up-to-date values when needed.
 Provide concise technical specifications for the electric vehicle ${brand} ${model}.
-Respond with a single JSON object using these keys only: brand, model_name, year_start, body_type, charge_port, charge_power, autocharge_supported, battery_capacity, battery_useable_capacity, battery_type, battery_voltage, range_wltp, power_kw, torque_nm,
+Respond with a SINGLE RAW JSON OBJECT using these keys only: brand, model_name, year_start, body_type, charge_port, charge_power, autocharge_supported, battery_capacity, battery_useable_capacity, battery_type, battery_voltage, range_wltp, power_kw, torque_nm,
 acceleration_0_100, acceleration_0_60, top_speed, drive_type, seats, charging_ac, charging_dc, length_mm, width_mm, height_mm, wheelbase_mm, weight_kg, cargo_volume_l, notes.
-If a value is unknown, omit that key entirely. Use numbers where appropriate.`;
+If a value is unknown, omit that key entirely. Use numbers where appropriate. Do NOT wrap the JSON in markdown code blocks.`;
 };
 
 export const normalizeGeminiModel = (
@@ -157,9 +164,10 @@ export const enrichModelWithGemini = async (
   const request = client.models.generateContent({
     model: GEMINI_MODEL.startsWith('models/') ? GEMINI_MODEL : `models/${GEMINI_MODEL}`,
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.35 },
+    // Removed unsupported generationConfig from this level
     tools: [{ googleSearch: {} }],
-  });
+  } as any); // Using any to bypass potential SDK version mismatch lints
+
 
   const abortPromise = signal
     ? new Promise<never>((_, reject) => {
@@ -168,46 +176,56 @@ export const enrichModelWithGemini = async (
     : null;
 
   try {
-    const response = await withTimeout(abortPromise ? Promise.race([request, abortPromise]) : request, GEMINI_TIMEOUT_MS);
+    const apiResponse = await withTimeout(abortPromise ? Promise.race([request, abortPromise]) : request, GEMINI_TIMEOUT_MS);
     console.log('[Gemini] Response received');
 
-    const text = (() => {
-      const structured =
-        (response as {
-          candidates?: { content?: { parts?: { text?: string }[] } }[];
-          response?: { candidates?: { content?: { parts?: { text?: string }[] } }[]; text?: () => string };
-        }) ?? {};
+    // Robust text extraction
+    let text = '';
+    try {
+      // Try the helper method first as it's the safest
+      text = (apiResponse as any).response?.text?.() || '';
+      if (!text && (apiResponse as any).text) {
+        text = (apiResponse as any).text();
+      }
+    } catch (e) {
+      console.warn('[Gemini] response.text() failed, falling back to manual extraction');
+    }
 
+    if (!text) {
+      const structured = (apiResponse as any) ?? {};
       const candidateParts = structured.candidates ?? structured.response?.candidates;
-      const parts = candidateParts?.flatMap(candidate => candidate.content?.parts ?? []) ?? [];
-      const concatenated = parts
-        .map(part => part.text?.trim())
-        .filter((value): value is string => Boolean(value))
+      const parts = candidateParts?.flatMap((candidate: any) => candidate.content?.parts ?? []) ?? [];
+      text = parts
+        .map((part: any) => part.text?.trim())
+        .filter((value: any): value is string => Boolean(value))
         .join('\n')
         .trim();
-
-      if (concatenated) return concatenated;
-
-      return structured.response?.text?.();
-    })();
+    }
 
     console.log('[Gemini] Raw text response length:', text?.length);
+    if (text) {
+      console.log('[Gemini] First 100 chars of response:', text.substring(0, 100));
+    }
 
     if (!text || !text.trim()) {
       throw new Error('Gemini returned an empty response.');
     }
 
+    const cleanedText = stripMarkdown(text);
+
     try {
-      const parsed = JSON.parse(text) as Partial<Record<keyof Model, unknown>>;
+      const parsed = JSON.parse(cleanedText) as Partial<Record<keyof Model, unknown>>;
       console.log('[Gemini] Parsed JSON successfully:', parsed);
       return normalizeGeminiModel(parsed, brand, modelName);
     } catch (error) {
-      console.error('[Gemini] JSON parse error:', error, 'Raw text:', text);
-      throw new Error(`Gemini response parsing failed: ${(error as Error).message}`);
+      console.error('[Gemini] JSON parse error:', error, 'Raw text:', text, 'Cleaned text:', cleanedText);
+      throw new Error(`Gemini response parsing failed: ${(error as Error).message}\nRaw text: ${text.substring(0, 200)}...`);
     }
   } catch (error) {
     console.error('[Gemini] Request failed:', error);
     throw error;
   }
 };
+
+
 
