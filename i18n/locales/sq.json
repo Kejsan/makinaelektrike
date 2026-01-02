@@ -18,7 +18,8 @@
     "account": "Llogaria",
     "accountMenuTitle": "Veprime të shpejta",
     "dealerDashboard": "Paneli i shitësit",
-    "awaitingApproval": "Në pritje të miratimit"
+    "awaitingApproval": "Në pritje të miratimit",
+    "listings": "Makina në Shitje"
   },
   "footer": {
     "description": "Udhëzuesi juaj për automjetet elektrike në Shqipëri. Gjeni shitës, krahasoni modele dhe bashkohuni me revolucionin elektrik.",
@@ -46,7 +47,17 @@
     "anyCity": "Çdo qytet",
     "anyBrand": "Çdo markë",
     "results": "Rezultate",
-    "filters": "Filtrat"
+    "filters": "Filtrat",
+    "edit": "Ndrysho",
+    "delete": "Fshi",
+    "saving": "Duke ruajtur...",
+    "save": "Ruaj",
+    "confirmDelete": "Jeni i sigurt që doni ta fshini këtë listim?",
+    "deletedSuccess": "U fshi me sukses",
+    "deleteFailed": "Dështoi fshirja",
+    "updatedSuccess": "U përditësua me sukses",
+    "createdSuccess": "U krijua me sukses",
+    "saveFailed": "Dështoi ruajtja"
   },
   "home": {
     "heroTitle": "Ngisni të ardhmen.",
@@ -437,6 +448,14 @@
       }
     ],
     "officialBadge": "Shitës zyrtar"
+  },
+  "dealer": {
+    "listings": "Listimet e mia",
+    "addListing": "+ Shto Listim",
+    "noListings": "Nuk keni asnjë listim ende.",
+    "createFirst": "Krijoni listimin tuaj të parë",
+    "editListing": "Ndrysho Listimin",
+    "newListing": "Listim i Ri"
   },
   "modelsPage": {
     "title": "Modelet elektrike",
@@ -844,6 +863,14 @@
     "brands": "Markat",
     "city": "Qyteti",
     "required": "është i detyrueshëm",
+    "make": "Marka",
+    "model": "Modeli",
+    "year": "Viti",
+    "mileage": "Kilometrazhi (km)",
+    "price": "Çmimi",
+    "currency": "Monedha",
+    "mainImage": "Imazhi Kryesor",
+    "gallery": "Galeria",
     "requiredNew": "është i detyrueshëm për modelet e reja",
     "invalidNumber": "Ju lutemi shkruani një numër të vlefshëm",
     "invalidUrl": "Vendosni një URL të vlefshme",

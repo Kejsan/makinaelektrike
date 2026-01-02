@@ -1,0 +1,19 @@
+components/admin/DealerForm.tsx(317,84): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'Blob | MediaSource'.
+components/admin/ModelForm.tsx(329,84): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'Blob | MediaSource'.
+components/ModalLayout.tsx(48,27): error TS2339: Property 'hasAttribute' does not exist on type 'unknown'.
+components/ModalLayout.tsx(48,63): error TS2339: Property 'getAttribute' does not exist on type 'unknown'.
+components/ModalLayout.tsx(85,18): error TS2339: Property 'focus' does not exist on type 'unknown'.
+components/ModalLayout.tsx(89,17): error TS2339: Property 'focus' does not exist on type 'unknown'.
+contexts/DataContext.tsx(561,42): error TS2322: Type 'unknown' is not assignable to type 'string'.
+contexts/DataContext.tsx(563,26): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+contexts/DataContext.tsx(568,29): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+hooks/useFavorites.ts(168,13): error TS2739: Type 'FieldValue' is missing the following properties from type 'Timestamp': seconds, nanoseconds, toDate, toMillis, toJSON
+hooks/useFavorites.ts(169,13): error TS2739: Type 'FieldValue' is missing the following properties from type 'Timestamp': seconds, nanoseconds, toDate, toMillis, toJSON
+pages/AdminPage.tsx(351,71): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+pages/DealerDashboardPage.tsx(365,71): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'File'.
+  Type '{}' is missing the following properties from type 'File': lastModified, name, webkitRelativePath, size, and 6 more.
+pages/DealerDashboardPage.tsx(474,79): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'Blob | MediaSource'.
+pages/DealerDashboardPage.tsx(567,67): error TS2551: Property 'is_active' does not exist on type 'Dealer'. Did you mean 'isActive'?
+pages/DealerInventoryPage.tsx(151,9): error TS2322: Type '{ title: string; description: string; ogImage: string; path: string; structuredData: { readonly '@context': "https://schema.org"; readonly '@type': "WebPage"; readonly name: "Inventory | Dealer Panel"; readonly description: "Manage electric vehicle models linked to your dealership profile."; readonly url: `${any}/de...' is not assignable to type 'SEOProps'.
+  Property 'ogImage' does not exist on type 'SEOProps'.
+pages/HomePage.tsx(134,126): error TS2339: Property 'localeCompare' does not exist on type 'unknown'.

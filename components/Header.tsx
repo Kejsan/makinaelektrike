@@ -36,9 +36,8 @@ const LanguageSwitcher: React.FC = () => {
             <button
               key={code}
               onClick={() => changeLanguage(code)}
-              className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-cyan/20 ${
-                i18n.language === code ? 'text-gray-cyan font-semibold' : 'text-gray-200'
-              }`}
+              className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-cyan/20 ${i18n.language === code ? 'text-gray-cyan font-semibold' : 'text-gray-200'
+                }`}
             >
               {name}
             </button>
@@ -80,7 +79,7 @@ const Header: React.FC = () => {
       console.error('Failed to logout', error);
     }
   };
-  
+
   useEffect(() => {
     setMobileMenuOpen(false);
     setAccountMenuOpen(false);
@@ -117,21 +116,20 @@ const Header: React.FC = () => {
   };
 
   const navLinkClasses = (path: string) =>
-    `relative px-3 py-2 text-sm font-medium transition-colors ${
-      isActivePath(path)
-        ? 'text-gray-cyan'
-        : 'text-white hover:text-gray-cyan'
+    `relative px-3 py-2 text-sm font-medium transition-colors ${isActivePath(path)
+      ? 'text-gray-cyan'
+      : 'text-white hover:text-gray-cyan'
     }`;
 
   const mobileNavLinkClasses = (path: string) =>
-    `block rounded-md px-3 py-2 text-base font-medium transition-colors ${
-      isActivePath(path)
-        ? 'text-gray-cyan bg-white/5'
-        : 'text-white hover:text-gray-cyan hover:bg-white/5'
+    `block rounded-md px-3 py-2 text-base font-medium transition-colors ${isActivePath(path)
+      ? 'text-gray-cyan bg-white/5'
+      : 'text-white hover:text-gray-cyan hover:bg-white/5'
     }`;
 
   const navigationItems = [
     { to: '/', label: t('header.home') },
+    { to: '/listings', label: t('header.listings', { defaultValue: 'Cars for Sale' }) },
     { to: '/dealers', label: t('header.dealers') },
     { to: '/models', label: t('header.models') },
     { to: '/albania-charging-stations', label: t('header.chargingStations') },
@@ -144,9 +142,8 @@ const Header: React.FC = () => {
 
   return (
     <header
-      className={`sticky top-0 z-[1200] border-b border-gray-cyan/20 backdrop-blur-lg transition-all duration-300 ${
-        isScrolled ? 'bg-navy-blue/80 shadow-lg shadow-black/20' : 'bg-navy-blue/40'
-      }`}
+      className={`sticky top-0 z-[1200] border-b border-gray-cyan/20 backdrop-blur-lg transition-all duration-300 ${isScrolled ? 'bg-navy-blue/80 shadow-lg shadow-black/20' : 'bg-navy-blue/40'
+        }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative flex items-center justify-between gap-3 sm:gap-4 py-3 lg:py-4">
@@ -268,55 +265,55 @@ const Header: React.FC = () => {
               <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setMobileMenuOpen(false)} aria-hidden="true" />
               <div className="absolute left-0 top-16 z-50 w-full rounded-b-lg border border-t-0 border-gray-cyan/20 bg-navy-blue/95 backdrop-blur-md shadow-xl lg:hidden">
                 <nav className="max-h-[calc(100vh-4rem)] overflow-y-auto px-4 pt-4 pb-6 space-y-3">
-                {navigationItems.map((item) => (
-                  <Link key={item.to} to={item.to} className={mobileNavLinkClasses(item.to)}>
-                    {item.label}
-                  </Link>
-                ))}
-                {!user ? (
-                  <div className="pt-2 space-y-3">
-                    <Link to="/login" className="btn btn-primary w-full justify-center">
-                      {t('header.login')}
+                  {navigationItems.map((item) => (
+                    <Link key={item.to} to={item.to} className={mobileNavLinkClasses(item.to)}>
+                      {item.label}
                     </Link>
-                    <Link to="/register" className="btn btn-outline w-full justify-center">
-                      {t('header.register')}
-                    </Link>
-                    <Link to="/register-dealer" className="btn btn-outline w-full justify-center">
-                      {t('header.becomeDealer')}
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="pt-2 space-y-3">
-                    {role === 'admin' && (
-                      <Link to="/admin" className="btn btn-outline w-full justify-center">
-                        {t('header.admin')}
+                  ))}
+                  {!user ? (
+                    <div className="pt-2 space-y-3">
+                      <Link to="/login" className="btn btn-primary w-full justify-center">
+                        {t('header.login')}
                       </Link>
-                    )}
-                    {role === 'dealer' && (
-                      <Link to="/dealer/dashboard" className="btn btn-outline w-full justify-center">
-                        {t('header.dealerDashboard')}
+                      <Link to="/register" className="btn btn-outline w-full justify-center">
+                        {t('header.register')}
                       </Link>
-                    )}
-                    {role === 'pending' && (
-                      <Link to="/awaiting-approval" className="btn btn-outline w-full justify-center">
-                        {t('header.awaitingApproval')}
+                      <Link to="/register-dealer" className="btn btn-outline w-full justify-center">
+                        {t('header.becomeDealer')}
                       </Link>
-                    )}
-                    <button
-                      onClick={handleLogout}
-                      type="button"
-                      className="btn btn-outline w-full justify-center disabled:opacity-60"
-                      disabled={loading}
-                    >
-                      {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      {t('header.logout')}
-                    </button>
-                  </div>
-                )}
-              </nav>
-              <div className="border-t border-white/10 px-4 py-3">
-                <LanguageSwitcher />
-              </div>
+                    </div>
+                  ) : (
+                    <div className="pt-2 space-y-3">
+                      {role === 'admin' && (
+                        <Link to="/admin" className="btn btn-outline w-full justify-center">
+                          {t('header.admin')}
+                        </Link>
+                      )}
+                      {role === 'dealer' && (
+                        <Link to="/dealer/dashboard" className="btn btn-outline w-full justify-center">
+                          {t('header.dealerDashboard')}
+                        </Link>
+                      )}
+                      {role === 'pending' && (
+                        <Link to="/awaiting-approval" className="btn btn-outline w-full justify-center">
+                          {t('header.awaitingApproval')}
+                        </Link>
+                      )}
+                      <button
+                        onClick={handleLogout}
+                        type="button"
+                        className="btn btn-outline w-full justify-center disabled:opacity-60"
+                        disabled={loading}
+                      >
+                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        {t('header.logout')}
+                      </button>
+                    </div>
+                  )}
+                </nav>
+                <div className="border-t border-white/10 px-4 py-3">
+                  <LanguageSwitcher />
+                </div>
               </div>
             </>
           )}

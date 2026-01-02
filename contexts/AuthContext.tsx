@@ -49,7 +49,7 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 type FirestoreUser = DocumentData & { role?: UserRole };
 
@@ -246,10 +246,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setProfile(current =>
           current
             ? {
-                ...current,
-                role: 'dealer',
-                status: 'approved',
-              }
+              ...current,
+              role: 'dealer',
+              status: 'approved',
+            }
             : null
         );
       }

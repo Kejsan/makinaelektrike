@@ -30,12 +30,13 @@ export interface SEOProps {
   description: string;
   keywords?: string[];
   canonical?: string;
+  image?: string;
   robots?: string;
   openGraph?: OpenGraphConfig;
   twitter?: TwitterConfig;
   structuredData?:
-    | Record<string, unknown>
-    | Array<Record<string, unknown>>;
+  | Record<string, unknown>
+  | Array<Record<string, unknown>>;
   additionalMeta?: AdditionalMetaTag[];
 }
 
@@ -75,6 +76,7 @@ const SEO = ({
   description,
   keywords,
   canonical,
+  image,
   robots = 'index, follow',
   openGraph,
   twitter,
@@ -131,16 +133,18 @@ const SEO = ({
       ),
     );
 
-    if (openGraph) {
+    // Prepare lists of images merging top-level image and explicit OG images
+    const ogImages = openGraph?.images || (image ? [image] : []);
+
+    if (openGraph || ogImages.length > 0) {
       const {
         title: ogTitle = title,
         description: ogDescription = description,
         url: ogUrl = canonical,
         type = 'website',
-        images,
         locale = 'sq_AL',
         siteName = 'Makina Elektrike',
-      } = openGraph;
+      } = openGraph || {};
 
       cleanups.push(
         setMetaTag(
@@ -228,8 +232,8 @@ const SEO = ({
         ),
       );
 
-      if (images && images.length > 0) {
-        const cleanupFns = images.map((imageUrl, index) =>
+      if (ogImages && ogImages.length > 0) {
+        const cleanupFns = ogImages.map((imageUrl, index) =>
           setMetaTag(
             `meta[property="og:image"][data-position="${index}"]`,
             () => {
@@ -247,15 +251,17 @@ const SEO = ({
       }
     }
 
-    if (twitter) {
+    // Prepare twitter image, prioritizing explicit config, then top-level image
+    const twitterImage = twitter?.image || image;
+
+    if (twitter || twitterImage) {
       const {
         card = 'summary_large_image',
         title: twitterTitle = title,
         description: twitterDescription = description,
-        image,
         site,
         creator,
-      } = twitter;
+      } = twitter || {};
 
       cleanups.push(
         setMetaTag(
@@ -299,7 +305,7 @@ const SEO = ({
         ),
       );
 
-      if (image) {
+      if (twitterImage) {
         cleanups.push(
           setMetaTag(
             'meta[name="twitter:image"]',
@@ -309,7 +315,7 @@ const SEO = ({
               return meta;
             },
             element => {
-              element.setAttribute('content', image);
+              element.setAttribute('content', twitterImage);
             },
           ),
         );

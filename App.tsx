@@ -20,6 +20,9 @@ import AdminPage from './pages/AdminPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import AwaitingApprovalPage from './pages/AwaitingApprovalPage';
 import DealerDashboardPage from './pages/DealerDashboardPage';
+import DealerListingsPage from './pages/DealerListingsPage';
+import ListingsPage from './pages/ListingsPage';
+import ListingDetailPage from './pages/ListingDetailPage';
 import LoginPage from './pages/LoginPage';
 import SitemapPage from './pages/SitemapPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
@@ -107,9 +110,11 @@ const App: React.FC = () => {
                   <Route path="/" element={<HomePage />} />
                   <Route path="/dealers" element={<DealersListPage />} />
                   <Route path="/dealers/:id" element={<DealerDetailPage />} />
-                  <Route path="/models" element={<ModelsListPage />} />
                   <Route path="/albania-charging-stations" element={<ChargingStationsAlbaniaPage />} />
+                  <Route path="/models" element={<ModelsListPage />} />
                   <Route path="/models/:id" element={<ModelDetailPage />} />
+                  <Route path="/listings" element={<ListingsPage />} />
+                  <Route path="/listings/:id" element={<ListingDetailPage />} />
                   <Route path="/blog" element={<BlogPage />} />
                   <Route path="/blog/:slug" element={<BlogPostPage />} />
                   <Route path="/about" element={<AboutPage />} />
@@ -124,6 +129,14 @@ const App: React.FC = () => {
                   <Route path="/cookies" element={<CookiesPolicyPage />} />
                   <Route path="/admin/login" element={<AdminLoginPage />} />
                   <Route path="/awaiting-approval" element={<AwaitingApprovalPage />} />
+                  <Route
+                    path="/dealer/listings"
+                    element={
+                      <DealerRoute>
+                        <DealerListingsPage />
+                      </DealerRoute>
+                    }
+                  />
                   <Route
                     path="/dealer/dashboard"
                     element={(

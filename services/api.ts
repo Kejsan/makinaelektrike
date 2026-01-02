@@ -22,11 +22,11 @@ import { firestore } from './firebase';
 import type { Dealer, DealerDocument, Model, DealerModel, BlogPost, DealerStatus } from '../types';
 import { omitUndefined } from '../utils/object';
 
-type WithId<T> = T & { id: string };
+export type WithId<T> = T & { id: string };
 
-type SnapshotMapper<T> = (snapshot: QueryDocumentSnapshot<DocumentData>) => T;
+export type SnapshotMapper<T> = (snapshot: QueryDocumentSnapshot<DocumentData>) => T;
 
-const createCollectionMapper = <T extends { id: string }>(
+export const createCollectionMapper = <T extends { id: string }>(
   mapper?: SnapshotMapper<T>,
 ) => {
   const defaultMapper: SnapshotMapper<T> = snapshot =>
@@ -42,6 +42,7 @@ const dealersCollection = collection(firestore, 'dealers');
 const modelsCollection = collection(firestore, 'models');
 const blogPostsCollection = collection(firestore, 'blogPosts');
 const dealerModelsCollection = collection(firestore, 'dealerModels');
+const listingsCollection = collection(firestore, 'listings');
 
 const compareStrings = (a?: string | null, b?: string | null) => {
   const first = (a ?? '').trim().toLocaleLowerCase();
@@ -49,10 +50,10 @@ const compareStrings = (a?: string | null, b?: string | null) => {
   return first.localeCompare(second);
 };
 
-const sortDealersByName = (dealers: Dealer[]) =>
+export const sortDealersByName = (dealers: Dealer[]) =>
   [...dealers].sort((first, second) => compareStrings(first.name, second.name));
 
-const sortModels = (models: Model[]) =>
+export const sortModels = (models: Model[]) =>
   [...models].sort((first, second) => {
     const brandComparison = compareStrings(first.brand, second.brand);
     if (brandComparison !== 0) {
@@ -62,7 +63,7 @@ const sortModels = (models: Model[]) =>
     return compareStrings(first.model_name, second.model_name);
   });
 
-const sortBlogPostsByDateDesc = (posts: BlogPost[]) =>
+export const sortBlogPostsByDateDesc = (posts: BlogPost[]) =>
   [...posts].sort((first, second) => {
     const firstTime = new Date(first.date ?? '').getTime();
     const secondTime = new Date(second.date ?? '').getTime();
@@ -97,12 +98,12 @@ const normalizeDealerStatus = (dealer: Dealer): Dealer => {
     status = 'approved';
   }
 
-  const isActive = dealer.is_active ?? (status === 'approved');
+  const isActive = dealer.isActive ?? (status === 'approved');
 
   return {
     ...dealer,
     status,
-    is_active: isActive,
+    isActive,
     approved: status === 'approved',
   };
 };
@@ -115,14 +116,14 @@ const mapDealerModels = createCollectionMapper<WithId<DealerModel>>();
 const mapDealerModelsWithoutId = (snapshot: QuerySnapshot<DocumentData>): DealerModel[] =>
   mapDealerModels(snapshot).map(({ id: _id, ...rest }) => rest);
 
-type SnapshotCallback<T> = (items: T[]) => void;
+export type SnapshotCallback<T> = (items: T[]) => void;
 
-type SubscriptionOptions<T> = {
+export type SubscriptionOptions<T> = {
   onData: SnapshotCallback<T>;
   onError?: (error: FirestoreError) => void;
 };
 
-const subscribeToCollection = <T extends { id: string }>(
+export const subscribeToCollection = <T extends { id: string }>(
   colQuery: ReturnType<typeof query>,
   mapper: (snapshot: QuerySnapshot<DocumentData>) => T[],
   options: SubscriptionOptions<T>,
@@ -143,7 +144,7 @@ export const getDealerById = async (id: string): Promise<Dealer | null> => {
 };
 
 export const createDealer = async (payload: DealerDocument): Promise<Dealer> => {
-  const sanitizedPayload = omitUndefined(payload as Record<string, unknown>);
+  const sanitizedPayload = omitUndefined(payload as unknown as Record<string, unknown>);
   const derivedStatus = (payload.status ?? 'pending') as DealerDocument['status'];
   const derivedApproved = payload.approved ?? derivedStatus === 'approved';
   const derivedIsActive =
@@ -165,7 +166,7 @@ export const createDealer = async (payload: DealerDocument): Promise<Dealer> => 
 
 export const updateDealer = async (id: string, updates: Partial<DealerDocument>): Promise<Dealer> => {
   const dealerRef = doc(dealersCollection, id);
-  const sanitizedUpdates = omitUndefined(updates as Record<string, unknown>);
+  const sanitizedUpdates = omitUndefined(updates as unknown as Record<string, unknown>);
   await updateDoc(dealerRef, { ...sanitizedUpdates, updatedAt: serverTimestamp() });
   const snapshot = await getDoc(dealerRef);
   return normalizeDealerStatus({ id: snapshot.id, ...(snapshot.data() as DealerDocument) });
@@ -249,7 +250,7 @@ export const approveDealerRecord = async (id: string): Promise<Dealer> => {
   await updateDoc(dealerRef, {
     status: 'approved',
     approved: true,
-    is_active: true,
+    isActive: true,
     approvedAt: serverTimestamp(),
     rejectedAt: null,
     rejectionReason: null,
@@ -266,7 +267,7 @@ export const rejectDealerRecord = async (id: string): Promise<Dealer> => {
   await updateDoc(dealerRef, {
     status: 'rejected',
     approved: false,
-    is_active: false,
+    isActive: false,
     rejectedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -277,7 +278,7 @@ export const rejectDealerRecord = async (id: string): Promise<Dealer> => {
 export const deactivateDealerRecord = async (id: string): Promise<Dealer> => {
   const dealerRef = doc(dealersCollection, id);
   await updateDoc(dealerRef, {
-    is_active: false,
+    isActive: false,
     updatedAt: serverTimestamp(),
   });
   const snapshot = await getDoc(dealerRef);
@@ -289,7 +290,7 @@ export const reactivateDealerRecord = async (id: string): Promise<Dealer> => {
   await updateDoc(dealerRef, {
     status: 'approved',
     approved: true,
-    is_active: true,
+    isActive: true,
     updatedAt: serverTimestamp(),
   });
   const snapshot = await getDoc(dealerRef);
@@ -301,7 +302,7 @@ export const softDeleteDealerRecord = async (id: string): Promise<Dealer> => {
   await updateDoc(dealerRef, {
     status: 'deleted',
     approved: false,
-    is_active: false,
+    isActive: false,
     isDeleted: true,
     deletedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -482,12 +483,12 @@ export const subscribeToDealerModelsForDealers = (
 
   if (uniqueIds.length === 0) {
     options.onData([]);
-    return () => {};
+    return () => { };
   }
 
   if (uniqueIds.length === 1) {
     const dealerQuery = query(dealerModelsCollection, where('dealer_id', '==', uniqueIds[0]!));
-    return subscribeToCollection(dealerQuery, mapDealerModelsWithoutId, options);
+    return onSnapshot(dealerQuery, snapshot => options.onData(mapDealerModelsWithoutId(snapshot)), options.onError);
   }
 
   const chunkSize = 10;
@@ -555,7 +556,7 @@ export const createDealerModel = async (
     createdAt: serverTimestamp(),
     ...(createdBy ? { createdBy } : {}),
   };
-  await setDoc(linkRef, omitUndefined(payload as Record<string, unknown>));
+  await setDoc(linkRef, omitUndefined(payload as unknown as Record<string, unknown>));
   return { dealer_id: dealerId, model_id: modelId };
 };
 

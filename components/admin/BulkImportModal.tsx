@@ -94,10 +94,6 @@ const dealerFields: FieldDefinition[] = [
   { key: 'createdBy', label: 'Created by UID', type: 'string' },
   { key: 'updatedBy', label: 'Updated by UID', type: 'string' },
   { key: 'approved', label: 'Approved', type: 'boolean', description: 'true/false' },
-  { key: 'status', label: 'Status', type: 'string', description: "pending, approved, rejected, deleted" },
-  { key: 'is_active', label: 'Is active', type: 'boolean', description: 'true/false' },
-  { key: 'deletedAt', label: 'Deleted at (timestamp)', type: 'string', description: 'ISO timestamp' },
-  { key: 'isDeleted', label: 'Is deleted', type: 'boolean' },
   { key: 'approvedAt', label: 'Approved at (timestamp)', type: 'string', description: 'ISO timestamp' },
   { key: 'rejectedAt', label: 'Rejected at (timestamp)', type: 'string', description: 'ISO timestamp' },
   { key: 'rejectionReason', label: 'Rejection reason', type: 'string' },
@@ -249,7 +245,7 @@ const buildDefaultMapping = (headers: string[], fields: FieldDefinition[]): Mapp
   return mapping;
 };
 
-const convertValue = (rawValue: unknown, field: FieldDefinition) => {
+const convertValue = (rawValue: unknown, field: FieldDefinition, t: (key: string, options?: any) => string) => {
   if (rawValue === null || rawValue === undefined) {
     return undefined;
   }
@@ -317,6 +313,7 @@ const mapRowToData = (
   row: ParsedRow,
   mapping: Mapping,
   fields: FieldDefinition[],
+  t: (key: string, options?: any) => string,
 ): RowResult => {
   const data: GenericRecord = {};
   const errors: string[] = [];
@@ -341,7 +338,7 @@ const mapRowToData = (
     }
 
     try {
-      const converted = convertValue(rawValue, field);
+      const converted = convertValue(rawValue, field, t);
       if (field.validator) {
         const validationError = field.validator(converted);
         if (validationError) {
@@ -635,7 +632,7 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ entity, onClose }) =>
 
   const rowResults = useMemo(() => {
     return rows.map((row, index) => {
-      const result = mapRowToData(row, mapping, config.fields);
+      const result = mapRowToData(row, mapping, config.fields, t);
       return { ...result, index };
     });
   }, [rows, mapping, config.fields]);

@@ -208,3 +208,65 @@ export interface ChargingStationFormValues {
 }
 
 export type StationSource = 'custom' | 'ocm';
+
+export type ListingStatus = 'pending' | 'approved' | 'active' | 'inactive' | 'deleted' | 'rejected';
+
+export interface ListingFinancialOptions {
+  loanSupported?: boolean;
+  loanTermMonths?: number;
+  downPaymentMin?: number;
+  monthlyPaymentEstimate?: number;
+  leasingSupported?: boolean;
+}
+
+export interface ListingLocation {
+  lat: number;
+  lng: number;
+  address?: string;
+  city?: string;
+}
+
+export interface Listing extends FirestoreTimestamps {
+  id: string;
+  dealerId: string;
+  status: ListingStatus;
+
+  // Vehicle Details
+  title: string;
+  description: string;
+  make: string;
+  model: string;
+  year: number;
+  bodyType: string;
+  mileage: number;
+  fuelType: string; // 'Electric', 'Hybrid', 'Plug-in Hybrid', etc.
+
+  // EV Specifics
+  batteryCapacity?: number; // kWh
+  range?: number; // km (WLTP usually)
+
+  // Pricing
+  price: number;
+  priceCurrency: string; // 'EUR', 'ALL'
+  financialOptions?: ListingFinancialOptions;
+
+  // Media
+  images: string[];
+  imageGallery?: string[];
+  videoUrl?: string;
+
+  // Location
+  location?: ListingLocation;
+
+  // Flags
+  isFeatured?: boolean;
+  isForRent?: boolean;
+  isForSubscription?: boolean;
+
+  // Admin/System
+  approvedAt?: Timestamp | null;
+  rejectedAt?: Timestamp | null;
+  rejectionReason?: string;
+
+  ownerUid?: string; // For security rules mostly
+}

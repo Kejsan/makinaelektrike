@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Loader2, Plus, Save, Trash2, Upload } from 'lucide-react';
 import { DataContext } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -564,7 +565,7 @@ const DealerDashboardPage: React.FC = () => {
     );
   }
 
-  const isApprovedDealer = dealer.status === 'approved' && dealer.is_active !== false;
+  const isApprovedDealer = dealer.status === 'approved' && dealer.isActive !== false;
   const isUpdatingDealer = savingProfile || dealerMutations.update.loading || uploadingImage;
   const isCreatingModel = creatingModel || modelMutations.create.loading;
   const newModelGalleryLimit = 3;
@@ -608,19 +609,26 @@ const DealerDashboardPage: React.FC = () => {
             </p>
           </div>
           <div
-            className={`inline-flex items-center gap-3 rounded-full px-4 py-2 text-sm ${
-              isApprovedDealer
-                ? 'border border-emerald-500/60 bg-emerald-500/10 text-emerald-200'
-                : 'border border-amber-500/60 bg-amber-500/10 text-amber-200'
-            }`}
+            className={`inline-flex items-center gap-3 rounded-full px-4 py-2 text-sm ${isApprovedDealer
+              ? 'border border-emerald-500/60 bg-emerald-500/10 text-emerald-200'
+              : 'border border-amber-500/60 bg-amber-500/10 text-amber-200'
+              }`}
           >
             <span
-              className={`h-2 w-2 rounded-full ${
-                isApprovedDealer ? 'bg-emerald-400' : 'bg-amber-400'
-              }`}
+              className={`h-2 w-2 rounded-full ${isApprovedDealer ? 'bg-emerald-400' : 'bg-amber-400'
+                }`}
             />
             {isApprovedDealer ? 'Approved Dealer' : 'Awaiting approval'}
           </div>
+        </div>
+
+        <div className="mb-8 flex justify-end">
+          <Link
+            to="/dealer/listings"
+            className="inline-flex items-center gap-2 rounded-full bg-gray-cyan px-6 py-3 text-sm font-bold text-gray-900 shadow-lg hover:bg-cyan-400 transition transform hover:-translate-y-0.5"
+          >
+            Manage Listings
+          </Link>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-3">
@@ -1102,11 +1110,10 @@ const DealerDashboardPage: React.FC = () => {
                             <p className="text-sm text-gray-400">No gallery images selected yet.</p>
                           )}
                         </div>
-                        <label className={`mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
-                          newModelGalleryUploadDisabled
-                            ? 'cursor-not-allowed border border-white/10 bg-white/5 text-gray-400'
-                            : 'cursor-pointer bg-gray-cyan text-gray-900 hover:opacity-90'
-                        }`}>
+                        <label className={`mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${newModelGalleryUploadDisabled
+                          ? 'cursor-not-allowed border border-white/10 bg-white/5 text-gray-400'
+                          : 'cursor-pointer bg-gray-cyan text-gray-900 hover:opacity-90'
+                          }`}>
                           {creatingModel ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
@@ -1238,13 +1245,12 @@ const DealerDashboardPage: React.FC = () => {
                 ) : (
                   <p className="text-sm text-gray-400">No gallery images yet.</p>
                 )}
-                <label className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  galleryUploading
-                    ? 'cursor-wait border border-white/10 bg-white/5 text-gray-400'
-                    : dealerGallery.length >= 3
-                      ? 'cursor-not-allowed border border-white/10 bg-white/5 text-gray-400'
-                      : 'cursor-pointer bg-gray-cyan text-gray-900 hover:opacity-90'
-                }`}>
+                <label className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${galleryUploading
+                  ? 'cursor-wait border border-white/10 bg-white/5 text-gray-400'
+                  : dealerGallery.length >= 3
+                    ? 'cursor-not-allowed border border-white/10 bg-white/5 text-gray-400'
+                    : 'cursor-pointer bg-gray-cyan text-gray-900 hover:opacity-90'
+                  }`}>
                   {galleryUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                   <span>
                     {galleryUploading

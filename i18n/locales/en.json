@@ -18,7 +18,8 @@
     "account": "Account",
     "accountMenuTitle": "Quick actions",
     "dealerDashboard": "Dealer dashboard",
-    "awaitingApproval": "Awaiting approval"
+    "awaitingApproval": "Awaiting approval",
+    "listings": "Cars for Sale"
   },
   "footer": {
     "description": "Your guide to electric vehicles in Albania. Find dealerships, compare models, and join the electric revolution.",
@@ -46,7 +47,17 @@
     "anyCity": "Any city",
     "anyBrand": "Any brand",
     "results": "Results",
-    "filters": "Filters"
+    "filters": "Filters",
+    "edit": "Edit",
+    "delete": "Delete",
+    "saving": "Saving...",
+    "save": "Save",
+    "confirmDelete": "Are you sure you want to delete this listing?",
+    "deletedSuccess": "Deleted successfully",
+    "deleteFailed": "Delete failed",
+    "updatedSuccess": "Updated successfully",
+    "createdSuccess": "Created successfully",
+    "saveFailed": "Failed to save"
   },
   "home": {
     "heroTitle": "Drive the Future.",
@@ -437,6 +448,14 @@
       }
     ],
     "officialBadge": "Official Dealer"
+  },
+  "dealer": {
+    "listings": "My Listings",
+    "addListing": "+ Add Listing",
+    "noListings": "You have no listings yet.",
+    "createFirst": "Create your first listing",
+    "editListing": "Edit Listing",
+    "newListing": "New Listing"
   },
   "modelsPage": {
     "title": "Electric Models",
@@ -844,6 +863,14 @@
     "brands": "Brands",
     "city": "City",
     "required": "is required",
+    "make": "Make",
+    "model": "Model",
+    "year": "Year",
+    "mileage": "Mileage (km)",
+    "price": "Price",
+    "currency": "Currency",
+    "mainImage": "Main Image",
+    "gallery": "Gallery",
     "requiredNew": "is required for new models",
     "invalidNumber": "Please enter a valid number",
     "invalidUrl": "Enter a valid URL",

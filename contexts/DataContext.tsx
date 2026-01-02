@@ -13,7 +13,17 @@ import type {
   BlogPost,
   DealerModel,
   DealerStatus,
+  Listing,
 } from '../types';
+import {
+  subscribeToListings,
+  subscribeToApprovedListings,
+  subscribeToListingsByDealer,
+  createListing as apiCreateListing,
+  updateListing as apiUpdateListing,
+  deleteListing as apiDeleteListing,
+  approveListing as apiApproveListing,
+} from '../services/listings';
 import {
   subscribeToDealers,
   subscribeToApprovedDealers,
@@ -59,8 +69,10 @@ type ModelInput = Omit<Model, 'id'>;
 type ModelUpdate = Partial<Omit<Model, 'id'>>;
 type BlogPostInput = Omit<BlogPost, 'id'>;
 type BlogPostUpdate = Partial<BlogPost>;
+type ListingInput = Omit<Listing, 'id'>;
+type ListingUpdate = Partial<Listing>;
 
-export type EntityKey = 'dealers' | 'models' | 'blogPosts';
+export type EntityKey = 'dealers' | 'models' | 'blogPosts' | 'listings';
 export type Operation = 'create' | 'update' | 'delete';
 
 type MutationFlag = {
@@ -76,6 +88,7 @@ interface DataState {
   dealers: Dealer[];
   models: Model[];
   blogPosts: BlogPost[];
+  listings: Listing[];
   dealerModels: DealerModel[];
   loadError: string | null;
   loading: boolean;
@@ -84,6 +97,7 @@ interface DataState {
     models: boolean;
     blogPosts: boolean;
     dealerModels: boolean;
+    listings: boolean;
   };
 }
 
@@ -97,6 +111,7 @@ interface DataContextType {
   dealerMutations: EntityMutations;
   modelMutations: EntityMutations;
   blogPostMutations: EntityMutations;
+  listingMutations: EntityMutations;
   getModelsForDealer: (dealerId: string) => Model[];
   getDealersForModel: (modelId: string) => Dealer[];
   addDealer: (dealer: DealerInput) => Promise<Dealer>;
@@ -106,14 +121,16 @@ interface DataContextType {
   reactivateDealer: (id: string) => Promise<Dealer>;
   approveDealer: (id: string) => Promise<Dealer>;
   rejectDealer: (id: string) => Promise<Dealer>;
-  deactivateDealer: (id: string) => Promise<Dealer>;
-  reactivateDealer: (id: string) => Promise<Dealer>;
   addModel: (model: ModelInput) => Promise<Model>;
   updateModel: (id: string, updates: ModelUpdate) => Promise<Model>;
   deleteModel: (id: string) => Promise<void>;
   addBlogPost: (post: BlogPostInput) => Promise<BlogPost>;
   updateBlogPost: (id: string, updates: BlogPostUpdate) => Promise<BlogPost>;
   deleteBlogPost: (id: string) => Promise<void>;
+  addListing: (listing: ListingInput) => Promise<Listing>;
+  updateListing: (id: string, updates: ListingUpdate) => Promise<Listing>;
+  deleteListing: (id: string) => Promise<void>;
+  approveListing: (id: string) => Promise<Listing>;
   linkModelToDealer: (dealerId: string, modelId: string) => Promise<DealerModel>;
   unlinkModelFromDealer: (dealerId: string, modelId: string) => Promise<{ dealer_id: string; model_id: string }>;
 }
@@ -130,6 +147,7 @@ const createInitialMutationState = (): MutationState => ({
   dealers: createEntityMutations(),
   models: createEntityMutations(),
   blogPosts: createEntityMutations(),
+  listings: createEntityMutations(),
 });
 
 type MutationAction =
@@ -143,10 +161,11 @@ type DataAction =
   | { type: 'SET_DEALERS'; payload: Dealer[] }
   | { type: 'SET_MODELS'; payload: Model[] }
   | { type: 'SET_BLOG_POSTS'; payload: BlogPost[] }
-  | { type: 'SET_DEALER_MODELS'; payload: DealerModel[] };
+  | { type: 'SET_DEALER_MODELS'; payload: DealerModel[] }
+  | { type: 'SET_LISTINGS'; payload: Listing[] };
 
 const areCollectionsLoaded = (loaded: DataState['loaded']) =>
-  loaded.dealers && loaded.models && loaded.blogPosts && loaded.dealerModels;
+  loaded.dealers && loaded.models && loaded.blogPosts && loaded.dealerModels && loaded.listings;
 
 const mutationReducer = (state: MutationState, action: MutationAction): MutationState => {
   const entityState = state[action.entity];
@@ -223,6 +242,15 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
         loading: !areCollectionsLoaded(loaded),
       };
     }
+    case 'SET_LISTINGS': {
+      const loaded = { ...state.loaded, listings: true };
+      return {
+        ...state,
+        listings: action.payload,
+        loaded,
+        loading: !areCollectionsLoaded(loaded),
+      };
+    }
     default:
       return state;
   }
@@ -288,6 +316,7 @@ export const DataContext = createContext<DataContextType>({
   dealerMutations: defaultMutationState.dealers,
   modelMutations: defaultMutationState.models,
   blogPostMutations: defaultMutationState.blogPosts,
+  listingMutations: defaultMutationState.listings,
   getModelsForDealer: () => [],
   getDealersForModel: () => [],
   addDealer: rejectUsage as DataContextType['addDealer'],
@@ -303,6 +332,10 @@ export const DataContext = createContext<DataContextType>({
   addBlogPost: rejectUsage as DataContextType['addBlogPost'],
   updateBlogPost: rejectUsage as DataContextType['updateBlogPost'],
   deleteBlogPost: rejectUsage as DataContextType['deleteBlogPost'],
+  addListing: rejectUsage as DataContextType['addListing'],
+  updateListing: rejectUsage as DataContextType['updateListing'],
+  deleteListing: rejectUsage as DataContextType['deleteListing'],
+  approveListing: rejectUsage as DataContextType['approveListing'],
   linkModelToDealer: rejectUsage as DataContextType['linkModelToDealer'],
   unlinkModelFromDealer: rejectUsage as DataContextType['unlinkModelFromDealer'],
 });
@@ -321,6 +354,7 @@ const initialDataState: DataState = {
   dealers: [],
   models: [],
   blogPosts: isFirebaseConfigured ? [] : staticBlogPosts,
+  listings: [],
   dealerModels: [],
   loadError: null,
   loading: true,
@@ -329,6 +363,7 @@ const initialDataState: DataState = {
     models: false,
     blogPosts: !isFirebaseConfigured,
     dealerModels: false,
+    listings: false,
   },
 };
 
@@ -422,17 +457,24 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           onError: permissionAwareErrorHandler('vehicle models', () => dataDispatch({ type: 'SET_MODELS', payload: [] })),
         }),
       );
+
+      unsubscribers.push(
+        subscribeToListingsByDealer(userUid, {
+          onData: listings => dataDispatch({ type: 'SET_LISTINGS', payload: listings }),
+          onError: permissionAwareErrorHandler('listings', () => dataDispatch({ type: 'SET_LISTINGS', payload: [] })),
+        }),
+      );
     } else {
       unsubscribers.push(
         (role === 'admin'
           ? subscribeToDealers({
-              onData: dealers => dataDispatch({ type: 'SET_DEALERS', payload: dealers }),
-              onError: handleSubscriptionError('dealers'),
-            })
+            onData: dealers => dataDispatch({ type: 'SET_DEALERS', payload: dealers }),
+            onError: handleSubscriptionError('dealers'),
+          })
           : subscribeToApprovedDealers({
-              onData: dealers => dataDispatch({ type: 'SET_DEALERS', payload: dealers }),
-              onError: permissionAwareErrorHandler('dealers', () => dataDispatch({ type: 'SET_DEALERS', payload: [] })),
-            }))
+            onData: dealers => dataDispatch({ type: 'SET_DEALERS', payload: dealers }),
+            onError: permissionAwareErrorHandler('dealers', () => dataDispatch({ type: 'SET_DEALERS', payload: [] })),
+          }))
       );
       unsubscribers.push(
         subscribeToModels({
@@ -441,8 +483,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
             role === 'admin'
               ? handleSubscriptionError('vehicle models')
               : permissionAwareErrorHandler('vehicle models', () =>
-                  dataDispatch({ type: 'SET_MODELS', payload: [] }),
-                ),
+                dataDispatch({ type: 'SET_MODELS', payload: [] }),
+              ),
         }),
       );
 
@@ -456,23 +498,34 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       } else {
         setDealerModels([]);
       }
-    }
 
+      unsubscribers.push(
+        (role === 'admin'
+          ? subscribeToListings({
+            onData: listings => dataDispatch({ type: 'SET_LISTINGS', payload: listings }),
+            onError: handleSubscriptionError('listings'),
+          })
+          : subscribeToApprovedListings({
+            onData: listings => dataDispatch({ type: 'SET_LISTINGS', payload: listings }),
+            onError: permissionAwareErrorHandler('listings', () => dataDispatch({ type: 'SET_LISTINGS', payload: [] })),
+          }))
+      );
+    }
     if (isFirebaseConfigured) {
       unsubscribers.push(
         (role === 'admin'
           ? subscribeToBlogPosts({
-              onData: posts => dataDispatch({ type: 'SET_BLOG_POSTS', payload: posts }),
-              onError: permissionAwareErrorHandler('blog posts', () =>
-                dataDispatch({ type: 'SET_BLOG_POSTS', payload: staticBlogPosts }),
-              ),
-            })
+            onData: posts => dataDispatch({ type: 'SET_BLOG_POSTS', payload: posts }),
+            onError: permissionAwareErrorHandler('blog posts', () =>
+              dataDispatch({ type: 'SET_BLOG_POSTS', payload: staticBlogPosts }),
+            ),
+          })
           : subscribeToPublishedBlogPosts({
-              onData: posts => dataDispatch({ type: 'SET_BLOG_POSTS', payload: posts }),
-              onError: permissionAwareErrorHandler('blog posts', () =>
-                dataDispatch({ type: 'SET_BLOG_POSTS', payload: staticBlogPosts }),
-              ),
-            }))
+            onData: posts => dataDispatch({ type: 'SET_BLOG_POSTS', payload: posts }),
+            onError: permissionAwareErrorHandler('blog posts', () =>
+              dataDispatch({ type: 'SET_BLOG_POSTS', payload: staticBlogPosts }),
+            ),
+          }))
       );
     } else {
       dataDispatch({ type: 'SET_BLOG_POSTS', payload: staticBlogPosts });
@@ -504,7 +557,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     const uniqueIds = Array.from(new Set(dealerIds));
     const aggregated = new Map<string, DealerModel[]>();
 
-    const unsubscribers = uniqueIds.map(dealerId =>
+    const unsubscribers = uniqueIds.map((dealerId: string) =>
       subscribeToDealerModelsForDealers([dealerId], {
         onData: mappings => {
           aggregated.set(dealerId, mappings);
@@ -515,7 +568,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           aggregated.delete(dealerId);
           const combined = Array.from(aggregated.values()).flat();
           dataDispatch({ type: 'SET_DEALER_MODELS', payload: combined });
-        }),
+        }) as any,
       }),
     );
 
@@ -577,12 +630,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       const actorUid = normalizeOptionalString(userUid);
       const status = (input.status as DealerStatus | undefined) ?? 'pending';
       const isActive =
-        input.is_active === undefined ? (status === 'approved' ? true : input.is_active ?? true) : input.is_active;
+        input.isActive === undefined ? (status === 'approved' ? true : input.isActive ?? true) : input.isActive;
 
       const hydrated: DealerInput = {
         ...input,
         status,
-        is_active: isActive,
+        isActive: isActive,
         approved: status === 'approved',
         contact_email: input.contact_email ?? input.email,
         contact_phone: input.contact_phone ?? input.phone,
@@ -590,11 +643,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         location: input.location ?? [input.address, input.city].filter(Boolean).join(', '),
       };
 
-      return enhanceOwnershipMetadata(hydrated, actorUid, {
+      return enhanceOwnershipMetadata(hydrated as unknown as Record<string, unknown>, actorUid, {
         ownerUid: 'ownerUid',
         createdBy: 'createdBy',
         updatedBy: 'updatedBy',
-      });
+      }) as unknown as DealerInput;
     },
     [userUid],
   );
@@ -602,7 +655,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const enhanceDealerUpdate = useCallback(
     (updates: DealerUpdate): DealerUpdate => {
       const actorUid = normalizeOptionalString(userUid);
-      const { updatedBy, status: rawStatus, is_active: rawIsActive, ...rest } = updates;
+      const { updatedBy, status: rawStatus, isActive: rawIsActive, ...rest } = updates;
       const sanitized: DealerUpdate = { ...rest };
 
       if (role === 'admin') {
@@ -614,7 +667,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           }
         }
         if (rawIsActive !== undefined) {
-          sanitized.is_active = rawIsActive;
+          sanitized.isActive = rawIsActive;
         }
       }
 
@@ -946,7 +999,79 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     [runMutation],
   );
 
-  const { dealers, models, blogPosts, dealerModels, loading, loadError } = dataState;
+  const enhanceListingInput = useCallback(
+    (input: ListingInput): ListingInput => {
+      const actorUid = normalizeOptionalString(userUid);
+      // We can add ownership metadata enhancement here if needed, similar to models
+      // Listing interface has ownerUid
+      const payload = { ...input };
+      if (actorUid && !payload.ownerUid) {
+        payload.ownerUid = actorUid;
+      }
+      if (!payload.status) {
+        payload.status = 'pending';
+      }
+      return payload as ListingInput;
+    },
+    [userUid],
+  );
+
+  const addListing = useCallback(
+    (listing: ListingInput) => {
+      const payload = enhanceListingInput(listing);
+      return runMutation({
+        entity: 'listings',
+        operation: 'create',
+        action: () => apiCreateListing(payload),
+        successMessage: 'Listing created successfully.',
+        errorMessage: 'Failed to create listing.',
+        allowedRoles: ['admin', 'dealer'],
+        payloadForExport: payload,
+      });
+    },
+    [enhanceListingInput, runMutation],
+  );
+
+  const updateListing = useCallback(
+    (id: string, updates: ListingUpdate) =>
+      runMutation({
+        entity: 'listings',
+        operation: 'update',
+        action: () => apiUpdateListing(id, updates),
+        successMessage: 'Listing updated successfully.',
+        errorMessage: 'Failed to update listing.',
+        allowedRoles: ['admin', 'dealer'],
+      }),
+    [runMutation],
+  );
+
+  const deleteListing = useCallback(
+    (id: string) =>
+      runMutation({
+        entity: 'listings',
+        operation: 'delete',
+        action: () => apiDeleteListing(id),
+        successMessage: 'Listing deleted successfully.',
+        errorMessage: 'Failed to delete listing.',
+        allowedRoles: ['admin', 'dealer'],
+      }),
+    [runMutation],
+  );
+
+  const approveListing = useCallback(
+    (id: string) =>
+      runMutation({
+        entity: 'listings',
+        operation: 'update',
+        action: () => apiApproveListing(id),
+        successMessage: 'Listing approved successfully.',
+        errorMessage: 'Failed to approve listing.',
+        allowedRoles: ['admin'],
+      }),
+    [runMutation],
+  );
+
+  const { dealers, models, blogPosts, dealerModels, listings, loading, loadError } = dataState;
 
   const dealerToModelMap = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -1003,6 +1128,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       dealerMutations: mutationState.dealers,
       modelMutations: mutationState.models,
       blogPostMutations: mutationState.blogPosts,
+      listingMutations: mutationState.listings,
       getModelsForDealer,
       getDealersForModel,
       addDealer,
@@ -1018,6 +1144,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       addBlogPost,
       updateBlogPost,
       deleteBlogPost,
+      addListing,
+      updateListing,
+      deleteListing,
+      approveListing,
       linkModelToDealer,
       unlinkModelFromDealer,
     }),
@@ -1031,6 +1161,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       mutationState.dealers,
       mutationState.models,
       mutationState.blogPosts,
+      mutationState.listings,
       getModelsForDealer,
       getDealersForModel,
       addDealer,
@@ -1046,6 +1177,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       addBlogPost,
       updateBlogPost,
       deleteBlogPost,
+      addListing,
+      updateListing,
+      deleteListing,
+      approveListing,
       linkModelToDealer,
       unlinkModelFromDealer,
     ],
