@@ -232,7 +232,7 @@ const SEO = ({
         ),
       );
 
-      if (ogImages && ogImages.length > 0) {
+      if (ogImages && Array.isArray(ogImages) && ogImages.length > 0) {
         const cleanupFns = ogImages.map((imageUrl, index) =>
           setMetaTag(
             `meta[property="og:image"][data-position="${index}"]`,

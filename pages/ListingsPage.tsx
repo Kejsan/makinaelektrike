@@ -18,7 +18,7 @@ const ListingsPage: React.FC = () => {
 
     // Derived unique values for filters
     const makes = useMemo(() => {
-        const uniqueMakes = new Set(listings.map(l => l.make));
+        const uniqueMakes = new Set((listings || []).map(l => l.make));
         return Array.from(uniqueMakes).sort();
     }, [listings]);
 
