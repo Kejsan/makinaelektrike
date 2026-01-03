@@ -142,12 +142,12 @@ const Header: React.FC = () => {
 
   return (
     <header
-      className={`sticky top-0 z-[1200] border-b border-gray-cyan/20 backdrop-blur-lg transition-all duration-300 ${isScrolled ? 'bg-navy-blue/80 shadow-lg shadow-black/20' : 'bg-navy-blue/40'
+      className={`sticky top-0 z-[1200] border-b border-gray-cyan/20 backdrop-blur-lg transition-all duration-300 ${isScrolled ? 'bg-navy-blue/95 shadow-lg shadow-black/20' : 'bg-navy-blue/80'
         }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative flex items-center justify-between gap-3 sm:gap-4 py-3 lg:py-4">
-          <div className="flex items-center gap-4 lg:gap-6 min-w-0">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+        <div className="relative flex items-center justify-between gap-2 py-3">
+          <div className="flex items-center gap-2 xl:gap-6 min-w-0">
             <Link to="/" className="flex-shrink-0 flex items-center text-white" aria-label={t('header.home')}>
               <img
                 src={SITE_LOGO}
@@ -155,7 +155,7 @@ const Header: React.FC = () => {
                 className="h-12 w-auto rounded sm:h-14 lg:h-16"
               />
             </Link>
-            <nav className="hidden lg:flex items-center gap-2">
+            <nav className="hidden xl:flex items-center gap-1">
               {navigationItems.map((item) => (
                 <Link
                   key={item.to}
@@ -253,7 +253,7 @@ const Header: React.FC = () => {
             <button
               type="button"
               onClick={() => setMobileMenuOpen((open) => !open)}
-              className="inline-flex items-center justify-center rounded-md p-2 text-white hover:text-gray-cyan hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-gray-cyan lg:hidden"
+              className="inline-flex items-center justify-center rounded-md p-2 text-white hover:text-gray-cyan hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-gray-cyan xl:hidden"
               aria-expanded={mobileMenuOpen}
               aria-label={mobileMenuOpen ? (t('header.closeMenu') as string) : (t('header.openMenu') as string)}
             >
@@ -262,8 +262,8 @@ const Header: React.FC = () => {
           </div>
           {mobileMenuOpen && (
             <>
-              <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setMobileMenuOpen(false)} aria-hidden="true" />
-              <div className="absolute left-0 top-16 z-50 w-full rounded-b-lg border border-t-0 border-gray-cyan/20 bg-navy-blue/95 backdrop-blur-md shadow-xl lg:hidden">
+              <div className="fixed inset-0 z-40 bg-black/60 xl:hidden" onClick={() => setMobileMenuOpen(false)} aria-hidden="true" />
+              <div className="absolute left-0 top-16 z-50 w-full rounded-b-lg border border-t-0 border-gray-cyan/20 bg-navy-blue/95 backdrop-blur-md shadow-xl xl:hidden">
                 <nav className="max-h-[calc(100vh-4rem)] overflow-y-auto px-4 pt-4 pb-6 space-y-3">
                   {navigationItems.map((item) => (
                     <Link key={item.to} to={item.to} className={mobileNavLinkClasses(item.to)}>
