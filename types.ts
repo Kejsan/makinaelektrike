@@ -270,3 +270,16 @@ export interface Listing extends FirestoreTimestamps {
 
   ownerUid?: string; // For security rules mostly
 }
+
+export interface Enquiry {
+  id: string;
+  listingId: string;
+  dealerId: string;
+  name: string;
+  email: string;
+  phone?: string;
+  message: string;
+  status: 'new' | 'read' | 'replied' | 'archived';
+  createdAt: any; // Firestore Timestamp
+}
+
