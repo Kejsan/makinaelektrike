@@ -3,6 +3,7 @@ import { X, Send, Phone, MessageSquare } from 'lucide-react';
 import { Listing, Dealer } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../contexts/ToastContext';
+import { createEnquiry } from '../../services/enquiries';
 
 interface EnquiryModalProps {
     listing: Listing;
@@ -32,14 +33,24 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
         e.preventDefault();
         setLoading(true);
 
-        // TODO: Implement actual enquiry submission (Firestore or Cloud Function)
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+        try {
+            await createEnquiry({
+                listingId: listing.id,
+                dealerId: listing.dealerId,
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone,
+                message: formData.message,
+            });
 
-        console.log('Enquiry sent:', { listingId: listing.id, dealerId: listing.dealerId, ...formData });
-        addToast(t('enquiry.success', { defaultValue: 'Message sent successfully!' }), 'success');
-
-        setLoading(false);
-        onClose();
+            addToast(t('enquiry.success', { defaultValue: 'Message sent successfully!' }), 'success');
+            onClose();
+        } catch (error) {
+            console.error('Error sending enquiry:', error);
+            addToast(t('enquiry.error', { defaultValue: 'Failed to send message. Please try again.' }), 'error');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

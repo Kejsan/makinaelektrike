@@ -40,10 +40,18 @@ service cloud.firestore {
       allow write: if isAuthenticated(); // Refine as needed
     }
     
-     // Blog Posts
+    // Blog Posts
     match /blog_posts/{postId} {
       allow read: if true;
       allow write: if isAuthenticated(); // Restrict to admin in real app
+    }
+
+    // Enquiries
+    match /enquiries/{enquiryId} {
+      allow create: if true; // Public can create enquiries
+      allow read: if isAuthenticated() && (
+        resource.data.dealerId == request.auth.uid || isAdmin()
+      ); // Dealers see their own enquiries, admins see all
     }
   }
 }
