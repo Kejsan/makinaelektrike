@@ -458,12 +458,6 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         }),
       );
 
-      unsubscribers.push(
-        subscribeToListingsByDealer(userUid, {
-          onData: listings => dataDispatch({ type: 'SET_LISTINGS', payload: listings }),
-          onError: permissionAwareErrorHandler('listings', () => dataDispatch({ type: 'SET_LISTINGS', payload: [] })),
-        }),
-      );
     } else {
       unsubscribers.push(
         (role === 'admin'
@@ -541,6 +535,41 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     role,
     userUid,
   ]);
+
+  useEffect(() => {
+    if (role !== 'dealer') {
+      return;
+    }
+
+    const dealerIds = dataState.dealers.map(dealer => dealer.id);
+
+    if (dealerIds.length === 0) {
+      dataDispatch({ type: 'SET_LISTINGS', payload: [] });
+      return;
+    }
+
+    const uniqueIds = Array.from(new Set(dealerIds));
+    const aggregatedListings = new Map<string, Listing[]>();
+
+    const unsubscribers = uniqueIds.map((dealerId: string) =>
+      subscribeToListingsByDealer(dealerId, {
+        onData: listings => {
+          aggregatedListings.set(dealerId, listings);
+          const combined = Array.from(aggregatedListings.values()).flat();
+          dataDispatch({ type: 'SET_LISTINGS', payload: combined });
+        },
+        onError: permissionAwareErrorHandler('listings', () => {
+          aggregatedListings.delete(dealerId);
+          const combined = Array.from(aggregatedListings.values()).flat();
+          dataDispatch({ type: 'SET_LISTINGS', payload: combined });
+        }),
+      }),
+    );
+
+    return () => {
+      unsubscribers.forEach(unsubscribe => unsubscribe());
+    };
+  }, [dataState.dealers, permissionAwareErrorHandler, role]);
 
   useEffect(() => {
     if (role === 'admin' || role === 'dealer') {
