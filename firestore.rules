@@ -3,55 +3,88 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to check if user is authenticated
+    // --- AUTHENTICATION HELPERS ---
+    
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    // Helper function to check if user is the owner of the document
-    function isOwner(userId) {
+    function isUser(userId) {
       return request.auth.uid == userId;
     }
+
+    // Securely fetch user's role from the database
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
     
-    // Helper function to check if user has admin privileges (implement based on your auth system)
-    // For now, assuming detailed admin roles are managed via custom claims or separate collection
     function isAdmin() {
-       return request.auth.token.admin == true; // Placeholder
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().role == 'admin';
     }
 
-    // Dealers collection
+    // --- COLLECTION RULES ---
+
+    // 1. USERS: The Foundation of Security
+    match /users/{userId} {
+      // Users can read their own profile. Admins can read all.
+      allow read: if isAuthenticated() && (isUser(userId) || isAdmin());
+      
+      // Creation: Users can create their own profile.
+      allow create: if isAuthenticated() && isUser(userId);
+      
+      // Update: Users can update their own profile EXCEPT 'role' and 'status' (tamper-proofing).
+      allow update: if isAuthenticated() && isUser(userId) && 
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status']));
+      
+      // Admins have full write access (to promote users/manage roles).
+      allow write: if isAdmin();
+    }
+
+    // 2. DEALERS
     match /dealers/{dealerId} {
-      allow read: if true; // Public can read basic dealer info
-      allow write: if isAuthenticated() && isOwner(dealerId); // Dealers manage their own profile
-    }
-
-    // Listings collection
-    match /listings/{listingId} {
-      allow read: if true; // Public can read listings
-      // Dealers can create/update/delete their own listings
-      allow create: if isAuthenticated() && request.resource.data.dealerId == request.auth.uid;
-      allow update: if isAuthenticated() && resource.data.dealerId == request.auth.uid;
-      allow delete: if isAuthenticated() && resource.data.dealerId == request.auth.uid;
-    }
-    
-    // Dealer Models (if kept separate)
-    match /dealer_models/{modelId} {
-    	allow read: if true;
-      allow write: if isAuthenticated(); // Refine as needed
-    }
-    
-    // Blog Posts
-    match /blog_posts/{postId} {
       allow read: if true;
-      allow write: if isAuthenticated(); // Restrict to admin in real app
+      // Creation: Allow if authenticated (ownership verification happens in app logic or trigger)
+      allow create: if isAuthenticated();
+      // Update/Delete: Owner or Admin
+      allow update, delete: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
     }
 
-    // Enquiries
+    // 3. LISTINGS
+    match /listings/{listingId} {
+      allow read: if true;
+      
+      // Create: Dealers can create (validating dealerId matches their Auth UID) OR Admin
+      allow create: if (isAuthenticated() && request.resource.data.dealerId == request.auth.uid) || isAdmin();
+      
+      // Update/Delete: Owner (dealer) OR Admin (for approval/moderation)
+      allow update, delete: if (isAuthenticated() && resource.data.dealerId == request.auth.uid) || isAdmin();
+    }
+    
+    // 4. ENQUIRIES
     match /enquiries/{enquiryId} {
-      allow create: if true; // Public can create enquiries
+      allow create: if true; // Public submission
+      // Read: Only the targeted Dealer OR Admin
       allow read: if isAuthenticated() && (
         resource.data.dealerId == request.auth.uid || isAdmin()
-      ); // Dealers see their own enquiries, admins see all
+      );
+    }
+    
+    // 5. SUPPORTING COLLECTIONS
+    match /models/{modelId} {
+      allow read: if true;
+      allow write: if isAuthenticated(); // Open contribution for now, or restrict to Admin/Dealer
+    }
+    
+    match /dealer_models/{modelId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    
+    match /blog_posts/{postId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }
