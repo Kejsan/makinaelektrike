@@ -154,14 +154,6 @@ const App: React.FC = () => {
                       </AdminRoute>
                     )}
                   />
-                  <Route
-                    path="/admin/migration"
-                    element={(
-                      <AdminRoute>
-                        <MigrationTool />
-                      </AdminRoute>
-                    )}
-                  />
                 </Routes>
               </main>
               <Footer />

@@ -173,15 +173,58 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
-      const userRef = doc(firestore, 'users', credential.user.uid);
-      await setDoc(userRef, {
-        uid: credential.user.uid,
+      const userUid = credential.user.uid;
+      
+      // 1. Create User Document
+      const userRef = doc(firestore, 'users', userUid);
+      const userData = {
+        uid: userUid,
         email: credential.user.email,
         role: 'pending',
         status: 'pending',
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
         ...profileData,
-      });
+      };
+      await setDoc(userRef, userData);
+
+      // 2. Create Dealer Document (Linked to the user)
+      // Check if profileData contains dealer specific fields
+      const { 
+        companyName, 
+        contactName, 
+        phone, 
+        city, 
+        website, 
+        notes 
+      } = profileData as any;
+
+      const dealerRef = doc(firestore, 'dealers', userUid);
+      const dealerData = {
+        uid: userUid,
+        ownerUid: userUid,
+        createdBy: userUid,
+        updatedBy: userUid,
+        name: companyName || '',
+        companyName: companyName || '',
+        contactName: contactName || '',
+        phone: phone || '',
+        city: city || '',
+        website: website || '',
+        notes: notes || '',
+        contact_email: email,
+        contact_phone: phone || '',
+        location: city || null,
+        description: notes || null,
+        approved: false,
+        status: 'pending',
+        isActive: false,
+        isDeleted: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+      await setDoc(dealerRef, dealerData);
+
       await loadProfile(credential.user);
     } catch (registerError) {
       const message = mapErrorToMessage(registerError);

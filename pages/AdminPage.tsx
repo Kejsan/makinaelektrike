@@ -25,6 +25,7 @@ import BlogPostForm, { BlogPostFormValues } from '../components/admin/BlogPostFo
 import ChargingStationForm from '../components/admin/ChargingStationForm';
 import BulkImportModal, { BulkImportEntity } from '../components/admin/BulkImportModal';
 import OfflineQueuePanel from '../components/admin/OfflineQueuePanel';
+import { MigrationTool } from '../components/admin/MigrationTool';
 import {
   fetchChargingStations,
   createChargingStation,
@@ -164,6 +165,7 @@ const AdminPage: React.FC = () => {
       { id: 'models' as TabKey, label: t('admin.manageModels') },
       { id: 'blog' as TabKey, label: t('admin.manageBlog') },
       { id: 'stations' as TabKey, label: 'Charging Stations' },
+      { id: 'migration' as TabKey, label: 'Data Migration' },
     ],
     [t]
   );
@@ -1268,6 +1270,7 @@ const AdminPage: React.FC = () => {
               {activeTab === 'models' && renderModelsPanel()}
               {activeTab === 'blog' && renderBlogPanel()}
               {activeTab === 'stations' && renderStationsPanel()}
+              {activeTab === 'migration' && <div className="mt-6"><MigrationTool /></div>}
             </div>
           </div>
         </div>
