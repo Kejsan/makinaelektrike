@@ -21,51 +21,42 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && 
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             getUserData().role == 'admin';
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     // --- COLLECTION RULES ---
 
     // 1. USERS: The Foundation of Security
     match /users/{userId} {
-      // Users can read their own profile. Admins can read all.
       allow read: if isAuthenticated() && (isUser(userId) || isAdmin());
-      
-      // Creation: Users can create their own profile.
       allow create: if isAuthenticated() && isUser(userId);
-      
-      // Update: Users can update their own profile EXCEPT 'role' and 'status' (tamper-proofing).
       allow update: if isAuthenticated() && isUser(userId) && 
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status']));
-      
-      // Admins have full write access (to promote users/manage roles).
       allow write: if isAdmin();
+
+      // Favourites sub-collection
+      match /favourites/{favId} {
+        allow read, write: if isAuthenticated() && isUser(userId);
+      }
     }
 
     // 2. DEALERS
     match /dealers/{dealerId} {
       allow read: if true;
-      // Creation: Allow if authenticated (ownership verification happens in app logic or trigger)
       allow create: if isAuthenticated();
-      // Update/Delete: Owner or Admin
       allow update, delete: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
     }
 
     // 3. LISTINGS
     match /listings/{listingId} {
       allow read: if true;
-      
-      // Create: Dealers can create (validating dealerId matches their Auth UID) OR Admin
       allow create: if (isAuthenticated() && request.resource.data.dealerId == request.auth.uid) || isAdmin();
-      
-      // Update/Delete: Owner (dealer) OR Admin (for approval/moderation)
       allow update, delete: if (isAuthenticated() && resource.data.dealerId == request.auth.uid) || isAdmin();
     }
     
     // 4. ENQUIRIES
     match /enquiries/{enquiryId} {
-      allow create: if true; // Public submission
-      // Read: Only the targeted Dealer OR Admin
+      allow create: if true;
       allow read: if isAuthenticated() && (
         resource.data.dealerId == request.auth.uid || isAdmin()
       );
@@ -74,15 +65,20 @@ service cloud.firestore {
     // 5. SUPPORTING COLLECTIONS
     match /models/{modelId} {
       allow read: if true;
-      allow write: if isAuthenticated(); // Open contribution for now, or restrict to Admin/Dealer
+      allow write: if isAdmin(); // Restrict models to admin for stability
     }
     
-    match /dealer_models/{modelId} {
+    match /dealerModels/{modelId} {
       allow read: if true;
       allow write: if isAuthenticated();
     }
     
-    match /blog_posts/{postId} {
+    match /blogPosts/{postId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /charging_stations/{stationId} {
       allow read: if true;
       allow write: if isAdmin();
     }

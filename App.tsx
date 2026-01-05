@@ -28,6 +28,7 @@ import SitemapPage from './pages/SitemapPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import CookiesPolicyPage from './pages/CookiesPolicyPage';
+import { MigrationTool } from './components/admin/MigrationTool';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataContext, DataProvider } from './contexts/DataContext';
 import { ToastProvider, ToastContainer } from './contexts/ToastContext';
@@ -150,6 +151,14 @@ const App: React.FC = () => {
                     element={(
                       <AdminRoute>
                         <AdminPage />
+                      </AdminRoute>
+                    )}
+                  />
+                  <Route
+                    path="/admin/migration"
+                    element={(
+                      <AdminRoute>
+                        <MigrationTool />
                       </AdminRoute>
                     )}
                   />

@@ -129,8 +129,7 @@ export const subscribeToApprovedListings = (
     options: SubscriptionOptions<Listing>,
 ): Unsubscribe => {
     // Only show active and approved listings
-    const q = query(listingsCollection, where('status', '==', 'approved')); // simplified, might want compound query later
-    // Client side filtering for extra safety if needed or compound index
+    const q = query(listingsCollection, where('status', 'in', ['approved', 'active']), orderBy('createdAt', 'desc'));
     return subscribeToCollection(q, mapListings, options);
 };
 
