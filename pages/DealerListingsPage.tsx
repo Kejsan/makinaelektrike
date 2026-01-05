@@ -12,18 +12,26 @@ import { uploadListingImage, uploadListingGalleryImage } from '../services/listi
 const DealerListingsPage: React.FC = () => {
     const { t } = useTranslation();
     const { user } = useContext(AuthContext);
-    const { listings, addListing, updateListing, deleteListing } = useContext(DataContext);
+    const { listings, dealers, addListing, updateListing, deleteListing } = useContext(DataContext);
     const { addToast } = useContext(ToastContext);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingListing, setEditingListing] = useState<Listing | undefined>(undefined);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const dealer = useMemo(() => {
+        if (!user) return undefined;
+        return (
+            dealers.find(entry => entry.ownerUid === user.uid) ||
+            dealers.find(entry => entry.id === user.uid)
+        );
+    }, [dealers, user]);
+
     // Filter listings for the current dealer
     const dealerListings = useMemo(() => {
-        if (!user) return [];
-        return listings.filter(l => l.dealerId === user.uid && !l.isDeleted);
-    }, [listings, user]);
+        if (!dealer) return [];
+        return listings.filter(l => l.dealerId === dealer.id && !l.isDeleted);
+    }, [dealer, listings]);
 
     const handleEdit = (listing: Listing) => {
         setEditingListing(listing);
@@ -48,7 +56,10 @@ const DealerListingsPage: React.FC = () => {
     };
 
     const handleFormSubmit = async (values: ListingFormValues) => {
-        if (!user) return;
+        if (!user || !dealer) {
+            addToast(t('dealer.notFound', { defaultValue: 'Dealer profile not found.' }), 'error');
+            return;
+        }
         setIsSubmitting(true);
         try {
             let mainImageUrl = values.images?.[0];
@@ -57,7 +68,7 @@ const DealerListingsPage: React.FC = () => {
             if (values.imageFile) {
                 // We need an ID for storage path, use temp or existing
                 const storageId = values.id || `temp_${Date.now()}`;
-                mainImageUrl = await uploadListingImage(user.uid, storageId, values.imageFile);
+                mainImageUrl = await uploadListingImage(dealer.id, storageId, values.imageFile);
             }
 
             // Upload gallery images
@@ -65,7 +76,7 @@ const DealerListingsPage: React.FC = () => {
             if (values.galleryFiles && values.galleryFiles.length > 0) {
                 const storageId = values.id || `temp_${Date.now()} `;
                 const newUrls = await Promise.all(
-                    values.galleryFiles.map(file => uploadListingGalleryImage(user.uid, storageId, file))
+                    values.galleryFiles.map(file => uploadListingGalleryImage(dealer.id, storageId, file))
                 );
                 galleryUrls.push(...newUrls);
             }
@@ -74,7 +85,7 @@ const DealerListingsPage: React.FC = () => {
                 ...values,
                 images: mainImageUrl ? [mainImageUrl] : values.images,
                 imageGallery: galleryUrls,
-                dealerId: user.uid,
+                dealerId: dealer.id,
             };
 
             // Ensure we don't pass File objects to Firestore

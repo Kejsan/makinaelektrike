@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "seed:stations": "tsx scripts/seedChargingStations.ts"
+    "seed:stations": "tsx scripts/seedChargingStations.ts",
+    "backfill:dealer-ids": "tsx scripts/backfillDealerListingIds.ts"
   },
   "dependencies": {
     "@google/genai": "^1.21.0",

@@ -3,11 +3,14 @@
 @tailwind utilities;
 
 :root {
+<<<<<<< HEAD
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light dark;
+=======
+>>>>>>> 306bdfb11938d70f09b65646613172dc6de34737
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -16,6 +19,12 @@
 
 body {
   margin: 0;
+<<<<<<< HEAD
   min-width: 320px;
   min-height: 100vh;
 }
+=======
+  min-height: 100vh;
+  background: transparent;
+}
+>>>>>>> 306bdfb11938d70f09b65646613172dc6de34737

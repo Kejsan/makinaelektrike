@@ -18,7 +18,7 @@ const ListingDetailPage: React.FC = () => {
     // Find dealer
     const dealer = useMemo(() => {
         if (!listing) return undefined;
-        return dealers.find(d => d.id === listing.dealerId);
+        return dealers.find(d => d.id === listing.dealerId || d.ownerUid === listing.dealerId);
     }, [listing, dealers]);
 
     // Image gallery state
