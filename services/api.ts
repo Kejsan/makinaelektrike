@@ -221,6 +221,9 @@ export const deleteDealer = async (id: string): Promise<void> => {
 
 export const approveDealerStatus = async (id: string): Promise<Dealer> => {
   const dealerRef = doc(dealersCollection, id);
+  const userRef = doc(firestore, 'users', id);
+
+  // 1. Update Dealer Document
   await updateDoc(dealerRef, {
     approved: true,
     status: 'approved',
@@ -232,12 +235,25 @@ export const approveDealerStatus = async (id: string): Promise<Dealer> => {
     updatedAt: serverTimestamp(),
   });
 
+  // 2. Update User Document to grant dealer access
+  const userSnapshot = await getDoc(userRef);
+  if (userSnapshot.exists()) {
+    await updateDoc(userRef, {
+      role: 'dealer',
+      status: 'approved',
+      updatedAt: serverTimestamp(),
+    });
+  }
+
   const snapshot = await getDoc(dealerRef);
   return { id: snapshot.id, ...(snapshot.data() as DealerDocument) };
 };
 
 export const rejectDealerStatus = async (id: string): Promise<Dealer> => {
   const dealerRef = doc(dealersCollection, id);
+  const userRef = doc(firestore, 'users', id);
+
+  // 1. Update Dealer Document
   await updateDoc(dealerRef, {
     approved: false,
     status: 'rejected',
@@ -246,6 +262,15 @@ export const rejectDealerStatus = async (id: string): Promise<Dealer> => {
     approvedAt: null,
     updatedAt: serverTimestamp(),
   });
+
+  // 2. Update User Document
+  const userSnapshot = await getDoc(userRef);
+  if (userSnapshot.exists()) {
+    await updateDoc(userRef, {
+      status: 'rejected',
+      updatedAt: serverTimestamp(),
+    });
+  }
 
   const snapshot = await getDoc(dealerRef);
   return { id: snapshot.id, ...(snapshot.data() as DealerDocument) };

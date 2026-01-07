@@ -45,7 +45,6 @@ interface AuthContextType {
   ) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  approveDealer: (uid: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -266,44 +265,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const approveDealer = useCallback(async (uid: string) => {
-    if (role !== 'admin') {
-      const message = 'Only administrators can approve dealers.';
-      setError(message);
-      addToast(message, 'error');
-      throw new Error(message);
-    }
-
-    try {
-      const userRef = doc(firestore, 'users', uid);
-      await updateDoc(userRef, {
-        role: 'dealer',
-        status: 'approved',
-        approvedAt: serverTimestamp(),
-      });
-
-      addToast('Dealer approved successfully.', 'success');
-
-      if (user?.uid === uid) {
-        setRole('dealer');
-        setProfile(current =>
-          current
-            ? {
-              ...current,
-              role: 'dealer',
-              status: 'approved',
-            }
-            : null
-        );
-      }
-    } catch (approveError) {
-      console.error('Failed to approve dealer', approveError);
-      const message = 'Failed to approve dealer. Please try again.';
-      setError(message);
-      addToast(message, 'error');
-      throw approveError;
-    }
-  }, [addToast, role, user]);
 
   const refreshProfile = useCallback(async () => {
     await loadProfile(auth.currentUser);
@@ -321,10 +282,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       registerDealer,
       login,
       logout,
-      approveDealer,
       refreshProfile,
     }),
-    [approveDealer, error, initializing, loading, login, logout, profile, registerDealer, registerUser, refreshProfile, role, user]
+    [error, initializing, loading, login, logout, profile, registerDealer, registerUser, refreshProfile, role, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
