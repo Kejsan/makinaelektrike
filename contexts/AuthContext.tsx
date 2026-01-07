@@ -62,14 +62,29 @@ const deriveRole = (role?: UserRole | string | null): UserRole | null => {
   return null;
 };
 
-const mapErrorToMessage = (error: unknown): string => {
+export const mapErrorToMessage = (error: any): string => {
   if (typeof error === 'string') {
     return error;
   }
-  if (error instanceof Error) {
-    return error.message;
+  
+  const code = error?.code;
+  switch (code) {
+    case 'auth/email-already-in-use':
+      return 'Ky email është tashmë i regjistruar. Ju lutem përdorni një email tjetër ose hyni në llogarinë tuaj.';
+    case 'auth/weak-password':
+      return 'Fjalëkalimi është shumë i dobët. Ju lutem përdorni të paktën 6 karaktere.';
+    case 'auth/invalid-email':
+      return 'Emaili nuk është i vlefshëm.';
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+      return 'Emaili ose fjalëkalimi është i pasaktë.';
+    case 'auth/too-many-requests':
+      return 'Shumë kërkesa të dështuara. Ju lutem provoni përsëri më vonë.';
+    case 'auth/network-request-failed':
+      return 'Gabim në rrjet. Ju lutem kontrolloni lidhjen tuaj.';
+    default:
+      return error?.message || 'Ndodhi një gabim gjatë procesimit. Ju lutem provoni përsëri.';
   }
-  return 'An unexpected authentication error occurred.';
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {

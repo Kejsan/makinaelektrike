@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Building2 } from 'lucide-react';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, mapErrorToMessage } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { auth, firestore } from '../services/firebase';
 import SEO from '../components/SEO';
@@ -89,9 +89,11 @@ const RegisterDealerPage: React.FC = () => {
         'success'
       );
       navigate('/awaiting-approval');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to register dealer', error);
-      addToast('Dealer registration failed. Please try again.', 'error');
+      const errorMsg = mapErrorToMessage(error);
+      setFormError(errorMsg);
+      addToast(errorMsg, 'error');
     }
   };
 

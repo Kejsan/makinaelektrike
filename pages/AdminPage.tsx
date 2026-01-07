@@ -213,6 +213,9 @@ const AdminPage: React.FC = () => {
 
   const deriveStatus = useCallback(
     (dealer: Dealer): DealerStatus => {
+      if (dealer.status === 'approved' || (dealer.status as string) === 'active') {
+        return 'approved';
+      }
       if (dealer.status) {
         return dealer.status;
       }
@@ -890,7 +893,10 @@ const AdminPage: React.FC = () => {
                     }
 
                     // Add Account Activation button ONLY if no dashboard link exists
-                    if (!hasDashboard && status === 'approved') {
+                    // Show for approved dealers or any dealer in active/inactive tabs that doesn't have a UID
+                    const isActivatable = !hasDashboard && (status === 'approved' || dealerFilter === 'active' || dealerFilter === 'inactive');
+                    
+                    if (isActivatable && status !== 'rejected' && status !== 'deleted') {
                       actionButtons.push(
                         <button
                           key="activate"
