@@ -143,6 +143,42 @@ export const getDealerById = async (id: string): Promise<Dealer | null> => {
   return { id: snapshot.id, ...(snapshot.data() as Omit<Dealer, 'id'>) };
 };
 
+export const associateDealerWithAccount = async (
+  dealerId: string,
+  userUid: string,
+  email: string
+): Promise<void> => {
+  const dealerRef = doc(dealersCollection, dealerId);
+  const userRef = doc(firestore, 'users', userUid);
+
+  // 1. Update Dealer Document
+  await updateDoc(dealerRef, {
+    ownerUid: userUid,
+    uid: userUid,
+    contact_email: email,
+    updatedAt: serverTimestamp(),
+  });
+
+  // 2. Create/Update User Document
+  const userSnapshot = await getDoc(userRef);
+  if (!userSnapshot.exists()) {
+    await setDoc(userRef, {
+      uid: userUid,
+      email: email,
+      role: 'dealer',
+      status: 'active',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } else {
+    await updateDoc(userRef, {
+      role: 'dealer',
+      status: 'active',
+      updatedAt: serverTimestamp(),
+    });
+  }
+};
+
 export const createDealer = async (payload: DealerDocument): Promise<Dealer> => {
   const sanitizedPayload = omitUndefined(payload as unknown as Record<string, unknown>);
   const derivedStatus = (payload.status ?? 'pending') as DealerDocument['status'];

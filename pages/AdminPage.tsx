@@ -13,10 +13,13 @@ import {
   ClipboardList,
   Power,
   RefreshCcw,
+  UserPlus,
+  Key,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { DataContext } from '../contexts/DataContext';
 import { Dealer, DealerStatus, Model, BlogPost, ChargingStation } from '../types';
 import DealerForm, { DealerFormValues } from '../components/admin/DealerForm';
@@ -32,6 +35,9 @@ import {
   updateChargingStation,
   deleteChargingStation,
 } from '../services/chargingStations';
+import { associateDealerWithAccount } from '../services/api';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import type { ChargingStationFormValues } from '../types';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
@@ -96,8 +102,15 @@ const formatDate = (value: Dealer['createdAt']) => {
 
 const AdminPage: React.FC = () => {
   const { logout, user, role } = useAuth();
+  const { addToast } = useToast();
   const navigate = useNavigate();
   const { t } = useTranslation();
+
+  const [activationModalDealer, setActivationModalDealer] = useState<Dealer | null>(null);
+  const [activationPassword, setActivationPassword] = useState('');
+  const [activationEmail, setActivationEmail] = useState('');
+  const [isActivating, setIsActivating] = useState(false);
+  const [activationError, setActivationError] = useState<string | null>(null);
   const {
     dealers,
     models,
@@ -285,6 +298,69 @@ const AdminPage: React.FC = () => {
       console.error('Failed to approve dealer', error);
     } finally {
       setDealerAction(null);
+    }
+  };
+
+  const handleActivateAccount = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!activationModalDealer) return;
+
+    if (activationPassword.length < 6) {
+      setActivationError(t('admin.passwordTooShort', { defaultValue: 'Password must be at least 6 characters' }));
+      return;
+    }
+
+    setIsActivating(true);
+    setActivationError(null);
+
+    let secondaryApp;
+    try {
+      const secondaryConfig = {
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        appId: import.meta.env.VITE_FIREBASE_APP_ID,
+      };
+      
+      const appName = `Activation-${activationModalDealer.id}-${Date.now()}`;
+      secondaryApp = initializeApp(secondaryConfig, appName);
+      const secondaryAuth = getAuth(secondaryApp);
+      
+      const userCredential = await createUserWithEmailAndPassword(
+        secondaryAuth,
+        activationEmail,
+        activationPassword
+      );
+      
+      const newUser = userCredential.user;
+      
+      await associateDealerWithAccount(
+        activationModalDealer.id,
+        newUser.uid,
+        activationEmail
+      );
+      
+      await signOut(secondaryAuth);
+      await deleteApp(secondaryApp);
+      
+      addToast(t('admin.activationSuccess', { defaultValue: 'Account activated successfully!' }), 'success');
+      setActivationModalDealer(null);
+      setActivationPassword('');
+      setActivationEmail('');
+    } catch (error: any) {
+      console.error('Failed to activate dealer account:', error);
+      let errorMsg = error.message || 'Failed to create account. Please try again.';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMsg = t('admin.emailAlreadyInUse', { defaultValue: 'This email is already registered.' });
+      }
+      setActivationError(errorMsg);
+      if (secondaryApp) {
+        try { await deleteApp(secondaryApp); } catch(e) {}
+      }
+    } finally {
+      setIsActivating(false);
     }
   };
 
@@ -705,42 +781,46 @@ const AdminPage: React.FC = () => {
                   const showDeleteButton = dealerFilter !== 'deleted';
 
                   const renderPrimaryAction = () => {
-                    if (dealerFilter === 'pending') {
-                      return (
-                        <>
-                          <button
-                            onClick={() => handleApproveDealer(dealer.id)}
-                            disabled={!isAdmin || dealerUpdateLoading}
-                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/30 hover:text-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
-                            aria-label={t('admin.approve')}
-                          >
-                            {isProcessing && dealerAction?.type === 'approve' ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Check size={14} />
-                            )}
-                            <span>{t('admin.approve')}</span>
-                          </button>
-                          <button
-                            onClick={() => handleRejectDealer(dealer.id)}
-                            disabled={!isAdmin || dealerUpdateLoading}
-                            className="inline-flex items-center gap-1 rounded-lg bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/30 hover:text-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                            aria-label={t('admin.reject')}
-                          >
-                            {isProcessing && dealerAction?.type === 'reject' ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <XCircle size={14} />
-                            )}
-                            <span>{t('admin.reject')}</span>
-                          </button>
-                        </>
-                      );
-                    }
+                    const isProcessing = dealerUpdateLoading && dealerAction?.id === dealer.id;
+                    const hasDashboard = !!dealer.ownerUid;
 
-                    if (dealerFilter === 'active') {
-                      return (
+                    const actionButtons = [];
+
+                    if (dealerFilter === 'pending') {
+                      actionButtons.push(
                         <button
+                          key="approve"
+                          onClick={() => handleApproveDealer(dealer.id)}
+                          disabled={!isAdmin || dealerUpdateLoading}
+                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/30 hover:text-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          aria-label={t('admin.approve')}
+                        >
+                          {isProcessing && dealerAction?.type === 'approve' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check size={14} />
+                          )}
+                          <span>{t('admin.approve')}</span>
+                        </button>,
+                        <button
+                          key="reject"
+                          onClick={() => handleRejectDealer(dealer.id)}
+                          disabled={!isAdmin || dealerUpdateLoading}
+                          className="inline-flex items-center gap-1 rounded-lg bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/30 hover:text-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          aria-label={t('admin.reject')}
+                        >
+                          {isProcessing && dealerAction?.type === 'reject' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <XCircle size={14} />
+                          )}
+                          <span>{t('admin.reject')}</span>
+                        </button>
+                      );
+                    } else if (dealerFilter === 'active') {
+                      actionButtons.push(
+                        <button
+                          key="deactivate"
                           onClick={() => handleDeactivateDealer(dealer.id)}
                           disabled={!isAdmin || dealerUpdateLoading}
                           className="inline-flex items-center gap-1 rounded-lg bg-amber-500/20 px-3 py-2 text-xs font-semibold text-amber-200 transition hover:bg-amber-500/30 hover:text-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
@@ -754,12 +834,11 @@ const AdminPage: React.FC = () => {
                           <span>{t('admin.deactivate')}</span>
                         </button>
                       );
-                    }
-
-                    if (dealerFilter === 'inactive') {
+                    } else if (dealerFilter === 'inactive') {
                       if (status === 'rejected') {
-                        return (
+                        actionButtons.push(
                           <button
+                            key="approve"
                             onClick={() => handleApproveDealer(dealer.id)}
                             disabled={!isAdmin || dealerUpdateLoading}
                             className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/30 hover:text-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
@@ -773,28 +852,28 @@ const AdminPage: React.FC = () => {
                             <span>{t('admin.approve')}</span>
                           </button>
                         );
+                      } else {
+                        actionButtons.push(
+                          <button
+                            key="reactivate"
+                            onClick={() => handleReactivateDealer(dealer.id)}
+                            disabled={!isAdmin || dealerUpdateLoading}
+                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/30 hover:text-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            aria-label={t('admin.reactivate')}
+                          >
+                            {isProcessing && dealerAction?.type === 'reactivate' ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <RefreshCcw size={14} />
+                            )}
+                            <span>{t('admin.reactivate')}</span>
+                          </button>
+                        );
                       }
-
-                      return (
+                    } else if (dealerFilter === 'deleted') {
+                      actionButtons.push(
                         <button
-                          onClick={() => handleReactivateDealer(dealer.id)}
-                          disabled={!isAdmin || dealerUpdateLoading}
-                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/30 hover:text-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
-                          aria-label={t('admin.reactivate')}
-                        >
-                          {isProcessing && dealerAction?.type === 'reactivate' ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <RefreshCcw size={14} />
-                          )}
-                          <span>{t('admin.reactivate')}</span>
-                        </button>
-                      );
-                    }
-
-                    if (dealerFilter === 'deleted') {
-                      return (
-                        <button
+                          key="restore"
                           onClick={() => handleReactivateDealer(dealer.id)}
                           disabled={!isAdmin || dealerUpdateLoading}
                           className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/30 hover:text-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
@@ -810,7 +889,29 @@ const AdminPage: React.FC = () => {
                       );
                     }
 
-                    return null;
+                    // Add Account Activation button ONLY if no dashboard link exists
+                    if (!hasDashboard && status === 'approved') {
+                      actionButtons.push(
+                        <button
+                          key="activate"
+                          onClick={() => {
+                            setActivationModalDealer(dealer);
+                            setActivationEmail(dealer.contact_email || dealer.email || '');
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg bg-gray-cyan/20 px-3 py-2 text-xs font-semibold text-gray-cyan transition hover:bg-gray-cyan/30"
+                          title={t('admin.activateAccountHint', { defaultValue: 'Create a login for this dealer' })}
+                        >
+                          <UserPlus size={14} />
+                          <span>{t('admin.activate', { defaultValue: 'Aktivizo' })}</span>
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <div className="flex flex-wrap gap-2">
+                        {actionButtons}
+                      </div>
+                    );
                   };
 
                   return (
@@ -1348,6 +1449,83 @@ const AdminPage: React.FC = () => {
       {bulkEntity && (
         <AdminModal title={getBulkModalTitle(bulkEntity)} onClose={() => setBulkEntity(null)}>
           <BulkImportModal entity={bulkEntity} onClose={() => setBulkEntity(null)} />
+        </AdminModal>
+      )}
+      {activationModalDealer && (
+        <AdminModal
+          title={t('admin.activateAccountTitle', { defaultValue: 'Aktivizo Llogarinë: {{name}}', name: activationModalDealer.name })}
+          onClose={() => setActivationModalDealer(null)}
+        >
+          <form onSubmit={handleActivateAccount} className="space-y-6">
+            <p className="text-sm text-gray-300">
+              {t('admin.activationModalHint', { 
+                defaultValue: 'Vendos email-in dhe një fjalëkalim për të krijuar llogarinë e dilerit. Dileri do të mund të kyçet me këto kredenciale.' 
+              })}
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-200">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={activationEmail}
+                  onChange={(e) => setActivationEmail(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-gray-cyan"
+                  placeholder="email@example.com"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-200">
+                  {t('admin.password', { defaultValue: 'Fjalëkalimi' })}
+                </label>
+                <div className="relative mt-1">
+                  <input
+                    type="text"
+                    value={activationPassword}
+                    onChange={(e) => setActivationPassword(e.target.value)}
+                    className="block w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 pl-10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-gray-cyan"
+                    placeholder="Min. 6 karaktere"
+                    required
+                  />
+                  <Key className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                </div>
+              </div>
+            </div>
+
+            {activationError && (
+              <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200">
+                {activationError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => setActivationModalDealer(null)}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-300 hover:bg-white/5 transition"
+              >
+                {t('admin.cancel', { defaultValue: 'Anulo' })}
+              </button>
+              <button
+                type="submit"
+                disabled={isActivating}
+                className="flex items-center gap-2 rounded-lg bg-gray-cyan px-6 py-2 text-sm font-bold text-white transition hover:bg-gray-cyan/90 disabled:opacity-50"
+              >
+                {isActivating ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Duke u procesuar...</span>
+                  </>
+                ) : (
+                  <span>{t('admin.confirmActivation', { defaultValue: 'Krijo Llogarinë' })}</span>
+                )}
+              </button>
+            </div>
+          </form>
         </AdminModal>
       )}
     </div>
