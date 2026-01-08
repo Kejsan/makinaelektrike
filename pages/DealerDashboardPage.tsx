@@ -673,7 +673,10 @@ const DealerDashboardPage: React.FC = () => {
             </div>
             {enquiries.length > 0 ? (
               <div className="space-y-3">
-                {enquiries.slice(0, 3).map((enquiry) => (
+                {[...enquiries]
+                  .sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+                  .slice(0, 3)
+                  .map((enquiry) => (
                   <div key={enquiry.id} className="flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-white/5">
                     <div className="p-2 rounded-full bg-cyan-500/10 text-gray-cyan shrink-0">
                       <User className="h-4 w-4" />

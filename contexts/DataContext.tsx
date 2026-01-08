@@ -1135,7 +1135,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     [runMutation],
   );
 
-  const { dealers, models, blogPosts, dealerModels, listings, loading, loadError } = dataState;
+  const { dealers, models, blogPosts, dealerModels, listings, enquiries, loading, loadError } = dataState;
 
   const dealerToModelMap = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -1187,6 +1187,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       models,
       blogPosts,
       dealerModels,
+      listings,
+      enquiries,
       loading,
       loadError,
       dealerMutations: mutationState.dealers,
@@ -1220,6 +1222,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       models,
       blogPosts,
       dealerModels,
+      listings,
+      enquiries,
       loading,
       loadError,
       mutationState.dealers,

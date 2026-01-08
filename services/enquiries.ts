@@ -29,8 +29,7 @@ export const subscribeToDealerEnquiries = (
 ): Unsubscribe => {
     const q = query(
         enquiriesCollection,
-        where('dealerId', '==', dealerId),
-        orderBy('createdAt', 'desc')
+        where('dealerId', '==', dealerId)
     );
     return subscribeToCollection(q, mapEnquiries, options);
 };
