@@ -36,15 +36,15 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, allM
     const clearSelection = () => setSelectedIds([]);
 
     const selectedModels = useMemo(() => 
-        allModels.filter(m => selectedIds.includes(m.id)), 
+        (allModels || []).filter(m => selectedIds.includes(m.id)), 
         [allModels, selectedIds]
     );
 
     const filteredListModels = useMemo(() => 
-        allModels.filter(m => 
-            m.brand.toLowerCase().includes(searchTerm.toLowerCase()) || 
-            m.model_name.toLowerCase().includes(searchTerm.toLowerCase())
-        ).sort((a, b) => a.brand.localeCompare(b.brand) || a.model_name.localeCompare(b.model_name)),
+        (allModels || []).filter(m => 
+            (m.brand || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+            (m.model_name || '').toLowerCase().includes(searchTerm.toLowerCase())
+        ).sort((a, b) => (a.brand || '').localeCompare(b.brand || '') || (a.model_name || '').localeCompare(b.model_name || '')),
         [allModels, searchTerm]
     );
     

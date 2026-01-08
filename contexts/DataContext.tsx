@@ -111,6 +111,7 @@ interface DataContextType {
   dealers: Dealer[];
   models: Model[];
   blogPosts: BlogPost[];
+  listings: Listing[];
   enquiries: Enquiry[];
   dealerModels: DealerModel[];
   loading: boolean;
@@ -220,7 +221,7 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
       const loaded = { ...state.loaded, dealers: true };
       return {
         ...state,
-        dealers: action.payload,
+        dealers: action.payload || [],
         loaded,
         loading: !areCollectionsLoaded(loaded),
       };
@@ -229,7 +230,7 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
       const loaded = { ...state.loaded, models: true };
       return {
         ...state,
-        models: action.payload,
+        models: action.payload || [],
         loaded,
         loading: !areCollectionsLoaded(loaded),
       };
@@ -238,7 +239,7 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
       const loaded = { ...state.loaded, blogPosts: true };
       return {
         ...state,
-        blogPosts: action.payload,
+        blogPosts: action.payload || [],
         loaded,
         loading: !areCollectionsLoaded(loaded),
       };
@@ -247,7 +248,7 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
       const loaded = { ...state.loaded, dealerModels: true };
       return {
         ...state,
-        dealerModels: action.payload,
+        dealerModels: action.payload || [],
         loaded,
         loading: !areCollectionsLoaded(loaded),
       };
@@ -256,7 +257,7 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
       const loaded = { ...state.loaded, listings: true };
       return {
         ...state,
-        listings: action.payload,
+        listings: action.payload || [],
         loaded,
         loading: !areCollectionsLoaded(loaded),
       };
@@ -265,7 +266,7 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
       const loaded = { ...state.loaded, enquiries: true };
       return {
         ...state,
-        enquiries: action.payload,
+        enquiries: action.payload || [],
         loaded,
         loading: !areCollectionsLoaded(loaded),
       };
@@ -330,6 +331,8 @@ export const DataContext = createContext<DataContextType>({
   models: [],
   blogPosts: [],
   dealerModels: [],
+  listings: [],
+  enquiries: [],
   loading: true,
   loadError: null,
   dealerMutations: defaultMutationState.dealers,
@@ -1139,7 +1142,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const dealerToModelMap = useMemo(() => {
     const map = new Map<string, Set<string>>();
-    dealerModels.forEach(({ dealer_id, model_id }) => {
+    (dealerModels || []).forEach(({ dealer_id, model_id }) => {
       if (!map.has(dealer_id)) {
         map.set(dealer_id, new Set());
       }
@@ -1150,7 +1153,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const modelToDealerMap = useMemo(() => {
     const map = new Map<string, Set<string>>();
-    dealerModels.forEach(({ dealer_id, model_id }) => {
+    (dealerModels || []).forEach(({ dealer_id, model_id }) => {
       if (!map.has(model_id)) {
         map.set(model_id, new Set());
       }

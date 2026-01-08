@@ -131,12 +131,12 @@ const HomePage: React.FC = () => {
     setFilteredDealersForSearch(results.slice(0, 4));
   }, [searchCity, searchBrand, dealers, featuredDealers]);
 
-  const cityOptions = useMemo(() => Array.from(new Set(dealers.map(dealer => dealer.city))).filter(Boolean).sort((a, b) => a.localeCompare(b)), [dealers]);
+  const cityOptions = useMemo(() => Array.from(new Set((dealers || []).map(dealer => dealer.city))).filter((city): city is string => !!city).sort((a, b) => a.localeCompare(b)), [dealers]);
 
   const brandOptions = useMemo(() => {
     const brands = new Set<string>();
-    dealers.forEach(dealer => {
-      dealer.brands.forEach(brand => brands.add(brand));
+    (dealers || []).forEach(dealer => {
+      (dealer.brands || []).forEach(brand => brands.add(brand));
     });
     return Array.from(brands).sort((a, b) => a.localeCompare(b));
   }, [dealers]);

@@ -673,7 +673,7 @@ const DealerDashboardPage: React.FC = () => {
             </div>
             {enquiries.length > 0 ? (
               <div className="space-y-3">
-                {[...enquiries]
+                {[...(enquiries || [])]
                   .sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
                   .slice(0, 3)
                   .map((enquiry) => (

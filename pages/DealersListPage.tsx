@@ -52,9 +52,9 @@ const DealersListPage: React.FC = () => {
     const [sortBy, setSortBy] = useState('name_asc');
 
     const filterOptions = useMemo(() => {
-        const cities = [...new Set(visibleDealers.map(d => d.city))].sort();
-        const brands = [...new Set(visibleDealers.flatMap(d => d.brands))].sort();
-        const languages = [...new Set(visibleDealers.flatMap(d => d.languages))].sort();
+        const cities = [...new Set((visibleDealers || []).map(d => d.city))].sort();
+        const brands = [...new Set((visibleDealers || []).flatMap(d => d.brands || []))].sort();
+        const languages = [...new Set((visibleDealers || []).flatMap(d => d.languages || []))].sort();
         return { cities, brands, languages };
     }, [visibleDealers]);
 
