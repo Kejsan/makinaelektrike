@@ -7,7 +7,20 @@ import ListingForm, { ListingFormValues } from '../components/dashboard/ListingF
 import { Listing } from '../types';
 import ModalLayout from '../components/ModalLayout';
 import SEO from '../components/SEO';
+import { 
+    Plus, 
+    Edit, 
+    Trash2, 
+    Eye, 
+    EyeOff, 
+    ChevronLeft,
+    Clock,
+    CheckCircle,
+    AlertCircle,
+    XCircle
+} from 'lucide-react';
 import { uploadListingImage, uploadListingGalleryImage } from '../services/listings';
+import { Link } from 'react-router-dom';
 
 const DealerListingsPage: React.FC = () => {
     const { t } = useTranslation();
@@ -30,7 +43,7 @@ const DealerListingsPage: React.FC = () => {
     // Filter listings for the current dealer
     const dealerListings = useMemo(() => {
         if (!dealer) return [];
-        return listings.filter(l => l.dealerId === dealer.id && !l.isDeleted);
+        return listings.filter(l => l.dealerId === dealer.id && l.status !== 'deleted');
     }, [dealer, listings]);
 
     const handleEdit = (listing: Listing) => {
@@ -55,6 +68,34 @@ const DealerListingsPage: React.FC = () => {
         }
     };
 
+    const handleToggleStatus = async (listing: Listing) => {
+        const newStatus = listing.status === 'active' ? 'inactive' : 'active';
+        try {
+            await updateListing(listing.id, { status: newStatus as any });
+            addToast(t('common.statusUpdated', { defaultValue: 'Status updated successfully' }), 'success');
+        } catch (error) {
+            console.error("Status update failed", error);
+            addToast(t('common.updateFailed', { defaultValue: 'Update failed' }), 'error');
+        }
+    };
+
+    const getStatusInfo = (status: string) => {
+        switch (status) {
+            case 'approved':
+                return { icon: <CheckCircle className="h-3 w-3" />, className: 'bg-green-500/10 text-green-400', label: 'Approved' };
+            case 'active':
+                return { icon: <Eye className="h-3 w-3" />, className: 'bg-cyan-500/10 text-gray-cyan', label: 'Active' };
+            case 'inactive':
+                return { icon: <EyeOff className="h-3 w-3" />, className: 'bg-yellow-500/10 text-yellow-400', label: 'Inactive' };
+            case 'pending':
+                return { icon: <Clock className="h-3 w-3" />, className: 'bg-blue-500/10 text-blue-400', label: 'Pending' };
+            case 'rejected':
+                return { icon: <XCircle className="h-3 w-3" />, className: 'bg-red-500/10 text-red-400', label: 'Rejected' };
+            default:
+                return { icon: <AlertCircle className="h-3 w-3" />, className: 'bg-gray-500/10 text-gray-400', label: status };
+        }
+    };
+
     const handleFormSubmit = async (values: ListingFormValues) => {
         if (!user || !dealer) {
             addToast(t('dealer.notFound', { defaultValue: 'Dealer profile not found.' }), 'error');
@@ -76,7 +117,7 @@ const DealerListingsPage: React.FC = () => {
             if (values.galleryFiles && values.galleryFiles.length > 0) {
                 const storageId = values.id || `temp_${Date.now()} `;
                 const newUrls = await Promise.all(
-                    values.galleryFiles.map(file => uploadListingGalleryImage(dealer.id, storageId, file))
+                    values.galleryFiles.map((file: File) => uploadListingGalleryImage(dealer.id, storageId, file))
                 );
                 galleryUrls.push(...newUrls);
             }
@@ -110,16 +151,22 @@ const DealerListingsPage: React.FC = () => {
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 text-white">
+            <div className="mb-6">
+                <Link to="/dealer/dashboard" className="text-gray-400 hover:text-gray-cyan flex items-center gap-2 text-sm transition-colors group">
+                    <ChevronLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+                    Back to Dashboard
+                </Link>
+            </div>
             <SEO title="Manage Listings | Dealer Dashboard" description="Manage your car listings" />
 
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">{t('dealer.listings', { defaultValue: 'My Listings' })}</h1>
                 <button
                     onClick={handleCreate}
-                    className="bg-primary text-gray-900 px-4 py-2 rounded-lg font-semibold hover:bg-primary/90 transition"
-                    style={{ backgroundColor: '#4ff8d2' }} // Hardcoded primary color fallback
+                    className="bg-gray-cyan text-gray-900 px-6 py-2.5 rounded-xl font-bold hover:bg-cyan-400 transition-all shadow-[0_0_20px_rgba(79,248,210,0.2)] flex items-center gap-2"
                 >
-                    {t('dealer.addListing', { defaultValue: '+ Add Listing' })}
+                    <Plus className="h-5 w-5" />
+                    {t('dealer.addListing', { defaultValue: 'Add Listing' })}
                 </button>
             </div>
 
@@ -150,32 +197,67 @@ const DealerListingsPage: React.FC = () => {
                                         No Image
                                     </div>
                                 )}
-                                <div className="absolute top-2 right-2 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider bg-black/60 backdrop-blur-sm">
-                                    {listing.status}
-                                </div>
+                                {(() => {
+                                    const info = getStatusInfo(listing.status);
+                                    return (
+                                        <div className={`absolute top-2 right-2 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest backdrop-blur-md border border-white/5 flex items-center gap-1.5 ${info.className}`}>
+                                            {info.icon}
+                                            {info.label}
+                                        </div>
+                                    );
+                                })()}
                             </div>
-                            <div className="p-4 space-y-2">
-                                <h3 className="font-bold text-lg truncate">{listing.make} {listing.model}</h3>
-                                <p className="text-primary font-mono text-xl" style={{ color: '#4ff8d2' }}>
-                                    {listing.price.toLocaleString()} {listing.currency}
-                                </p>
-                                <div className="flex justify-between text-sm text-gray-400">
-                                    <span>{listing.year}</span>
-                                    <span>{listing.mileage.toLocaleString()} km</span>
+                            <div className="p-5 space-y-4">
+                                <div className="space-y-1">
+                                    <h3 className="font-bold text-lg leading-tight group-hover:text-gray-cyan transition-colors truncate">
+                                        {listing.make} {listing.model}
+                                    </h3>
+                                    <div className="flex items-center justify-between text-sm text-gray-400">
+                                        <span>{listing.year}</span>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-white/10"></span>
+                                        <span>{listing.mileage.toLocaleString()} km</span>
+                                    </div>
                                 </div>
 
-                                <div className="flex gap-2 pt-4 mt-2 border-t border-white/10">
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-2xl font-black text-gray-cyan tracking-tight">
+                                        {listing.price.toLocaleString()}
+                                    </span>
+                                    <span className="text-xs font-bold text-gray-500 uppercase">{listing.priceCurrency}</span>
+                                </div>
+
+                                <div className="flex gap-2 pt-4 border-t border-white/5">
                                     <button
                                         onClick={() => handleEdit(listing)}
-                                        className="flex-1 py-2 text-center rounded bg-white/10 hover:bg-white/20 transition text-sm font-medium"
+                                        className="p-2.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all text-gray-400 hover:text-white"
+                                        title="Edit"
                                     >
-                                        {t('common.edit', { defaultValue: 'Edit' })}
+                                        <Edit className="h-4 w-4" />
                                     </button>
+                                    
+                                    {(listing.status === 'active' || listing.status === 'inactive' || listing.status === 'approved') && (
+                                        <button
+                                            onClick={() => handleToggleStatus(listing)}
+                                            className={`p-2.5 rounded-xl border border-white/5 transition-all flex-1 flex items-center justify-center gap-2 text-xs font-bold ${
+                                                listing.status === 'active' 
+                                                    ? 'bg-yellow-500/5 text-yellow-500/80 hover:bg-yellow-500/10' 
+                                                    : 'bg-cyan-500/5 text-gray-cyan hover:bg-cyan-500/10'
+                                            }`}
+                                        >
+                                            {listing.status === 'active' ? (
+                                                <><EyeOff className="h-4 w-4" /> Deactivate</>
+                                            ) : (
+                                                <><Eye className="h-4 w-4" /> Activate</>
+                                            )}
+                                        </button>
+                                    )}
+
                                     <button
                                         onClick={() => handleDelete(listing.id)}
-                                        className="flex-1 py-2 text-center rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition text-sm font-medium"
+                                        className="p-2.5 rounded-xl bg-red-500/5 border border-white/5 text-red-400/80 hover:bg-red-500/10 transition-all"
+                                        title="Delete"
                                     >
-                                        {t('common.delete', { defaultValue: 'Delete' })}
+                                        <Trash2 className="h-4 w-4" />
                                     </button>
                                 </div>
                             </div>

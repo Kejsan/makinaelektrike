@@ -14,6 +14,7 @@ import type {
   DealerModel,
   DealerStatus,
   Listing,
+  Enquiry,
 } from '../types';
 import {
   subscribeToListings,
@@ -24,6 +25,9 @@ import {
   deleteListing as apiDeleteListing,
   approveListing as apiApproveListing,
 } from '../services/listings';
+import {
+  subscribeToDealerEnquiries,
+} from '../services/enquiries';
 import {
   subscribeToDealers,
   subscribeToApprovedDealers,
@@ -72,7 +76,7 @@ type BlogPostUpdate = Partial<BlogPost>;
 type ListingInput = Omit<Listing, 'id'>;
 type ListingUpdate = Partial<Listing>;
 
-export type EntityKey = 'dealers' | 'models' | 'blogPosts' | 'listings';
+export type EntityKey = 'dealers' | 'models' | 'blogPosts' | 'listings' | 'enquiries';
 export type Operation = 'create' | 'update' | 'delete';
 
 type MutationFlag = {
@@ -89,6 +93,7 @@ interface DataState {
   models: Model[];
   blogPosts: BlogPost[];
   listings: Listing[];
+  enquiries: Enquiry[];
   dealerModels: DealerModel[];
   loadError: string | null;
   loading: boolean;
@@ -98,6 +103,7 @@ interface DataState {
     blogPosts: boolean;
     dealerModels: boolean;
     listings: boolean;
+    enquiries: boolean;
   };
 }
 
@@ -105,6 +111,7 @@ interface DataContextType {
   dealers: Dealer[];
   models: Model[];
   blogPosts: BlogPost[];
+  enquiries: Enquiry[];
   dealerModels: DealerModel[];
   loading: boolean;
   loadError: string | null;
@@ -112,6 +119,7 @@ interface DataContextType {
   modelMutations: EntityMutations;
   blogPostMutations: EntityMutations;
   listingMutations: EntityMutations;
+  enquiryMutations: EntityMutations;
   getModelsForDealer: (dealerId: string) => Model[];
   getDealersForModel: (modelId: string) => Dealer[];
   addDealer: (dealer: DealerInput) => Promise<Dealer>;
@@ -148,6 +156,7 @@ const createInitialMutationState = (): MutationState => ({
   models: createEntityMutations(),
   blogPosts: createEntityMutations(),
   listings: createEntityMutations(),
+  enquiries: createEntityMutations(),
 });
 
 type MutationAction =
@@ -162,10 +171,11 @@ type DataAction =
   | { type: 'SET_MODELS'; payload: Model[] }
   | { type: 'SET_BLOG_POSTS'; payload: BlogPost[] }
   | { type: 'SET_DEALER_MODELS'; payload: DealerModel[] }
-  | { type: 'SET_LISTINGS'; payload: Listing[] };
+  | { type: 'SET_LISTINGS'; payload: Listing[] }
+  | { type: 'SET_ENQUIRIES'; payload: Enquiry[] };
 
 const areCollectionsLoaded = (loaded: DataState['loaded']) =>
-  loaded.dealers && loaded.models && loaded.blogPosts && loaded.dealerModels && loaded.listings;
+  loaded.dealers && loaded.models && loaded.blogPosts && loaded.dealerModels && loaded.listings && loaded.enquiries;
 
 const mutationReducer = (state: MutationState, action: MutationAction): MutationState => {
   const entityState = state[action.entity];
@@ -251,6 +261,15 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
         loading: !areCollectionsLoaded(loaded),
       };
     }
+    case 'SET_ENQUIRIES': {
+      const loaded = { ...state.loaded, enquiries: true };
+      return {
+        ...state,
+        enquiries: action.payload,
+        loaded,
+        loading: !areCollectionsLoaded(loaded),
+      };
+    }
     default:
       return state;
   }
@@ -317,6 +336,7 @@ export const DataContext = createContext<DataContextType>({
   modelMutations: defaultMutationState.models,
   blogPostMutations: defaultMutationState.blogPosts,
   listingMutations: defaultMutationState.listings,
+  enquiryMutations: defaultMutationState.enquiries,
   getModelsForDealer: () => [],
   getDealersForModel: () => [],
   addDealer: rejectUsage as DataContextType['addDealer'],
@@ -355,6 +375,7 @@ const initialDataState: DataState = {
   models: [],
   blogPosts: isFirebaseConfigured ? [] : staticBlogPosts,
   listings: [],
+  enquiries: [],
   dealerModels: [],
   loadError: null,
   loading: true,
@@ -364,6 +385,7 @@ const initialDataState: DataState = {
     blogPosts: !isFirebaseConfigured,
     dealerModels: false,
     listings: false,
+    enquiries: true, // Default to true, will be set to false for dealers specifically
   },
 };
 
@@ -570,6 +592,19 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
   }, [dataState.dealers, permissionAwareErrorHandler, role]);
+
+  useEffect(() => {
+    if (role !== 'dealer' || !userUid) {
+      return;
+    }
+
+    const unsub = subscribeToDealerEnquiries(userUid, {
+      onData: (enquiries: Enquiry[]) => dataDispatch({ type: 'SET_ENQUIRIES', payload: enquiries }),
+      onError: permissionAwareErrorHandler('enquiries', () => dataDispatch({ type: 'SET_ENQUIRIES', payload: [] })),
+    });
+
+    return () => unsub();
+  }, [role, userUid, permissionAwareErrorHandler]);
 
   useEffect(() => {
     if (role === 'admin' || role === 'dealer') {

@@ -82,14 +82,11 @@ export const updateListing = async (id: string, updates: Partial<Listing>): Prom
 };
 
 export const deleteListing = async (id: string): Promise<void> => {
-    // Soft delete or hard delete? User req said "status control for dealers to mark listings active/inactive" but also "Delete".
-    // Let's implement soft delete for safety if status defaults to deleted, or hard delete.
-    // Given the other entities use soft delete often, let's stick to updating status to deleted OR actual delete.
-    // Requirement says: "Delete". Existing code does hard delete for models, soft for dealers.
-    // Let's go with hard delete for now to keep it simple, or soft delete if we want to keep history.
-    // Let's do a hard delete for now if it's draft, but maybe soft delete if it was active.
-    // Actually, let's just use deleteDoc for simplicity as requested "deleteListing(id)".
-    await deleteDoc(doc(listingsCollection, id));
+    const listingRef = doc(listingsCollection, id);
+    await updateDoc(listingRef, {
+        status: 'deleted',
+        updatedAt: serverTimestamp(),
+    });
 };
 
 export const approveListing = async (id: string): Promise<Listing> => {

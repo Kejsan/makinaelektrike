@@ -1,6 +1,18 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Plus, Save, Trash2, Upload } from 'lucide-react';
+import { 
+  Loader2, 
+  Plus, 
+  Save, 
+  Trash2, 
+  Upload, 
+  MessageSquare, 
+  ExternalLink, 
+  PlusCircle, 
+  LayoutDashboard,
+  Clock,
+  User
+} from 'lucide-react';
 import { DataContext } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -10,7 +22,7 @@ import {
   uploadModelGalleryImage,
   uploadModelHeroImage,
 } from '../services/storage';
-import type { Dealer, Model } from '../types';
+import type { Dealer, Model, Enquiry } from '../types';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import { DEALERSHIP_PLACEHOLDER_IMAGE, MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
@@ -110,6 +122,7 @@ const DealerDashboardPage: React.FC = () => {
     unlinkModelFromDealer,
     dealerMutations,
     modelMutations,
+    enquiries,
     loading: dataLoading,
   } = useContext(DataContext);
   const { addToast } = useToast();
@@ -363,7 +376,7 @@ const DealerDashboardPage: React.FC = () => {
     setGalleryUploading(true);
     try {
       const uploaded = await Promise.all(
-        selectedFiles.map(file => uploadDealerGalleryImage(dealer.id, file)),
+        selectedFiles.map((file: File) => uploadDealerGalleryImage(dealer.id, file)),
       );
       const nextGallery = Array.from(new Set([...existingGallery, ...uploaded])).slice(0, 3);
       await updateDealer(dealer.id, { imageGallery: nextGallery });
@@ -472,7 +485,7 @@ const DealerDashboardPage: React.FC = () => {
     }
 
     const selected = files.slice(0, availableSlots);
-    const drafts = selected.map(file => ({ file, preview: URL.createObjectURL(file) }));
+    const drafts = selected.map((file: File) => ({ file, preview: URL.createObjectURL(file) }));
     setNewModelGalleryDrafts(prev => [...prev, ...drafts]);
     event.target.value = '';
   };
@@ -622,13 +635,70 @@ const DealerDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-8 flex justify-end">
-          <Link
-            to="/dealer/listings"
-            className="inline-flex items-center gap-2 rounded-full bg-gray-cyan px-6 py-3 text-sm font-bold text-gray-900 shadow-lg hover:bg-cyan-400 transition transform hover:-translate-y-0.5"
-          >
-            Manage Listings
-          </Link>
+        <div className="mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+            <h3 className="text-sm font-medium text-gray-400 mb-4 flex items-center gap-2">
+              <LayoutDashboard className="h-4 w-4" />
+              Quick Actions
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              <Link
+                to="/dealer/listings"
+                className="flex flex-col items-center justify-center p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
+              >
+                <PlusCircle className="h-6 w-6 text-gray-cyan mb-2 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-semibold text-center">New Listing</span>
+              </Link>
+              {dealer.id && (
+                <Link
+                  to={`/dealers/${dealer.id}`}
+                  className="flex flex-col items-center justify-center p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
+                >
+                  <ExternalLink className="h-6 w-6 text-gray-cyan mb-2 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-semibold text-center">Public Profile</span>
+                </Link>
+              )}
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Recent Enquiries
+              </h3>
+              <span className="bg-cyan-500/10 text-gray-cyan text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                {enquiries.length} New
+              </span>
+            </div>
+            {enquiries.length > 0 ? (
+              <div className="space-y-3">
+                {enquiries.slice(0, 3).map((enquiry) => (
+                  <div key={enquiry.id} className="flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-white/5">
+                    <div className="p-2 rounded-full bg-cyan-500/10 text-gray-cyan shrink-0">
+                      <User className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold truncate">{enquiry.name}</p>
+                        <span className="text-[10px] text-gray-500 flex items-center gap-1 shrink-0">
+                          <Clock className="h-3 w-3" />
+                          {enquiry.createdAt ? new Date(enquiry.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 truncate mt-0.5">
+                        Interested in: <span className="text-gray-200">{enquiry.carModel || 'General Inquiry'}</span>
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-4 text-center">
+                <p className="text-sm text-gray-500 italic">No enquiries yet</p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-3">

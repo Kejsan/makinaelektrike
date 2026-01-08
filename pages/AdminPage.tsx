@@ -429,7 +429,7 @@ const AdminPage: React.FC = () => {
         const desiredSet = new Set(desiredIds.filter(Boolean));
 
         const toAdd = desiredIds.filter(id => !currentIds.has(id));
-        const toRemove = [...currentIds].filter(id => !desiredSet.has(id));
+        const toRemove = [...currentIds].filter((id): id is string => typeof id === 'string' && !desiredSet.has(id));
 
         for (const modelId of toAdd) {
           await linkModelToDealer(dealerId, modelId);
@@ -892,9 +892,11 @@ const AdminPage: React.FC = () => {
                       );
                     }
 
-                    // Add Account Activation button ONLY if no dashboard link exists
-                    // Show for approved dealers or any dealer in active/inactive tabs that doesn't have a UID
-                    const isActivatable = !hasDashboard && (status === 'approved' || dealerFilter === 'active' || dealerFilter === 'inactive');
+                    // Add Account Activation button
+                    // Show for any approved dealer in active/inactive tabs.
+                    // If they stay approved but have no UID, they definitely need activation.
+                    // If they HAVE a UID, we still show it as a "Reset/Update" option for the admin's convenience with legacy data.
+                    const isActivatable = (status === 'approved' || dealerFilter === 'active' || dealerFilter === 'inactive');
                     
                     if (isActivatable && status !== 'rejected' && status !== 'deleted') {
                       actionButtons.push(
@@ -904,11 +906,15 @@ const AdminPage: React.FC = () => {
                             setActivationModalDealer(dealer);
                             setActivationEmail(dealer.contact_email || dealer.email || '');
                           }}
-                          className="inline-flex items-center gap-1 rounded-lg bg-gray-cyan/20 px-3 py-2 text-xs font-semibold text-gray-cyan transition hover:bg-gray-cyan/30"
-                          title={t('admin.activateAccountHint', { defaultValue: 'Create a login for this dealer' })}
+                          className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                            hasDashboard 
+                              ? 'bg-blue-500/10 text-blue-300 hover:bg-blue-500/20' 
+                              : 'bg-gray-cyan/20 text-gray-cyan hover:bg-gray-cyan/30'
+                          }`}
+                          title={hasDashboard ? t('admin.resetAccountHint', { defaultValue: 'Reset/Update login for this dealer' }) : t('admin.activateAccountHint', { defaultValue: 'Create a login for this dealer' })}
                         >
                           <UserPlus size={14} />
-                          <span>{t('admin.activate', { defaultValue: 'Aktivizo' })}</span>
+                          <span>{hasDashboard ? t('admin.resetLogin', { defaultValue: 'Rilidhu' }) : t('admin.activate', { defaultValue: 'Aktivizo' })}</span>
                         </button>
                       );
                     }

@@ -70,7 +70,7 @@ const DealerRoute: React.FC<{ children: React.ReactElement }> = ({ children }) =
     if (!user) {
       return null;
     }
-    return dealers.find(dealer => dealer.id === user.uid) ?? null;
+    return dealers.find(dealer => dealer.id === user.uid || dealer.ownerUid === user.uid) ?? null;
   }, [dealers, user]);
 
   if (initializing || authLoading || dataLoading) {
