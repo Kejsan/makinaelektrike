@@ -91,7 +91,7 @@ const DealerDetailPage: React.FC = () => {
     const description = t('dealerDetails.metaDescription', {
         name: dealer.name,
         city: dealer.location || dealer.city,
-        brands: dealer.brands.join(', '),
+        brands: (dealer.brands || []).join(', '),
         description: dealer.description ?? '',
     });
     const formattedBrands = dealer.brands?.length ? dealer.brands : [];

@@ -153,6 +153,7 @@ const ListingDetailPage: React.FC = () => {
                                 <a
                                     href={`tel:${dealer.contact_phone}`}
                                     className="flex items-center justify-center gap-2 bg-white/10 text-white font-bold py-4 rounded-xl hover:bg-white/20 transition border border-white/10"
+                                    title={dealer.contact_phone}
                                 >
                                     <Phone size={20} />
                                     {t('listings.callNow', { defaultValue: 'Call Now' })}
