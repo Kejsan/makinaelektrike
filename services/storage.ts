@@ -31,10 +31,14 @@ export const buildFileName = (file: File, fallbackBase: string) => {
 
 export const uploadFile = async (objectPath: string, file: File): Promise<string> => {
   try {
+    // Convert File to Uint8Array to avoid AWS SDK stream issues in browser
+    const arrayBuffer = await file.arrayBuffer();
+    const fileContent = new Uint8Array(arrayBuffer);
+
     const command = new PutObjectCommand({
       Bucket: BUCKET_NAME,
       Key: objectPath,
-      Body: file,
+      Body: fileContent,
       ContentType: file.type,
       // ACL: 'public-read', // R2 doesn't support ACLs the same way, public access is bucket-level
     });
