@@ -22,8 +22,8 @@ import {
     subscribeToCollection,
     type SubscriptionOptions,
 } from './api';
-import { storage } from './firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+// import { storage } from './firebase';
+// import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { Listing } from '../types';
 import { omitUndefined } from '../utils/object';
 
@@ -138,16 +138,14 @@ export const subscribeToListingsByDealer = (
     return subscribeToCollection(q, mapListings, options);
 };
 
+import { uploadFile } from './storage';
+
 export const uploadListingImage = async (userId: string, listingId: string, file: File): Promise<string> => {
     const path = `listings/${userId}/${listingId}/main_${Date.now()}_${file.name}`;
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file);
-    return getDownloadURL(storageRef);
+    return uploadFile(path, file);
 };
 
 export const uploadListingGalleryImage = async (userId: string, listingId: string, file: File): Promise<string> => {
     const path = `listings/${userId}/${listingId}/gallery_${Date.now()}_${file.name}`;
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file);
-    return getDownloadURL(storageRef);
+    return uploadFile(path, file);
 };
