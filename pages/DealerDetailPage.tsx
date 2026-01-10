@@ -94,13 +94,20 @@ const DealerDetailPage: React.FC = () => {
         brands: dealer.brands.join(', '),
         description: dealer.description ?? '',
     });
+    const formattedBrands = dealer.brands?.length ? dealer.brands : [];
     const keywords = [
         dealer.name,
         dealer.city,
-        ...dealer.brands,
+        ...formattedBrands,
         `${dealer.city} electric cars`,
         'Makina Elektrike dealer',
     ];
+    
+    // Safety check for coordinates
+    const mapMarkers = (dealer.lat && dealer.lng) 
+        ? [{ lat: Number(dealer.lat), lng: Number(dealer.lng), title: dealer.name }] 
+        : [];
+
     const structuredData = [
         {
             '@context': 'https://schema.org',
@@ -116,12 +123,12 @@ const DealerDetailPage: React.FC = () => {
                 addressLocality: dealer.city,
                 addressCountry: 'AL',
             },
-            geo: {
+            geo: (dealer.lat && dealer.lng) ? {
                 '@type': 'GeoCoordinates',
                 latitude: dealer.lat,
                 longitude: dealer.lng,
-            },
-            makesOffer: dealer.brands.map(brand => ({
+            } : undefined,
+            makesOffer: formattedBrands.map(brand => ({
                 '@type': 'Offer',
                 itemOffered: {
                     '@type': 'Product',
@@ -234,7 +241,7 @@ const DealerDetailPage: React.FC = () => {
                             <div>
                                 <h3 className="font-semibold text-white">{t('dealerDetails.brandsSold')}</h3>
                                 <div className="flex flex-wrap gap-2 mt-2">
-                                    {dealer.brands.map(brand => <span key={brand} className="text-sm bg-gray-700/50 rounded-full px-3 py-1">{brand}</span>)}
+                                    {(dealer.brands || []).map(brand => <span key={brand} className="text-sm bg-gray-700/50 rounded-full px-3 py-1">{brand}</span>)}
                                 </div>
                             </div>
 
@@ -250,15 +257,17 @@ const DealerDetailPage: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="mt-16">
-                    <h2 className="text-3xl font-bold text-center mb-8 text-white">{t('dealerDetails.locationOnMap')}</h2>
-                    <GoogleMap
-                        center={{ lat: dealer.lat, lng: dealer.lng }}
-                        zoom={15}
-                        markers={[{ lat: dealer.lat, lng: dealer.lng, title: dealer.name }]}
-                        className="h-96 w-full"
-                    />
-                </div>
+                {dealer.lat && dealer.lng ? (
+                    <div className="mt-16">
+                        <h2 className="text-3xl font-bold text-center mb-8 text-white">{t('dealerDetails.locationOnMap')}</h2>
+                        <GoogleMap
+                            center={{ lat: Number(dealer.lat), lng: Number(dealer.lng) }}
+                            zoom={15}
+                            markers={mapMarkers}
+                            className="h-96 w-full"
+                        />
+                    </div>
+                ) : null}
 
                 <div className="mt-16 bg-white/5 border border-white/10 rounded-2xl p-10 shadow-2xl">
                     <h2 className="text-3xl font-bold text-white text-center">{t('dealerDetails.aboutTitle', { name: dealer.name })}</h2>
@@ -266,7 +275,7 @@ const DealerDetailPage: React.FC = () => {
                         {t('dealerDetails.aboutDescription', {
                             name: dealer.name,
                             city: dealer.city,
-                            brands: dealer.brands.join(', '),
+                            brands: (dealer.brands || []).join(', '),
                         })}
                     </p>
                 </div>

@@ -28,6 +28,7 @@ import BlogPostForm, { BlogPostFormValues } from '../components/admin/BlogPostFo
 import ChargingStationForm from '../components/admin/ChargingStationForm';
 import BulkImportModal, { BulkImportEntity } from '../components/admin/BulkImportModal';
 import OfflineQueuePanel from '../components/admin/OfflineQueuePanel';
+import AdminListingsTab from '../components/admin/AdminListingsTab';
 import { MigrationTool } from '../components/admin/MigrationTool';
 import {
   fetchChargingStations,
@@ -77,7 +78,7 @@ const AdminModal: React.FC<ModalProps> = ({ title, onClose, children }) => (
 
 type FormState<T> = { mode: 'create' | 'edit'; entity?: T } | null;
 
-type TabKey = 'dealers' | 'models' | 'blog' | 'stations';
+type TabKey = 'dealers' | 'models' | 'listings' | 'blog' | 'stations';
 type DealerFilterKey = 'active' | 'inactive' | 'pending' | 'deleted';
 
 const formatDate = (value: Dealer['createdAt']) => {
@@ -114,6 +115,7 @@ const AdminPage: React.FC = () => {
   const {
     dealers,
     models,
+    listings,
     getModelsForDealer,
     blogPosts,
     loading,
@@ -131,6 +133,8 @@ const AdminPage: React.FC = () => {
     addModel,
     updateModel,
     deleteModel,
+    updateListing,
+    deleteListing,
     linkModelToDealer,
     unlinkModelFromDealer,
     addBlogPost,
@@ -176,6 +180,7 @@ const AdminPage: React.FC = () => {
     () => [
       { id: 'dealers' as TabKey, label: t('admin.manageDealers') },
       { id: 'models' as TabKey, label: t('admin.manageModels') },
+      { id: 'listings' as TabKey, label: 'Listings' },
       { id: 'blog' as TabKey, label: t('admin.manageBlog') },
       { id: 'stations' as TabKey, label: 'Charging Stations' },
       { id: 'migration' as TabKey, label: 'Data Migration' },
@@ -1110,6 +1115,28 @@ const AdminPage: React.FC = () => {
       </div>
     );
   };
+
+  const renderListingsPanel = () => {
+    if (loadError) {
+      return renderErrorState();
+    }
+    if (loading) {
+      return renderLoadingState();
+    }
+    
+    return (
+      <div className="space-y-6">
+        <h2 className="text-xl font-semibold text-white">Manage Listings ({listings.length})</h2>
+        <AdminListingsTab 
+          listings={listings} 
+          dealers={dealers} 
+          onUpdateStatus={(id, status) => updateListing(id, { status })} 
+          onDelete={deleteListing} 
+        />
+      </div>
+    );
+  };
+
   const renderBlogPanel = () => {
     const blogUpdateLoading = blogPostMutations.update.loading;
     const blogDeleteLoading = blogPostMutations.delete.loading;
@@ -1381,6 +1408,7 @@ const AdminPage: React.FC = () => {
             <div className="mt-8">
               {activeTab === 'dealers' && renderDealersPanel()}
               {activeTab === 'models' && renderModelsPanel()}
+              {activeTab === 'listings' && renderListingsPanel()}
               {activeTab === 'blog' && renderBlogPanel()}
               {activeTab === 'stations' && renderStationsPanel()}
               {activeTab === 'migration' && <div className="mt-6"><MigrationTool /></div>}
