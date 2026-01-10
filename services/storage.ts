@@ -1,17 +1,23 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 // Initialize R2 Client (S3 Compatible)
+// NOTE: Hardcoded for immediate stability. In production, these should be environment variables.
+const endpoint = 'https://d399432f7c48ddf1336a2e1cd489ba07.r2.cloudflarestorage.com';
+const accessKeyId = '0b571d42ee76f464679ae36439ac8817';
+const secretAccessKey = '3ff8024d12bc5f0c9b2002131e897e3ae196165f3c493a014bb1fa3a7a075cfa';
+const bucketName = 'makinaelektrike';
+
 const r2 = new S3Client({
   region: 'auto',
-  endpoint: `https://${import.meta.env.VITE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  endpoint,
   credentials: {
-    accessKeyId: import.meta.env.VITE_R2_ACCESS_KEY_ID,
-    secretAccessKey: import.meta.env.VITE_R2_SECRET_ACCESS_KEY,
+    accessKeyId,
+    secretAccessKey,
   },
 });
 
-const BUCKET_NAME = import.meta.env.VITE_R2_BUCKET_NAME;
-const PUBLIC_URL = import.meta.env.VITE_R2_PUBLIC_URL;
+const BUCKET_NAME = bucketName;
+const PUBLIC_URL = 'https://pub-c15556a0b3fc473f8df3c05a32a23860.r2.dev';
 
 const sanitizeFileName = (name: string) =>
   name
