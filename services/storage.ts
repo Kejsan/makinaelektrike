@@ -1,15 +1,25 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 // Initialize R2 Client (S3 Compatible)
+const accessKeyId = import.meta.env.VITE_R2_ACCESS_KEY_ID;
+const secretAccessKey = import.meta.env.VITE_R2_SECRET_ACCESS_KEY;
 const endpoint = import.meta.env.VITE_R2_ENDPOINT || 'https://d399432f7c48ddf1336a2e1cd489ba07.r2.cloudflarestorage.com';
 const bucketName = import.meta.env.VITE_R2_BUCKET_NAME || 'makinaelektrike';
+
+console.log('R2 Config Debug:', {
+  hasAccessKey: !!accessKeyId,
+  hasSecretKey: !!secretAccessKey,
+  accessKeyPrefix: accessKeyId ? accessKeyId.substring(0, 4) : 'MISSING',
+  endpoint,
+  bucketName
+});
 
 const r2 = new S3Client({
   region: 'auto',
   endpoint,
   credentials: {
-    accessKeyId: import.meta.env.VITE_R2_ACCESS_KEY_ID,
-    secretAccessKey: import.meta.env.VITE_R2_SECRET_ACCESS_KEY,
+    accessKeyId: accessKeyId || '',
+    secretAccessKey: secretAccessKey || '',
   },
 });
 
