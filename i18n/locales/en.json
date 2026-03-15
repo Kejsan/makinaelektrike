@@ -293,118 +293,238 @@
     ]
   },
   "legal": {
+    "common": {
+      "questionsTitle": "Questions about your rights or this policy?",
+      "questionsBody": "For privacy requests, cookie questions, account support, or dealer onboarding clarifications, contact Makina Elektrike through our contact page or by email at info@makinaelektrike.al.",
+      "contactCta": "Contact Makina Elektrike"
+    },
     "privacy": {
       "title": "Privacy Policy",
-      "updated": "Last updated: March 2024",
-      "intro": "We explain how Makina Elektrike collects, uses and protects your personal data when you browse the platform or create an account.",
+      "updated": "Last updated: March 14, 2026",
+      "intro": "This Privacy Policy explains how Makina Elektrike collects, uses, stores, and shares personal data across the public website, account registration, dealer onboarding, favourites, listings, enquiries, dashboards, and analytics features.",
       "sections": [
         {
-          "title": "Information we collect",
+          "title": "Scope of this policy",
           "items": [
-            "Account details provided during registration such as name, email address and organisation.",
-            "Usage analytics that help us understand how visitors interact with pages, search filters and listings.",
-            "Content you submit directly, including enquiries to dealers or feedback sent via forms."
+            "This policy applies to visitors, registered users, dealer applicants, approved dealers, and people who contact us through the platform.",
+            "It covers public pages, dealer and model pages, saved favourites, listings, blog content, charging-station pages, login flows, and dealer dashboard tools.",
+            "It does not replace the separate privacy notices of dealers, manufacturers, payment providers, social platforms, or map providers you may visit through external links."
           ]
         },
         {
-          "title": "How we use your data",
+          "title": "Personal data you provide directly",
           "items": [
-            "To deliver personalised features like saved favourites and recently viewed pages.",
-            "To connect dealers with interested shoppers and facilitate follow-up conversations.",
-            "To maintain platform security, prevent abuse and comply with legal obligations."
+            "When you create an account, Firebase Authentication processes your sign-in credentials and we receive your email address, account identifier, role, and related profile metadata.",
+            "When you apply as a dealer or edit a dealership profile, we may collect company name, contact person, phone number, email address, city, website, showroom address, brands, languages, notes, and uploaded images.",
+            "When you submit an enquiry or contact request, we collect the name, email address, phone number if provided, message content, and the listing or dealer reference connected to that request."
           ]
         },
         {
-          "title": "Your rights",
+          "title": "Data generated through your use of the platform",
           "items": [
-            "Request access to the data we hold about you and receive a portable copy.",
-            "Ask for corrections, updates or deletion of personal information when appropriate.",
-            "Withdraw consent for marketing communications at any time using the links provided."
+            "We store favourites for signed-out visitors in local browser storage and, for signed-in users, we may sync favourite item identifiers to the user's Firestore favourites collection.",
+            "We collect operational usage information such as page views, navigation patterns, filter interactions, device and browser data, approximate region, referrer information, and session timestamps through analytics and security tooling.",
+            "Dealer dashboard activity can generate records such as model links, listing updates, enquiry status changes, uploaded gallery images, and created or updated timestamps."
+          ]
+        },
+        {
+          "title": "How we use personal data",
+          "items": [
+            "To create and manage accounts, assign platform roles, review dealer applications, and secure access to dashboard features.",
+            "To publish, maintain, and improve dealer profiles, EV model pages, vehicle listings, blog content, favourites, and charging-station resources.",
+            "To answer support requests, deliver enquiries to the relevant dealer, detect misuse, enforce platform rules, analyse product performance, and comply with legal obligations."
+          ]
+        },
+        {
+          "title": "Storage, infrastructure, and service providers",
+          "items": [
+            "Platform data may be processed through services such as Firebase Authentication, Cloud Firestore, Cloud Storage, Firebase Analytics, hosting infrastructure, and Google Maps integrations used on location-based pages.",
+            "Some providers may process data outside your country. When that happens, processing depends on the safeguards and contractual protections offered by those providers.",
+            "Dealers remain responsible for the personal data they receive directly from shoppers after an enquiry, booking request, or off-platform conversation."
+          ]
+        },
+        {
+          "title": "When data is shared or made public",
+          "items": [
+            "Approved dealer profiles, public model pages, public listings, blog posts, and related images may be visible to visitors, search engines, and other users of the site.",
+            "Dealer contact information and business information may be displayed publicly when a profile is approved and activated on Makina Elektrike.",
+            "We may share limited data with trusted processors, hosting providers, analytics providers, law enforcement, regulators, or advisors when reasonably necessary for security, compliance, or legal claims."
+          ]
+        },
+        {
+          "title": "Retention",
+          "items": [
+            "Account and dealer records are retained while the account or dealership remains active and for a reasonable period afterwards for audit, fraud prevention, backup, and legal compliance purposes.",
+            "Support messages, enquiries, moderation notes, and operational records may be retained as long as needed to manage customer service, dealer relationships, disputes, or statutory obligations.",
+            "Local browser storage such as favourites or offline queue records remains on your device until you remove it, clear browser data, or the application overwrites that information."
+          ]
+        },
+        {
+          "title": "Your rights and choices",
+          "items": [
+            "Subject to applicable law, you may request access to, correction of, deletion of, restriction of, or objection to the processing of personal data we hold about you.",
+            "You can update some account or dealer profile details directly in the platform, control cookies or local storage through your browser, and ask us to review or remove data where appropriate.",
+            "If you want to exercise a privacy right, close an account, deactivate a dealership profile, or ask a question about this policy, contact Makina Elektrike at info@makinaelektrike.al."
           ]
         }
       ],
-      "metaTitle": "Makina Elektrike privacy policy",
-      "metaDescription": "Understand how Makina Elektrike handles account information, analytics data and communications.",
+      "metaTitle": "Makina Elektrike Privacy Policy",
+      "metaDescription": "Learn how Makina Elektrike handles account data, dealer onboarding information, favourites, enquiries, analytics, and uploaded content across the platform.",
       "metaKeywords": [
         "Makina Elektrike privacy",
         "data protection",
+        "dealer privacy policy",
         "EV platform privacy policy"
       ]
     },
     "terms": {
       "title": "Terms of Service",
-      "updated": "Last updated: March 2024",
-      "intro": "These terms outline the acceptable use of the Makina Elektrike website and the responsibilities of our community.",
+      "updated": "Last updated: March 14, 2026",
+      "intro": "These Terms of Service govern your use of Makina Elektrike, including public browsing, account registration, dealer onboarding, dealer dashboards, content uploads, listings, enquiries, and related business features.",
       "sections": [
         {
-          "title": "Using the platform",
+          "title": "Who may use the platform",
           "items": [
-            "You may browse listings and content for personal or business research related to electric mobility.",
-            "Do not copy or republish data without permission or automated scraping of dealer and model information.",
-            "Respect intellectual property rights and the privacy of other members when posting or sharing links."
+            "You may use Makina Elektrike only for lawful purposes and only if you have the legal authority to enter into these terms.",
+            "Dealer users must provide accurate, current business and contact information and must have authority to represent the dealership or automotive business they submit.",
+            "Approval of a dealer account or listing is not automatic. We may request clarification, deny access, or remove content when information is incomplete, misleading, or inconsistent with platform standards."
           ]
         },
         {
-          "title": "Accounts and access",
+          "title": "Accounts and security",
           "items": [
-            "Provide accurate information during registration and keep login credentials secure.",
-            "Dealer accounts remain subject to verification. We may suspend access if profile data is incomplete or misleading.",
-            "Notify us immediately if you suspect unauthorised use of your account or credentials."
+            "You are responsible for maintaining the confidentiality of your login credentials and for activity that occurs under your account.",
+            "You may not share access in a way that impersonates another person, bypasses approval workflows, or grants unauthorised access to protected areas of the platform.",
+            "You must notify us promptly if you believe your account, dealership profile, or dashboard access has been used without permission."
           ]
         },
         {
-          "title": "Liability",
+          "title": "Public information and platform accuracy",
           "items": [
-            "Makina Elektrike curates information but cannot guarantee that every listing or price is error-free.",
-            "We are not responsible for agreements negotiated directly between dealers and drivers.",
-            "The platform is provided “as is”; service interruptions may occur during maintenance or upgrades."
+            "Makina Elektrike publishes content about EV dealers, models, listings, charging resources, and related market information for discovery and informational purposes.",
+            "Dealers are responsible for the accuracy, legality, ownership rights, and update frequency of the information, photos, logos, descriptions, and claims they publish through their accounts.",
+            "Vehicle specifications, prices, incentives, stock availability, and charging information can change quickly, so users should independently verify material facts before making purchase or operational decisions."
+          ]
+        },
+        {
+          "title": "Acceptable use",
+          "items": [
+            "You may not scrape, bulk download, index, mirror, or systematically republish dealer, model, listing, or editorial content without written permission.",
+            "You may not upload unlawful, defamatory, infringing, misleading, malicious, or deceptive content, including false dealership information, unauthorised media, or manipulated listing details.",
+            "You may not interfere with the security, stability, moderation systems, analytics, authentication flows, or normal operation of the platform."
+          ]
+        },
+        {
+          "title": "Dealer-specific obligations",
+          "items": [
+            "Approved dealer users may manage only the dealership presence, public profile fields, models, listings, and enquiry workflows connected to their own approved business account.",
+            "Submitting a profile, model, or listing does not guarantee publication, ranking, lead volume, or uninterrupted visibility. We may review, edit, reject, deactivate, or remove content for quality, compliance, or operational reasons.",
+            "Once a shopper contacts a dealer, the dealer is responsible for the handling of that relationship, including follow-up communication, pricing discussions, financing offers, warranties, and offline documentation."
+          ]
+        },
+        {
+          "title": "Intellectual property",
+          "items": [
+            "The Makina Elektrike platform, design, software, editorial structure, and branding are protected by intellectual property laws and remain the property of Makina Elektrike or its licensors.",
+            "Dealer names, manufacturer names, logos, model names, and third-party marks remain the property of their respective owners and may not be reused in a misleading way.",
+            "Except as expressly allowed by law, you receive a limited, revocable right to access and use the platform for browsing, research, and legitimate business communication only."
+          ]
+        },
+        {
+          "title": "Disclaimers and limitation of liability",
+          "items": [
+            "The platform is provided on an \"as is\" and \"as available\" basis. We do not guarantee uninterrupted availability, complete accuracy, or that every feature will remain available at all times.",
+            "Makina Elektrike is not a party to vehicle sales, reservations, financing agreements, charger installations, dealership warranties, or other arrangements negotiated directly between users and dealers.",
+            "To the fullest extent permitted by law, Makina Elektrike is not liable for indirect, incidental, special, consequential, or business-interruption losses arising from your use of or inability to use the platform."
+          ]
+        },
+        {
+          "title": "Suspension, changes, and contact",
+          "items": [
+            "We may suspend or terminate access, remove content, or restrict features if we believe it is necessary for security, legal compliance, operational integrity, or enforcement of these terms.",
+            "We may update these terms from time to time. The version published on the website is the controlling version and becomes effective when posted unless a later date is stated.",
+            "If you do not agree with updated terms, you should stop using the platform and contact us with any questions at info@makinaelektrike.al."
           ]
         }
       ],
-      "metaTitle": "Makina Elektrike terms of service",
-      "metaDescription": "Review the conditions for using Makina Elektrike, including account rules and limitations of liability.",
+      "metaTitle": "Makina Elektrike Terms of Service",
+      "metaDescription": "Review the rules for using Makina Elektrike, including account security, dealer obligations, acceptable use, intellectual property, and liability limits.",
       "metaKeywords": [
         "Makina Elektrike terms",
         "EV platform rules",
+        "dealer terms of service",
         "usage policy"
       ]
     },
     "cookies": {
       "title": "Cookie Policy",
-      "updated": "Last updated: March 2024",
-      "intro": "Cookies help us deliver a tailored experience, measure performance and remember your preferences.",
+      "updated": "Last updated: March 14, 2026",
+      "intro": "This Cookie Policy explains how Makina Elektrike uses cookies, local storage, analytics tags, and similar technologies to operate the site, remember preferences, secure accounts, and measure performance.",
       "sections": [
         {
-          "title": "Types of cookies",
+          "title": "What we mean by cookies and similar technologies",
           "items": [
-            "Essential cookies keep you signed in, secure forms and enable basic functionality.",
-            "Analytics cookies show us which pages attract the most interest so we can improve navigation.",
-            "Preference cookies remember language choices and recently viewed dealers or models."
+            "Cookies are small text files placed on your browser or device. Similar technologies include local storage, browser cache, analytics tags, and SDK-based identifiers.",
+            "We use these technologies across public pages, login flows, favourites, dealer dashboards, analytics tooling, and embedded services such as maps.",
+            "Some technologies are essential for security and core functionality, while others help us remember preferences or understand how the site is used."
           ]
         },
         {
-          "title": "Managing cookies",
+          "title": "Categories of technologies we use",
           "items": [
-            "Most browsers let you delete or block cookies through their settings.",
-            "You can opt out of analytics tracking by enabling “Do Not Track” or adjusting cookie preferences.",
-            "Disabling certain cookies may reduce personalised features such as saved favourites."
+            "Strictly necessary technologies help with authentication, session continuity, fraud prevention, form security, and basic navigation.",
+            "Functional technologies remember language preferences, favourites, dashboard state, and other convenience settings that improve repeat visits.",
+            "Analytics and performance technologies help us measure page views, referral sources, usage patterns, browser information, and feature adoption so we can improve the platform."
           ]
         },
         {
-          "title": "Third-party services",
+          "title": "Local storage and device-side preferences",
           "items": [
-            "We may embed trusted services like map providers or video platforms that set their own cookies.",
-            "Those providers follow separate privacy policies; review them if you have specific concerns.",
-            "You can contact us for more detail about third-party integrations and data processors."
+            "Makina Elektrike stores some preferences locally in the browser, including favourites for signed-out visitors and offline queue records created by operational tools.",
+            "When you sign in, favourites may also be synced to your user profile in Firestore so they can follow your account across sessions and devices.",
+            "If you clear browser data or switch devices, these locally stored preferences may be reset or removed."
+          ]
+        },
+        {
+          "title": "Third-party and embedded services",
+          "items": [
+            "Third-party services such as Firebase, Google Analytics, Google Maps, hosting providers, social links, and embedded external resources may place or read their own cookies or identifiers.",
+            "Those providers operate under their own terms and privacy notices, and their technologies may behave differently depending on your browser settings and regional controls.",
+            "Opening external websites or social profiles from Makina Elektrike may result in additional cookies being set by those third parties."
+          ]
+        },
+        {
+          "title": "Your choices",
+          "items": [
+            "Most browsers let you block, limit, or delete cookies and local storage through privacy or site-settings controls.",
+            "If you disable essential technologies, parts of the platform may stop working correctly, including login, favourites, dashboard access, maps, or enquiry-related forms.",
+            "Privacy modes, content blockers, and browser signals such as Do Not Track can also change how some features behave, but may not fully disable all third-party technologies."
+          ]
+        },
+        {
+          "title": "Retention of cookies and similar data",
+          "items": [
+            "Session technologies usually expire when you close your browser, while persistent technologies can remain until they expire automatically or you remove them manually.",
+            "Local browser storage may remain on your device until cleared, overwritten, or removed through browser settings.",
+            "Retention periods can vary depending on whether the technology is operated by Makina Elektrike or by a third-party provider."
+          ]
+        },
+        {
+          "title": "Policy updates and contact",
+          "items": [
+            "We may update this Cookie Policy when our tools, integrations, or regulatory obligations change.",
+            "The version published on the website is the current version and should be reviewed periodically, especially if you use dealer dashboard or account features.",
+            "If you have questions about cookies, browser storage, analytics, or tracking on Makina Elektrike, contact us at info@makinaelektrike.al."
           ]
         }
       ],
-      "metaTitle": "Makina Elektrike cookie policy",
-      "metaDescription": "Learn which cookies Makina Elektrike uses and how to control analytics or preference settings.",
+      "metaTitle": "Makina Elektrike Cookie Policy",
+      "metaDescription": "Understand how Makina Elektrike uses cookies, local storage, analytics, and embedded services such as maps across the site and dealer dashboard.",
       "metaKeywords": [
         "Makina Elektrike cookies",
         "cookie preferences",
-        "analytics cookies"
+        "analytics cookies",
+        "local storage policy"
       ]
     }
   },

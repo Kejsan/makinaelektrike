@@ -293,118 +293,238 @@
     ]
   },
   "legal": {
+    "common": {
+      "questionsTitle": "Pyetje p�r t� drejtat tuaja ose k�t� politik�?",
+      "questionsBody": "P�r k�rkesa mbi privat�sin�, pyetje p�r cookie-t, mb�shtetje p�r llogarin� ose sqarime mbi regjistrimin si dealer, kontaktoni Makina Elektrike p�rmes faqes s� kontaktit ose n� info@makinaelektrike.al.",
+      "contactCta": "Kontaktoni Makina Elektrike"
+    },
     "privacy": {
-      "title": "Politika e privatësisë",
-      "updated": "Përditësuar së fundmi: Mars 2024",
-      "intro": "Këtu shpjegojmë si Makina Elektrike grumbullon, përdor dhe mbron të dhënat tuaja personale kur shfletoni ose krijoni një llogari.",
+      "title": "Politika e privat�sis�",
+      "updated": "P�rdit�suar s� fundmi: 14 mars 2026",
+      "intro": "Kjo Politik� e Privat�sis� shpjegon si Makina Elektrike mbledh, p�rdor, ruan dhe ndan t� dh�na personale n� faqet publike, regjistrimin e llogaris�, aplikimet e dealer-�ve, t� preferuarat, listimet, k�rkesat, dashboard-et dhe mjetet analitike t� platform�s.",
       "sections": [
         {
-          "title": "Çfarë të dhënash mbledhim",
+          "title": "Fusha e k�saj politike",
           "items": [
-            "Të dhënat e llogarisë gjatë regjistrimit si emri, email-i dhe organizata.",
-            "Analiza përdorimi që na ndihmon të kuptojmë si navigojnë vizitorët në faqe, filtra dhe lista.",
-            "Përmbajtja që dërgoni vetë, përfshirë kërkesat drejt shitësve ose feedback-un përmes formularëve."
+            "Kjo politik� zbatohet p�r vizitor�t, p�rdoruesit e regjistruar, aplikant�t dealer, dealer-�t e aprovuar dhe personat q� na kontaktojn� p�rmes platform�s.",
+            "Ajo mbulon faqet publike, faqet e dealer-�ve dhe modeleve, t� preferuarat, listimet, blogun, faqet e stacioneve t� karikimit, hyrjen n� llogari dhe mjetet e dashboard-it p�r dealer.",
+            "Kjo politik� nuk z�vend�son njoftimet e privat�sis� t� dealer-�ve, prodhuesve, rrjeteve sociale, ofruesve t� pagesave ose ofruesve t� hartave q� mund t� vizitoni p�rmes lidhjeve t� jashtme."
           ]
         },
         {
-          "title": "Si i përdorim të dhënat",
+          "title": "T� dh�nat personale q� jepni drejtp�rdrejt",
           "items": [
-            "Për të ofruar funksione të personalizuara si të preferuarat e ruajtura dhe faqet e shikuara së fundmi.",
-            "Për të lidhur shitësit me blerësit e interesuar dhe për të lehtësuar komunikimin.",
-            "Për të mbajtur platformën të sigurt, për të parandaluar abuzimet dhe për të respektuar detyrimet ligjore."
+            "Kur krijoni nj� llogari, kredencialet e hyrjes p�rpunohen nga Firebase Authentication dhe ne marrim email-in tuaj, identifikuesin e llogaris�, rolin dhe metadata baz� t� profilit.",
+            "Kur aplikoni si dealer ose ndryshoni profilin e nj� dealership-i, mund t� mbledhim emrin e kompanis�, personin e kontaktit, numrin e telefonit, email-in, qytetin, faqen e internetit, adres�n e showroom-it, markat, gjuh�t, sh�nimet dhe imazhet e ngarkuara.",
+            "Kur d�rgoni nj� k�rkes� ose mesazh kontakti, mbledhim emrin, email-in, numrin e telefonit n�se jepet, p�rmbajtjen e mesazhit dhe referenc�n e listimit ose dealer-it q� lidhet me at� k�rkes�."
           ]
         },
         {
-          "title": "Të drejtat tuaja",
+          "title": "T� dh�nat q� krijohen nga p�rdorimi juaj i platform�s",
           "items": [
-            "Kërkoni akses në të dhënat që mbajmë për ju dhe merrni një kopje të tyre.",
-            "Kërkoni korrigjimin, përditësimin ose fshirjen e informacionit personal kur është e nevojshme.",
-            "Hiqni dorë nga komunikimet marketing në çdo kohë duke përdorur lidhjet përkatëse."
+            "P�r vizitor�t pa hyrje n� llogari ruajm� t� preferuarat n� local storage t� shfletuesit dhe, p�r p�rdoruesit e identifikuar, mund t� sinkronizojm� identifikuesit e t� preferuarave n� koleksionin favourites t� Firestore.",
+            "Mund t� mbledhim t� dh�na operative si shikime faqesh, m�nyra navigimi, p�rdorim filtrash, t� dh�na t� pajisjes dhe shfletuesit, zon� t� p�raf�rt, burimin e trafikut dhe koh�t e sesioneve p�rmes mjeteve analitike dhe t� siguris�.",
+            "Veprimet n� dashboard-in e dealer-it mund t� krijojn� regjistra si lidhje modelesh, p�rdit�sime listimesh, ndryshime statusi t� k�rkesave, imazhe galerie t� ngarkuara dhe data krijimi ose p�rdit�simi."
+          ]
+        },
+        {
+          "title": "Si i p�rdorim t� dh�nat personale",
+          "items": [
+            "P�r t� krijuar dhe menaxhuar llogarit�, caktuar rolet e platform�s, shqyrtuar aplikimet e dealer-�ve dhe siguruar aksesin n� funksionet e dashboard-it.",
+            "P�r t� publikuar, mir�mbajtur dhe p�rmir�suar profilet e dealer-�ve, faqet e modeleve EV, listimet, p�rmbajtjen e blogut, t� preferuarat dhe burimet p�r stacionet e karikimit.",
+            "P�r t'iu p�rgjigjur k�rkesave p�r suport, p�r t'ia d�rguar k�rkesat dealer-it p�rkat�s, p�r t� zbuluar abuzime, p�r t� zbatuar rregullat e platform�s, p�r t� analizuar performanc�n e produktit dhe p�r t� respektuar detyrimet ligjore."
+          ]
+        },
+        {
+          "title": "Ruajtja, infrastruktura dhe ofruesit e sh�rbimeve",
+          "items": [
+            "T� dh�nat e platform�s mund t� p�rpunohen p�rmes sh�rbimeve si Firebase Authentication, Cloud Firestore, Cloud Storage, Firebase Analytics, infrastruktura e hostimit dhe integrimet me Google Maps q� p�rdoren n� faqet me vendndodhje.",
+            "Disa ofrues mund t'i p�rpunojn� t� dh�nat jasht� shtetit tuaj. Kur kjo ndodh, p�rpunimi mb�shtetet te masat mbrojt�se dhe garancit� kontraktuale t� ofruara nga ata partner�.",
+            "Dealer-�t mbeten p�rgjegj�s p�r t� dh�nat personale q� marrin drejtp�rdrejt nga interesent�t pas nj� k�rkese, rezervimi ose komunikimi jasht� platform�s."
+          ]
+        },
+        {
+          "title": "Kur t� dh�nat ndahen ose b�hen publike",
+          "items": [
+            "Profilet e dealer-�ve t� aprovuar, faqet publike t� modeleve, listimet publike, postimet e blogut dhe imazhet p�rkat�se mund t� jen� t� dukshme p�r vizitor�t, motor�t e k�rkimit dhe p�rdoruesit e tjer� t� faqes.",
+            "Informacioni i kontaktit dhe t� dh�nat e biznesit t� dealer-it mund t� publikohen kur profili aprovohet dhe aktivizohet n� Makina Elektrike.",
+            "Mund t� ndajm� t� dh�na t� kufizuara me p�rpunues t� besuar, ofrues hostimi, ofrues analitikash, autoritete, rregullator� ose k�shilltar� kur kjo k�rkohet n� m�nyr� t� arsyeshme p�r siguri, pajtueshm�ri ose pretendime ligjore."
+          ]
+        },
+        {
+          "title": "Afatet e ruajtjes",
+          "items": [
+            "T� dh�nat e llogaris� dhe t� dealer-it ruhen p�r aq koh� sa llogaria ose dealership-i mbetet aktiv dhe p�r nj� periudh� t� arsyeshme pas k�saj p�r auditim, parandalim mashtrimi, kopje rezerv� dhe pajtueshm�ri ligjore.",
+            "Mesazhet e suportit, k�rkesat, sh�nimet e moderimit dhe regjistrat operativ� mund t� ruhen p�r aq koh� sa nevojitet p�r menaxhimin e sh�rbimit ndaj klientit, marr�dh�nieve me dealer-�t, mosmarr�veshjeve ose detyrimeve ligjore.",
+            "Local storage n� shfletues, si t� preferuarat ose radh�t offline, mbetet n� pajisjen tuaj derisa ta fshini vet�, t� pastroni t� dh�nat e shfletuesit ose aplikacioni ta z�vend�soj� at� informacion."
+          ]
+        },
+        {
+          "title": "T� drejtat dhe zgjedhjet tuaja",
+          "items": [
+            "Sipas ligjit t� zbatuesh�m, mund t� k�rkoni akses, korrigjim, fshirje, kufizim ose kund�rshtim ndaj p�rpunimit t� t� dh�nave personale q� mbajm� p�r ju.",
+            "Mund t� p�rdit�soni disa t� dh�na t� llogaris� ose profilit t� dealer-it drejtp�rdrejt n� platform�, t� kontrolloni cookie-t ose local storage nga shfletuesi dhe t� na k�rkoni t� shqyrtojm� ose heqim t� dh�na kur �sht� e p�rshtatshme.",
+            "N�se doni t� ushtroni nj� t� drejt� privat�sie, t� mbyllni nj� llogari, t� �aktivizoni nj� profil dealer-i ose t� b�ni pyetje mbi k�t� politik�, na kontaktoni n� info@makinaelektrike.al."
           ]
         }
       ],
-      "metaTitle": "Politika e privatësisë Makina Elektrike",
-      "metaDescription": "Mësoni si trajtohen të dhënat e llogarisë, analitikës dhe komunikimet nga Makina Elektrike.",
+      "metaTitle": "Politika e privat�sis� Makina Elektrike",
+      "metaDescription": "M�soni si Makina Elektrike trajton t� dh�nat e llogaris�, t� dh�nat e aplikimit t� dealer-�ve, t� preferuarat, k�rkesat, analitikat dhe p�rmbajtjen e ngarkuar n� platform�.",
       "metaKeywords": [
-        "privatësia Makina Elektrike",
-        "mbrojtja e të dhënave",
-        "politika e privatësisë EV"
+        "privat�sia Makina Elektrike",
+        "mbrojtja e t� dh�nave",
+        "politika e privat�sis� p�r dealer",
+        "politika e privat�sis� EV"
       ]
     },
     "terms": {
-      "title": "Kushtet e përdorimit",
-      "updated": "Përditësuar së fundmi: Mars 2024",
-      "intro": "Këto kushte përcaktojnë mënyrën e pranueshme të përdorimit të faqes Makina Elektrike dhe përgjegjësitë e komunitetit tonë.",
+      "title": "Kushtet e p�rdorimit",
+      "updated": "P�rdit�suar s� fundmi: 14 mars 2026",
+      "intro": "K�to Kushte t� P�rdorimit rregullojn� p�rdorimin e Makina Elektrike, duke p�rfshir� shfletimin publik, regjistrimin e llogaris�, aplikimet e dealer-�ve, dashboard-et, ngarkimin e p�rmbajtjes, listimet, k�rkesat dhe funksionet e lidhura me biznesin.",
       "sections": [
         {
-          "title": "Përdorimi i platformës",
+          "title": "Kush mund ta p�rdor� platform�n",
           "items": [
-            "Mund të shfletoni listimet dhe përmbajtjen për kërkime personale ose biznesi rreth mobilitetit elektrik.",
-            "Mos kopjoni ose publikoni të dhëna pa leje dhe mos përdorni scraping automatik të informacionit.",
-            "Respektoni të drejtat e autorit dhe privatësinë e anëtarëve të tjerë kur ndani komente ose lidhje."
+            "Makina Elektrike mund t� p�rdoret vet�m p�r q�llime t� ligjshme dhe vet�m n�se keni autoritetin ligjor p�r t� pranuar k�to kushte.",
+            "P�rdoruesit dealer duhet t� japin informacion t� sakt� dhe t� p�rdit�suar p�r biznesin dhe kontaktin dhe duhet t� ken� autoritet p�r t� p�rfaq�suar dealership-in ose biznesin automotive q� paraqesin.",
+            "Aprovimi i nj� llogarie dealer ose listimi nuk �sht� automatik. Mund t� k�rkojm� sqarime, t� refuzojm� aksesin ose t� heqim p�rmbajtje kur informacioni �sht� i paplot�, mashtrues ose n� kund�rshtim me standardet e platform�s."
           ]
         },
         {
-          "title": "Llogaritë dhe akseset",
+          "title": "Llogarit� dhe siguria",
           "items": [
-            "Jepni informacion të saktë gjatë regjistrimit dhe mbani të sigurta kredencialet e hyrjes.",
-            "Llogaritë e shitësve kalojnë në verifikim; mund të pezullohen nëse të dhënat janë të paplota ose të pasakta.",
-            "Na njoftoni menjëherë nëse dyshoni për përdorim të paautorizuar të llogarisë."
+            "Ju jeni p�rgjegj�s p�r ruajtjen e konfidencialitetit t� kredencialeve t� hyrjes dhe p�r aktivitetin q� ndodh n�n llogarin� tuaj.",
+            "Nuk lejohet ndarja e aksesit n� m�nyr� q� imiton nj� person tjet�r, anashkalon proceset e aprovimit ose jep akses t� paautorizuar n� zona t� mbrojtura t� platform�s.",
+            "Duhet t� na njoftoni menj�her� n�se besoni se llogaria juaj, profili i dealership-it ose aksesi n� dashboard �sht� p�rdorur pa leje."
           ]
         },
         {
-          "title": "Përgjegjësia",
+          "title": "Informacioni publik dhe sakt�sia e platform�s",
           "items": [
-            "Makina Elektrike kujdeset për saktësinë, por nuk garanton që çdo listim apo çmim është i gabueshëm.",
-            "Nuk mbajmë përgjegjësi për marrëveshjet që bëhen drejtpërdrejt mes shitësve dhe drejtuesve.",
-            "Platforma ofrohet “siç është”; mund të ketë ndërprerje gjatë mirëmbajtjes ose përditësimeve."
+            "Makina Elektrike publikon p�rmbajtje p�r dealer-� EV, modele, listime, burime karikimi dhe informacion t� tregut p�r q�llime informuese dhe zbulimi.",
+            "Dealer-�t jan� p�rgjegj�s p�r sakt�sin�, ligjshm�rin�, t� drejtat e pron�sis� dhe p�rdit�simin e informacionit, fotove, logove, p�rshkrimeve dhe pretendimeve q� publikojn� p�rmes llogarive t� tyre.",
+            "Specifikat e automjeteve, �mimet, incentivat, disponueshm�ria e stokut dhe informacioni p�r karikimin mund t� ndryshojn� shpejt, ndaj p�rdoruesit duhet t� verifikojn� faktet materiale para marrjes s� vendimeve p�r blerje ose operim."
+          ]
+        },
+        {
+          "title": "P�rdorimi i pranuesh�m",
+          "items": [
+            "Nuk lejohet scraping, shkarkim masiv, indeksim, pasqyrim ose ripublikim sistematik i p�rmbajtjes s� dealer-�ve, modeleve, listimeve ose p�rmbajtjes editoriale pa leje me shkrim.",
+            "Nuk lejohet ngarkimi i p�rmbajtjes s� paligjshme, shpif�se, shkel�se t� t� drejtave, mashtruese, keqdash�se ose t� rreme, p�rfshir� informacione t� pav�rteta t� dealership-it, media pa autorizim ose detaje listimesh t� manipuluara.",
+            "Nuk lejohet nd�rhyrja n� sigurin�, stabilitetin, sistemet e moderimit, analitik�n, flukset e autentikimit ose funksionimin normal t� platform�s."
+          ]
+        },
+        {
+          "title": "Detyrimet specifike p�r dealer-�t",
+          "items": [
+            "P�rdoruesit dealer t� aprovuar mund t� menaxhojn� vet�m pranin� e dealership-it t� tyre, fushat publike t� profilit, modelet, listimet dhe rrjedhat e k�rkesave q� lidhen me llogarin� e biznesit t� aprovuar.",
+            "D�rgimi i nj� profili, modeli ose listimi nuk garanton publikim, renditje, volum leads ose dukshm�ri t� pand�rprer�. Ne mund t� shqyrtojm�, ndryshojm�, refuzojm�, �aktivizojm� ose heqim p�rmbajtje p�r arsye cil�sie, pajtueshm�rie ose operacionale.",
+            "Pasi nj� p�rdorues kontakton dealer-in, dealer-i �sht� p�rgjegj�s p�r menaxhimin e asaj marr�dh�nieje, p�rfshir� komunikimin pasues, diskutimet p�r �mimet, ofertat e financimit, garancit� dhe dokumentacionin jasht� platform�s."
+          ]
+        },
+        {
+          "title": "Pron�sia intelektuale",
+          "items": [
+            "Platforma Makina Elektrike, dizajni, software-i, struktura editoriale dhe branding-u mbrohen nga ligjet e pron�sis� intelektuale dhe mbeten pron� e Makina Elektrike ose licencuesve t� saj.",
+            "Emrat e dealer-�ve, prodhuesve, logot, emrat e modeleve dhe markat e pal�ve t� treta mbeten pron� e zot�ruesve p�rkat�s dhe nuk mund t� rip�rdoren n� m�nyr� mashtruese.",
+            "P�rve� rasteve t� lejuara shprehimisht nga ligji, ju merrni vet�m nj� t� drejt� t� kufizuar dhe t� revokueshme p�r t� hyr� dhe p�rdorur platform�n p�r shfletim, k�rkim dhe komunikim legjitim biznesi."
+          ]
+        },
+        {
+          "title": "Mohimet dhe kufizimi i p�rgjegj�sis�",
+          "items": [
+            "Platforma ofrohet mbi baz�n \"si� �sht�\" dhe \"si� �sht� e disponueshme\". Ne nuk garantojm� disponueshm�ri t� pand�rprer�, sakt�si t� plot� ose q� �do funksion do t� mbetet i disponuesh�m n� �do koh�.",
+            "Makina Elektrike nuk �sht� pal� n� shitje automjetesh, rezervime, marr�veshje financimi, instalime karikuesish, garanci dealership-esh ose marr�veshje t� tjera t� negociuara drejtp�rdrejt nd�rmjet p�rdoruesve dhe dealer-�ve.",
+            "N� mas�n maksimale t� lejuar nga ligji, Makina Elektrike nuk mban p�rgjegj�si p�r humbje indirekte, t� rast�sishme, t� ve�anta, pasuese ose nd�rprerje biznesi q� rrjedhin nga p�rdorimi ose pamund�sia p�r t� p�rdorur platform�n."
+          ]
+        },
+        {
+          "title": "Pezullimi, ndryshimet dhe kontakti",
+          "items": [
+            "Mund t� pezullojm� ose nd�rpresim aksesin, t� heqim p�rmbajtje ose t� kufizojm� funksione n�se besojm� se kjo �sht� e nevojshme p�r siguri, pajtueshm�ri ligjore, integritet operacional ose zbatim t� k�tyre kushteve.",
+            "Mund t'i p�rdit�sojm� k�to kushte her� pas here. Versioni i publikuar n� website �sht� versioni kontrollues dhe hyn n� fuqi n� momentin e publikimit, p�rve�se kur sh�nohet nj� dat� e m�vonshme.",
+            "N�se nuk pajtoheni me kushtet e p�rdit�suara, duhet t� ndaloni p�rdorimin e platform�s dhe t� na kontaktoni n� info@makinaelektrike.al."
           ]
         }
       ],
-      "metaTitle": "Kushtet e shërbimit Makina Elektrike",
-      "metaDescription": "Lexoni rregullat e përdorimit të Makina Elektrike, përfshirë politikat e llogarisë dhe kufizimet e përgjegjësisë.",
+      "metaTitle": "Kushtet e p�rdorimit Makina Elektrike",
+      "metaDescription": "Shikoni rregullat p�r p�rdorimin e Makina Elektrike, p�rfshir� sigurin� e llogaris�, detyrimet e dealer-�ve, p�rdorimin e pranuesh�m, pron�sin� intelektuale dhe kufijt� e p�rgjegj�sis�.",
       "metaKeywords": [
         "kushtet Makina Elektrike",
-        "rregullat e platformës EV",
-        "politika e përdorimit"
+        "rregullat e platform�s EV",
+        "kushtet p�r dealer",
+        "politika e p�rdorimit"
       ]
     },
     "cookies": {
       "title": "Politika e cookie-ve",
-      "updated": "Përditësuar së fundmi: Mars 2024",
-      "intro": "Cookie-t na ndihmojnë të ofrojmë përvojë të personalizuar, të masim performancën dhe të ruajmë preferencat.",
+      "updated": "P�rdit�suar s� fundmi: 14 mars 2026",
+      "intro": "Kjo Politik� e Cookie-ve shpjegon si Makina Elektrike p�rdor cookie, local storage, etiketa analitike dhe teknologji t� ngjashme p�r t� operuar faqen, p�r t� ruajtur preferencat, p�r t� siguruar llogarit� dhe p�r t� matur performanc�n.",
       "sections": [
         {
-          "title": "Llojet e cookie-ve",
+          "title": "�far� kuptojm� me cookie dhe teknologji t� ngjashme",
           "items": [
-            "Cookie-t esenciale mbajnë hyrjen aktive, sigurojnë formularët dhe funksionet bazë.",
-            "Cookie-t analitike tregojnë cilat faqe kanë më shumë interes që të përmirësojmë navigimin.",
-            "Cookie-t e preferencave mbajnë mend gjuhën e zgjedhur dhe shitësit ose modelet e shikuara së fundmi."
+            "Cookie-t jan� skedar� t� vegj�l teksti q� vendosen n� shfletues ose pajisje. Teknologjit� e ngjashme p�rfshijn� local storage, cache t� shfletuesit, etiketa analitike dhe identifikues t� bazuar n� SDK.",
+            "Ne i p�rdorim k�to teknologji n� faqet publike, hyrjen n� llogari, t� preferuarat, dashboard-et e dealer-�ve, mjetet analitike dhe sh�rbimet e integruara si hartat.",
+            "Disa prej tyre jan� thelb�sore p�r sigurin� dhe funksionimin baz�, nd�rsa t� tjera na ndihmojn� t� mbajm� mend preferencat ose t� kuptojm� si p�rdoret faqja."
           ]
         },
         {
-          "title": "Menaxhimi i cookie-ve",
+          "title": "Kategorit� e teknologjive q� p�rdorim",
           "items": [
-            "Shumica e shfletuesve lejojnë fshirjen ose bllokimin e cookie-ve nga cilësimet.",
-            "Mund të çaktivizoni analizat duke aktivizuar “Mos më gjurmo” ose duke rregulluar preferencat e cookie-ve.",
-            "Çaktivizimi i disa cookie-ve mund të kufizojë funksione të personalizuara si të preferuarat."
+            "Teknologjit� rrept�sisht t� nevojshme ndihmojn� n� autentikim, vazhdim�si sesioni, parandalim mashtrimi, siguri formular�sh dhe navigim baz�.",
+            "Teknologjit� funksionale mbajn� mend gjuh�n, t� preferuarat, gjendjen e dashboard-it dhe cil�sime t� tjera komoditeti q� p�rmir�sojn� vizitat e p�rs�ritura.",
+            "Teknologjit� analitike dhe t� performanc�s na ndihmojn� t� masim shikimet e faqeve, burimet e trafikut, modelet e p�rdorimit, informacionin e shfletuesit dhe p�rdorimin e funksioneve p�r ta p�rmir�suar platform�n."
           ]
         },
         {
-          "title": "Shërbimet e palëve të treta",
+          "title": "Local storage dhe preferencat n� pajisje",
           "items": [
-            "Mund të përdorim shërbime të besuara si harta ose video që vendosin cookie-t e tyre.",
-            "Këto shërbime ndjekin politika të veçanta privatësie; lexojini nëse keni shqetësime specifike.",
-            "Na kontaktoni për më shumë detaje mbi integrimet dhe përpunuesit e të dhënave."
+            "Makina Elektrike ruan disa preferenca lokalisht n� shfletues, duke p�rfshir� t� preferuarat p�r vizitor�t pa llogari dhe regjistrat e radh�s offline t� krijuar nga mjetet operative.",
+            "Kur hyni n� llogari, t� preferuarat mund t� sinkronizohen edhe me profilin tuaj n� Firestore q� t� jen� t� disponueshme n� sesione dhe pajisje t� ndryshme.",
+            "N�se pastroni t� dh�nat e shfletuesit ose nd�rroni pajisje, k�to preferenca lokale mund t� rivendosen ose t� fshihen."
+          ]
+        },
+        {
+          "title": "Sh�rbimet e pal�ve t� treta dhe p�rmbajtja e integruar",
+          "items": [
+            "Sh�rbime t� pal�ve t� treta si Firebase, Google Analytics, Google Maps, ofrues hostimi, lidhje sociale dhe burime t� jashtme t� integruara mund t� vendosin ose lexojn� cookie-t e tyre ose identifikues t� ngjash�m.",
+            "K�ta ofrues veprojn� sipas kushteve dhe politikave t� tyre t� privat�sis� dhe teknologjit� e tyre mund t� sillen ndryshe n� var�si t� cil�simeve t� shfletuesit tuaj dhe kontrolleve rajonale.",
+            "Hapja e website-ve ose profileve sociale t� jashtme nga Makina Elektrike mund t� sjell� vendosjen e cookie-ve shtes� nga ato pal� t� treta."
+          ]
+        },
+        {
+          "title": "Zgjedhjet tuaja",
+          "items": [
+            "Shumica e shfletuesve ju lejojn� t� bllokoni, kufizoni ose fshini cookie-t dhe local storage nga cil�simet e privat�sis� ose t� faqes.",
+            "N�se �aktivizoni teknologjit� thelb�sore, disa pjes� t� platform�s mund t� mos funksionojn� si duhet, p�rfshir� hyrjen, t� preferuarat, aksesin n� dashboard, hartat ose formular�t e lidhur me k�rkesat.",
+            "Modalitetet private, bllokuesit e p�rmbajtjes dhe sinjalet e shfletuesit si Do Not Track mund t� ndryshojn� sjelljen e disa funksioneve, por mund t� mos �aktivizojn� plot�sisht t� gjitha teknologjit� e pal�ve t� treta."
+          ]
+        },
+        {
+          "title": "Afati i ruajtjes s� cookie-ve dhe t� dh�nave t� ngjashme",
+          "items": [
+            "Teknologjit� e sesionit zakonisht skadojn� kur mbyllni shfletuesin, nd�rsa teknologjit� persistente mund t� mbeten derisa t� skadojn� automatikisht ose t'i fshini manualisht.",
+            "Local storage i shfletuesit mund t� mbetet n� pajisjen tuaj derisa ta pastroni, z�vend�soni ose hiqni nga cil�simet e shfletuesit.",
+            "Periudhat e ruajtjes mund t� ndryshojn� n� var�si t� faktit n�se teknologjia operohet nga Makina Elektrike apo nga nj� ofrues i pal�s s� tret�."
+          ]
+        },
+        {
+          "title": "P�rdit�simet e politik�s dhe kontakti",
+          "items": [
+            "Mund ta p�rdit�sojm� k�t� Politik� t� Cookie-ve kur ndryshojn� mjetet tona, integrimet ose detyrimet rregullatore.",
+            "Versioni i publikuar n� website �sht� versioni aktual dhe duhet rishikuar periodikisht, sidomos n�se p�rdorni dashboard-in e dealer-it ose funksionet e llogaris�.",
+            "N�se keni pyetje p�r cookie-t, local storage, analitikat ose gjurmimin n� Makina Elektrike, na kontaktoni n� info@makinaelektrike.al."
           ]
         }
       ],
       "metaTitle": "Politika e cookie-ve Makina Elektrike",
-      "metaDescription": "Mësoni cilat cookie përdor Makina Elektrike dhe si të kontrolloni preferencat e analitikës.",
+      "metaDescription": "Kuptoni si Makina Elektrike p�rdor cookie, local storage, analitika dhe sh�rbime t� integruara si hartat n� t� gjith� faqen dhe dashboard-in e dealer-it.",
       "metaKeywords": [
         "cookie Makina Elektrike",
         "preferencat e cookie-ve",
-        "cookie analitike"
+        "cookie analitike",
+        "politika e local storage"
       ]
     }
   },

@@ -125,9 +125,11 @@ const App: React.FC = () => {
                   <Route path="/register-dealer" element={<RegisterDealerPage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/sitemap" element={<SitemapPage />} />
-                  <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                   <Route path="/terms" element={<TermsOfServicePage />} />
-                  <Route path="/cookies" element={<CookiesPolicyPage />} />
+                  <Route path="/cookie-policy" element={<CookiesPolicyPage />} />
+                  <Route path="/privacy" element={<Navigate to="/privacy-policy" replace />} />
+                  <Route path="/cookies" element={<Navigate to="/cookie-policy" replace />} />
                   <Route path="/admin/login" element={<AdminLoginPage />} />
                   <Route path="/awaiting-approval" element={<AwaitingApprovalPage />} />
                   <Route

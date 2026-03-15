@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
@@ -18,11 +19,11 @@ const CookiesPolicyPage: React.FC = () => {
         title={t('legal.cookies.metaTitle')}
         description={t('legal.cookies.metaDescription')}
         keywords={t('legal.cookies.metaKeywords', { returnObjects: true }) as string[]}
-        canonical={`${BASE_URL}/cookies/`}
+        canonical={`${BASE_URL}/cookie-policy/`}
         openGraph={{
           title: t('legal.cookies.metaTitle'),
           description: t('legal.cookies.metaDescription'),
-          url: `${BASE_URL}/cookies/`,
+          url: `${BASE_URL}/cookie-policy/`,
           type: 'article',
           images: [DEFAULT_OG_IMAGE],
         }}
@@ -56,6 +57,22 @@ const CookiesPolicyPage: React.FC = () => {
             </section>
           ))}
         </div>
+
+        <section className="rounded-2xl border border-gray-cyan/20 bg-gray-cyan/10 p-6 shadow-xl">
+          <h2 className="text-2xl font-semibold text-white">{t('legal.common.questionsTitle')}</h2>
+          <p className="mt-3 text-gray-300">{t('legal.common.questionsBody')}</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link to="/contact" className="rounded-full bg-vivid-red px-5 py-2.5 font-semibold text-white transition hover:bg-opacity-90">
+              {t('legal.common.contactCta')}
+            </Link>
+            <Link to="/privacy-policy" className="rounded-full border border-white/15 px-5 py-2.5 font-semibold text-white transition hover:border-white/30">
+              {t('footer.privacy')}
+            </Link>
+            <Link to="/terms" className="rounded-full border border-white/15 px-5 py-2.5 font-semibold text-white transition hover:border-white/30">
+              {t('footer.terms')}
+            </Link>
+          </div>
+        </section>
       </div>
     </div>
   );

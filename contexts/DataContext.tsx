@@ -35,8 +35,6 @@ import {
   subscribeToBlogPosts,
   subscribeToPublishedBlogPosts,
   subscribeToDealerModels,
-  subscribeToDealersByOwner,
-  subscribeToModelsByOwner,
   subscribeToDealerModelsForDealers,
   createDealer as apiCreateDealer,
   updateDealer as apiUpdateDealer,
@@ -455,34 +453,25 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
     if (role === 'dealer' && userUid) {
       unsubscribers.push(
-        subscribeToDealersByOwner(userUid, {
-          onData: dealers => {
-            dataDispatch({ type: 'SET_DEALERS', payload: dealers });
-            cleanupDealerModelsSubscription();
-
-            if (dealers.length > 0) {
-              dealerModelsUnsubscribe = subscribeToDealerModelsForDealers(
-                dealers.map(dealer => dealer.id),
-                {
-                  onData: setDealerModels,
-                  onError: permissionAwareErrorHandler('dealer relationships', () => setDealerModels([])),
-                },
-              );
-            } else {
-              setDealerModels([]);
-            }
-          },
+        subscribeToApprovedDealers({
+          onData: dealers => dataDispatch({ type: 'SET_DEALERS', payload: dealers }),
           onError: permissionAwareErrorHandler('dealers', () => dataDispatch({ type: 'SET_DEALERS', payload: [] })),
         }),
       );
 
       unsubscribers.push(
-        subscribeToModelsByOwner(userUid, {
+        subscribeToModels({
           onData: models => dataDispatch({ type: 'SET_MODELS', payload: models }),
           onError: permissionAwareErrorHandler('vehicle models', () => dataDispatch({ type: 'SET_MODELS', payload: [] })),
         }),
       );
 
+      unsubscribers.push(
+        subscribeToDealerModels({
+          onData: mappings => setDealerModels(mappings),
+          onError: permissionAwareErrorHandler('dealer relationships', () => setDealerModels([])),
+        }),
+      );
     } else {
       unsubscribers.push(
         (role === 'admin'

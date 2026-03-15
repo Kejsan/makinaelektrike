@@ -95,9 +95,9 @@ const Footer: React.FC = () => {
             <div>
               <h3 className="text-sm font-semibold text-white tracking-wider uppercase">{t('footer.legal')}</h3>
               <ul className="mt-4 flex flex-wrap gap-x-6 gap-y-3 text-base text-gray-300">
-                <li><Link to="/privacy" className="hover:text-white transition-colors">{t('footer.privacy')}</Link></li>
+                <li><Link to="/privacy-policy" className="hover:text-white transition-colors">{t('footer.privacy')}</Link></li>
                 <li><Link to="/terms" className="hover:text-white transition-colors">{t('footer.terms')}</Link></li>
-                <li><Link to="/cookies" className="hover:text-white transition-colors">{t('footer.cookies')}</Link></li>
+                <li><Link to="/cookie-policy" className="hover:text-white transition-colors">{t('footer.cookies')}</Link></li>
               </ul>
             </div>
           </div>

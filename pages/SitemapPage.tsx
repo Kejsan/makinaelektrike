@@ -40,9 +40,9 @@ const SitemapPage: React.FC = () => {
       {
         title: t('sitemap.sections.legal.title'),
         items: [
-          { to: '/privacy', label: t('footer.privacy') },
+          { to: '/privacy-policy', label: t('footer.privacy') },
           { to: '/terms', label: t('footer.terms') },
-          { to: '/cookies', label: t('footer.cookies') },
+          { to: '/cookie-policy', label: t('footer.cookies') },
         ],
       },
     ],

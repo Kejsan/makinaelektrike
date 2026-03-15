@@ -619,118 +619,238 @@
     ]
   },
   "legal": {
+    "common": {
+      "questionsTitle": "Domande sui tuoi diritti o su questa policy?",
+      "questionsBody": "Per richieste privacy, domande sui cookie, supporto account o chiarimenti sull'onboarding dei concessionari, contatta Makina Elektrike tramite la pagina contatti o scrivendo a info@makinaelektrike.al.",
+      "contactCta": "Contatta Makina Elektrike"
+    },
     "privacy": {
       "title": "Informativa sulla privacy",
-      "updated": "Ultimo aggiornamento: marzo 2024",
-      "intro": "Spieghiamo come Makina Elektrike raccoglie, utilizza e protegge i tuoi dati personali quando navighi o crei un account.",
+      "updated": "Ultimo aggiornamento: 14 marzo 2026",
+      "intro": "Questa Informativa sulla Privacy spiega come Makina Elektrike raccoglie, utilizza, conserva e condivide i dati personali nel sito pubblico, nella registrazione account, nell'onboarding dei concessionari, nei preferiti, negli annunci, nelle richieste, nelle dashboard e negli strumenti di analisi.",
       "sections": [
         {
-          "title": "Dati che raccogliamo",
+          "title": "Ambito di questa policy",
           "items": [
-            "Informazioni fornite in fase di registrazione come nome, indirizzo email e organizzazione.",
-            "Statistiche di utilizzo che ci aiutano a capire come vengono consultate pagine, filtri di ricerca e schede.",
-            "Contenuti inviati direttamente, inclusi contatti ai concessionari o feedback tramite moduli."
+            "Questa policy si applica ai visitatori, agli utenti registrati, ai concessionari in fase di candidatura, ai concessionari approvati e a chi ci contatta tramite la piattaforma.",
+            "Copre le pagine pubbliche, le schede concessionario e modello, i preferiti, gli annunci, il blog, le pagine dedicate alla ricarica, i flussi di login e gli strumenti della dashboard concessionario.",
+            "Non sostituisce le informative privacy di concessionari, produttori, fornitori di pagamento, piattaforme social o provider di mappe che puoi raggiungere tramite link esterni."
           ]
         },
         {
-          "title": "Come utilizziamo i dati",
+          "title": "Dati personali forniti direttamente",
           "items": [
-            "Per offrire funzionalità personalizzate come preferiti salvati e pagine viste di recente.",
-            "Per mettere in contatto i concessionari con gli utenti interessati e agevolare il follow-up.",
-            "Per mantenere sicura la piattaforma, prevenire abusi e rispettare gli obblighi legali."
+            "Quando crei un account, Firebase Authentication elabora le credenziali di accesso e noi riceviamo il tuo indirizzo email, l'identificativo dell'account, il ruolo e i metadati di profilo collegati.",
+            "Quando richiedi un account concessionario o modifichi un profilo dealership, possiamo raccogliere ragione sociale, referente, numero di telefono, email, citt�, sito web, indirizzo showroom, marchi, lingue, note e immagini caricate.",
+            "Quando invii una richiesta o un messaggio di contatto, raccogliamo nome, email, numero di telefono se fornito, contenuto del messaggio e riferimento all'annuncio o al concessionario collegato."
           ]
         },
         {
-          "title": "I tuoi diritti",
+          "title": "Dati generati dall'uso della piattaforma",
           "items": [
-            "Richiedere l'accesso ai dati che conserviamo su di te e riceverne una copia portabile.",
-            "Chiedere correzioni, aggiornamenti o cancellazioni delle informazioni personali quando opportuno.",
-            "Revocare in qualsiasi momento il consenso alle comunicazioni marketing tramite i link dedicati."
+            "Salviamo i preferiti dei visitatori non autenticati nel local storage del browser e, per gli utenti autenticati, possiamo sincronizzare gli identificativi dei preferiti nella raccolta Firestore dedicata all'utente.",
+            "Raccogliamo informazioni operative come visualizzazioni di pagina, percorsi di navigazione, interazioni con i filtri, dati di browser e dispositivo, area approssimativa, referrer e orari di sessione tramite strumenti analitici e di sicurezza.",
+            "L'attivit� nella dashboard concessionario pu� generare registri come collegamenti ai modelli, aggiornamenti degli annunci, cambi di stato delle richieste, immagini gallery caricate e timestamp di creazione o modifica."
+          ]
+        },
+        {
+          "title": "Come utilizziamo i dati personali",
+          "items": [
+            "Per creare e gestire gli account, assegnare i ruoli della piattaforma, valutare le richieste dei concessionari e proteggere l'accesso alle funzioni dashboard.",
+            "Per pubblicare, mantenere e migliorare profili concessionario, pagine modello EV, annunci veicolo, contenuti del blog, preferiti e risorse dedicate alla ricarica.",
+            "Per rispondere alle richieste di supporto, inoltrare le richieste al concessionario pertinente, rilevare abusi, far rispettare le regole della piattaforma, analizzare le performance del prodotto e rispettare gli obblighi legali."
+          ]
+        },
+        {
+          "title": "Conservazione, infrastruttura e fornitori di servizi",
+          "items": [
+            "I dati della piattaforma possono essere trattati tramite servizi come Firebase Authentication, Cloud Firestore, Cloud Storage, Firebase Analytics, infrastruttura di hosting e integrazioni Google Maps utilizzate nelle pagine basate sulla posizione.",
+            "Alcuni fornitori possono trattare i dati al di fuori del tuo Paese. In questi casi il trattamento dipende dalle misure di tutela e dalle garanzie contrattuali offerte da tali fornitori.",
+            "I concessionari restano responsabili dei dati personali ricevuti direttamente dagli utenti dopo una richiesta, una prenotazione o una conversazione fuori piattaforma."
+          ]
+        },
+        {
+          "title": "Quando i dati vengono condivisi o resi pubblici",
+          "items": [
+            "I profili concessionario approvati, le pagine modello pubbliche, gli annunci pubblici, i post del blog e le immagini correlate possono essere visibili ai visitatori, ai motori di ricerca e agli altri utenti del sito.",
+            "I dati di contatto e le informazioni aziendali del concessionario possono essere pubblicati quando il profilo viene approvato e attivato su Makina Elektrike.",
+            "Possiamo condividere dati limitati con responsabili fidati, provider hosting, fornitori analytics, autorit�, regolatori o consulenti quando ci� � ragionevolmente necessario per sicurezza, conformit� o controversie legali."
+          ]
+        },
+        {
+          "title": "Tempi di conservazione",
+          "items": [
+            "I dati account e concessionario vengono conservati finch� l'account o il dealership restano attivi e per un periodo ragionevole successivo per audit, prevenzione frodi, backup e conformit� normativa.",
+            "Messaggi di supporto, richieste, note di moderazione e registri operativi possono essere conservati per il tempo necessario a gestire assistenza clienti, rapporti con i concessionari, controversie o obblighi di legge.",
+            "Il local storage del browser, come preferiti o code offline, resta sul tuo dispositivo finch� non lo elimini, non svuoti i dati del browser o l'applicazione non sovrascrive tali informazioni."
+          ]
+        },
+        {
+          "title": "I tuoi diritti e le tue scelte",
+          "items": [
+            "Nel rispetto della legge applicabile, puoi chiedere accesso, rettifica, cancellazione, limitazione o opposizione al trattamento dei dati personali che conserviamo su di te.",
+            "Puoi aggiornare alcuni dati dell'account o del profilo concessionario direttamente nella piattaforma, controllare cookie e local storage tramite il browser e chiederci di esaminare o rimuovere dati quando appropriato.",
+            "Se vuoi esercitare un diritto privacy, chiudere un account, disattivare un profilo concessionario o fare domande su questa policy, contattaci a info@makinaelektrike.al."
           ]
         }
       ],
       "metaTitle": "Privacy Makina Elektrike",
-      "metaDescription": "Scopri come Makina Elektrike gestisce i dati degli account, le statistiche e le comunicazioni.",
+      "metaDescription": "Scopri come Makina Elektrike gestisce i dati degli account, le informazioni di onboarding dei concessionari, i preferiti, le richieste, le analytics e i contenuti caricati sulla piattaforma.",
       "metaKeywords": [
         "privacy Makina Elektrike",
         "protezione dati",
+        "privacy concessionari",
         "informativa privacy EV"
       ]
     },
     "terms": {
       "title": "Termini di servizio",
-      "updated": "Ultimo aggiornamento: marzo 2024",
-      "intro": "Questi termini descrivono l'uso consentito del sito Makina Elektrike e le responsabilità della community.",
+      "updated": "Ultimo aggiornamento: 14 marzo 2026",
+      "intro": "Questi Termini di Servizio regolano l'uso di Makina Elektrike, inclusi navigazione pubblica, registrazione account, onboarding concessionari, dashboard, caricamento contenuti, annunci, richieste e funzioni collegate al business.",
       "sections": [
         {
-          "title": "Uso della piattaforma",
+          "title": "Chi pu� usare la piattaforma",
           "items": [
-            "Puoi consultare annunci e contenuti per ricerche personali o professionali sulla mobilità elettrica.",
-            "È vietato copiare o ripubblicare dati senza autorizzazione e utilizzare strumenti di scraping automatico.",
-            "Rispetta la proprietà intellettuale e la privacy degli altri utenti quando condividi commenti o link."
+            "Puoi usare Makina Elektrike solo per finalit� lecite e solo se hai l'autorit� legale per accettare questi termini.",
+            "Gli utenti concessionario devono fornire informazioni corrette e aggiornate sull'attivit� e sui contatti e devono avere l'autorit� per rappresentare il dealership o l'azienda automotive inviata alla piattaforma.",
+            "L'approvazione di un account concessionario o di un annuncio non � automatica. Possiamo chiedere chiarimenti, negare l'accesso o rimuovere contenuti quando le informazioni sono incomplete, fuorvianti o non coerenti con gli standard della piattaforma."
           ]
         },
         {
-          "title": "Account e accessi",
+          "title": "Account e sicurezza",
           "items": [
-            "Fornisci informazioni accurate in fase di registrazione e proteggi le credenziali di accesso.",
-            "Gli account concessionario sono soggetti a verifica; l'accesso può essere sospeso se i dati sono incompleti o inesatti.",
-            "Avvisaci subito se sospetti un uso non autorizzato del tuo account."
+            "Sei responsabile della riservatezza delle credenziali di accesso e dell'attivit� svolta tramite il tuo account.",
+            "Non puoi condividere l'accesso in modo da impersonare un'altra persona, aggirare i flussi di approvazione o concedere accesso non autorizzato ad aree protette della piattaforma.",
+            "Devi informarci tempestivamente se ritieni che il tuo account, il profilo del dealership o l'accesso alla dashboard siano stati usati senza autorizzazione."
           ]
         },
         {
-          "title": "Responsabilità",
+          "title": "Informazioni pubbliche e accuratezza della piattaforma",
           "items": [
-            "Makina Elektrike cura le informazioni ma non può garantire l'assenza totale di errori in listini o prezzi.",
-            "Non siamo responsabili degli accordi conclusi direttamente tra concessionari e automobilisti.",
-            "La piattaforma è fornita “così com'è”; possono verificarsi interruzioni per manutenzione o aggiornamenti."
+            "Makina Elektrike pubblica contenuti su concessionari EV, modelli, annunci, risorse di ricarica e informazioni di mercato con finalit� informative e di scoperta.",
+            "I concessionari sono responsabili dell'accuratezza, della liceit�, dei diritti di utilizzo e dell'aggiornamento di informazioni, foto, loghi, descrizioni e dichiarazioni pubblicate tramite i loro account.",
+            "Specifiche dei veicoli, prezzi, incentivi, disponibilit� di stock e informazioni sulla ricarica possono cambiare rapidamente, quindi gli utenti dovrebbero verificare autonomamente i dati rilevanti prima di prendere decisioni di acquisto o operative."
+          ]
+        },
+        {
+          "title": "Uso consentito",
+          "items": [
+            "Non puoi effettuare scraping, download massivi, indicizzazione, mirroring o ripubblicazione sistematica di contenuti di concessionari, modelli, annunci o contenuti editoriali senza autorizzazione scritta.",
+            "Non puoi caricare contenuti illeciti, diffamatori, in violazione di diritti, fuorvianti, malevoli o ingannevoli, incluse informazioni false sul dealership, media non autorizzati o dettagli degli annunci manipolati.",
+            "Non puoi interferire con sicurezza, stabilit�, sistemi di moderazione, analytics, flussi di autenticazione o normale funzionamento della piattaforma."
+          ]
+        },
+        {
+          "title": "Obblighi specifici dei concessionari",
+          "items": [
+            "Gli utenti concessionario approvati possono gestire solo la presenza del proprio dealership, i campi pubblici del profilo, i modelli, gli annunci e i flussi di richieste collegati al proprio account business approvato.",
+            "L'invio di un profilo, di un modello o di un annuncio non garantisce pubblicazione, ranking, volume di lead o visibilit� continua. Possiamo revisionare, modificare, respingere, disattivare o rimuovere contenuti per ragioni qualitative, operative o di conformit�.",
+            "Una volta che un utente contatta un concessionario, quest'ultimo � responsabile della gestione del rapporto, inclusi follow-up, trattative di prezzo, offerte finanziarie, garanzie e documentazione offline."
+          ]
+        },
+        {
+          "title": "Propriet� intellettuale",
+          "items": [
+            "La piattaforma Makina Elektrike, il design, il software, la struttura editoriale e il branding sono protetti dalle leggi sulla propriet� intellettuale e restano di propriet� di Makina Elektrike o dei suoi licenzianti.",
+            "Nomi dei concessionari, nomi dei produttori, loghi, nomi dei modelli e marchi di terzi restano di propriet� dei rispettivi titolari e non possono essere riutilizzati in modo fuorviante.",
+            "Salvo quanto espressamente consentito dalla legge, ricevi solo un diritto limitato e revocabile di accedere e usare la piattaforma per navigazione, ricerca e comunicazione commerciale legittima."
+          ]
+        },
+        {
+          "title": "Esclusioni di garanzia e limitazione di responsabilit�",
+          "items": [
+            "La piattaforma � fornita \"cos� com'�\" e \"secondo disponibilit�\". Non garantiamo disponibilit� continua, completezza assoluta o che ogni funzione resti sempre disponibile.",
+            "Makina Elektrike non � parte di vendite di veicoli, prenotazioni, accordi di finanziamento, installazioni di colonnine, garanzie concessionario o altri accordi negoziati direttamente tra utenti e concessionari.",
+            "Nella misura massima consentita dalla legge, Makina Elektrike non � responsabile per perdite indirette, incidentali, speciali, consequenziali o interruzioni di attivit� derivanti dall'uso o dall'impossibilit� di usare la piattaforma."
+          ]
+        },
+        {
+          "title": "Sospensione, modifiche e contatti",
+          "items": [
+            "Possiamo sospendere o terminare l'accesso, rimuovere contenuti o limitare funzionalit� se riteniamo che ci� sia necessario per sicurezza, conformit� legale, integrit� operativa o applicazione di questi termini.",
+            "Possiamo aggiornare questi termini nel tempo. La versione pubblicata sul sito � la versione di riferimento ed entra in vigore al momento della pubblicazione, salvo diversa data indicata.",
+            "Se non accetti i termini aggiornati, dovresti interrompere l'uso della piattaforma e contattarci per qualsiasi domanda a info@makinaelektrike.al."
           ]
         }
       ],
       "metaTitle": "Termini di servizio Makina Elektrike",
-      "metaDescription": "Consulta le condizioni d'uso di Makina Elektrike, incluse le regole sugli account e le limitazioni di responsabilità.",
+      "metaDescription": "Consulta le regole per usare Makina Elektrike, incluse sicurezza dell'account, obblighi dei concessionari, uso consentito, propriet� intellettuale e limiti di responsabilit�.",
       "metaKeywords": [
         "termini Makina Elektrike",
         "regole piattaforma EV",
+        "termini concessionari",
         "condizioni d'uso"
       ]
     },
     "cookies": {
       "title": "Informativa sui cookie",
-      "updated": "Ultimo aggiornamento: marzo 2024",
-      "intro": "I cookie ci aiutano a offrire un'esperienza personalizzata, misurare le performance e ricordare le preferenze.",
+      "updated": "Ultimo aggiornamento: 14 marzo 2026",
+      "intro": "Questa Cookie Policy spiega come Makina Elektrike usa cookie, local storage, tag analitici e tecnologie simili per far funzionare il sito, ricordare preferenze, proteggere gli account e misurare le performance.",
       "sections": [
         {
-          "title": "Tipologie di cookie",
+          "title": "Cosa intendiamo per cookie e tecnologie simili",
           "items": [
-            "I cookie essenziali mantengono attiva la sessione, proteggono i moduli e abilitano le funzionalità di base.",
-            "I cookie analitici mostrano quali pagine riscuotono maggiore interesse per migliorare la navigazione.",
-            "I cookie di preferenza ricordano la lingua scelta e i concessionari o modelli consultati di recente."
+            "I cookie sono piccoli file di testo salvati sul browser o sul dispositivo. Tecnologie simili includono local storage, cache del browser, tag analytics e identificatori basati su SDK.",
+            "Usiamo queste tecnologie nelle pagine pubbliche, nei flussi di login, nei preferiti, nelle dashboard concessionario, negli strumenti analytics e nei servizi incorporati come le mappe.",
+            "Alcune tecnologie sono essenziali per sicurezza e funzioni di base, mentre altre ci aiutano a ricordare preferenze o a capire come viene usato il sito."
           ]
         },
         {
-          "title": "Gestione dei cookie",
+          "title": "Categorie di tecnologie utilizzate",
           "items": [
-            "La maggior parte dei browser permette di eliminare o bloccare i cookie tramite le impostazioni.",
-            "Puoi disattivare il tracciamento analitico attivando la funzione “Do Not Track” o modificando le preferenze dei cookie.",
-            "Disabilitare alcuni cookie può ridurre funzionalità personalizzate come i preferiti salvati."
+            "Le tecnologie strettamente necessarie supportano autenticazione, continuit� di sessione, prevenzione frodi, sicurezza dei moduli e navigazione di base.",
+            "Le tecnologie funzionali ricordano lingua, preferiti, stato della dashboard e altre impostazioni di comodit� che migliorano le visite successive.",
+            "Le tecnologie analytics e performance ci aiutano a misurare visualizzazioni di pagina, sorgenti di traffico, modelli d'uso, informazioni sul browser e adozione delle funzioni per migliorare la piattaforma."
           ]
         },
         {
-          "title": "Servizi di terze parti",
+          "title": "Local storage e preferenze sul dispositivo",
           "items": [
-            "Possiamo integrare servizi affidabili come mappe o video che impostano cookie propri.",
-            "Tali fornitori seguono informative sulla privacy separate; consultale se hai dubbi specifici.",
-            "Contattaci per maggiori informazioni su integrazioni e responsabili del trattamento."
+            "Makina Elektrike salva alcune preferenze localmente nel browser, inclusi i preferiti per i visitatori non autenticati e i record della coda offline creati dagli strumenti operativi.",
+            "Quando effettui l'accesso, i preferiti possono essere sincronizzati anche con il tuo profilo Firestore cos� da seguirti tra sessioni e dispositivi.",
+            "Se cancelli i dati del browser o cambi dispositivo, queste preferenze locali possono essere reimpostate o rimosse."
+          ]
+        },
+        {
+          "title": "Servizi di terze parti e contenuti incorporati",
+          "items": [
+            "Servizi di terze parti come Firebase, Google Analytics, Google Maps, provider hosting, link social e risorse esterne incorporate possono impostare o leggere propri cookie o identificatori.",
+            "Tali fornitori operano secondo propri termini e informative privacy e le loro tecnologie possono comportarsi in modo diverso a seconda delle impostazioni del browser e dei controlli regionali.",
+            "Aprire siti esterni o profili social da Makina Elektrike pu� comportare l'impostazione di cookie aggiuntivi da parte di tali terzi."
+          ]
+        },
+        {
+          "title": "Le tue scelte",
+          "items": [
+            "La maggior parte dei browser ti consente di bloccare, limitare o eliminare cookie e local storage tramite i controlli privacy o impostazioni sito.",
+            "Se disattivi le tecnologie essenziali, alcune parti della piattaforma potrebbero non funzionare correttamente, inclusi login, preferiti, accesso dashboard, mappe o moduli legati alle richieste.",
+            "Modalit� private, content blocker e segnali del browser come Do Not Track possono modificare il comportamento di alcune funzioni, ma potrebbero non disattivare completamente tutte le tecnologie di terze parti."
+          ]
+        },
+        {
+          "title": "Conservazione di cookie e dati simili",
+          "items": [
+            "Le tecnologie di sessione di solito scadono quando chiudi il browser, mentre quelle persistenti possono restare fino alla scadenza automatica o alla rimozione manuale.",
+            "Il local storage del browser pu� restare sul dispositivo finch� non viene cancellato, sovrascritto o rimosso tramite le impostazioni del browser.",
+            "I periodi di conservazione possono variare a seconda che la tecnologia sia gestita da Makina Elektrike o da un fornitore terzo."
+          ]
+        },
+        {
+          "title": "Aggiornamenti della policy e contatti",
+          "items": [
+            "Possiamo aggiornare questa Cookie Policy quando cambiano i nostri strumenti, le integrazioni o gli obblighi normativi.",
+            "La versione pubblicata sul sito � quella attuale e dovrebbe essere controllata periodicamente, soprattutto se usi dashboard concessionario o funzioni account.",
+            "Se hai domande su cookie, local storage, analytics o tracciamento su Makina Elektrike, contattaci a info@makinaelektrike.al."
           ]
         }
       ],
       "metaTitle": "Cookie policy Makina Elektrike",
-      "metaDescription": "Scopri quali cookie utilizza Makina Elektrike e come gestire preferenze e statistiche.",
+      "metaDescription": "Scopri come Makina Elektrike usa cookie, local storage, analytics e servizi incorporati come le mappe nel sito e nella dashboard concessionario.",
       "metaKeywords": [
         "cookie Makina Elektrike",
         "preferenze cookie",
-        "cookie analitici"
+        "cookie analitici",
+        "policy local storage"
       ]
     }
   },
