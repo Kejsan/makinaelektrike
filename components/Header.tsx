@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Globe, Settings, LogOut, Menu, X, UserRound, Loader2 } from 'lucide-react';
+import { Globe, Settings, LogOut, Menu, X, UserRound, Loader2, ChevronDown, Heart, Zap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { SITE_LOGO, SITE_LOGO_ALT } from '../constants/media';
 
@@ -56,6 +56,7 @@ const Header: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -117,8 +118,8 @@ const Header: React.FC = () => {
 
   const navLinkClasses = (path: string) =>
     `relative px-3 py-2 text-sm font-medium transition-colors ${isActivePath(path)
-      ? 'text-gray-cyan'
-      : 'text-white hover:text-gray-cyan'
+      ? 'text-blue-400'
+      : 'text-slate-100 hover:text-blue-400'
     }`;
 
   const mobileNavLinkClasses = (path: string) =>
@@ -127,36 +128,63 @@ const Header: React.FC = () => {
       : 'text-white hover:text-gray-cyan hover:bg-white/5'
     }`;
 
-  const navigationItems = [
-    { to: '/', label: t('header.home') },
+  const primaryNav = [
     { to: '/listings', label: t('header.listings', { defaultValue: 'Cars for Sale' }) },
-    { to: '/dealers', label: t('header.dealers') },
     { to: '/models', label: t('header.models') },
     { to: '/albania-charging-stations', label: t('header.chargingStations') },
-    { to: '/favorites', label: t('header.favorites') },
-    { to: '/blog', label: t('header.blog') },
+  ];
+
+  const discoverNav = [
     { to: '/about', label: t('header.about') },
+    { to: '/blog', label: t('header.blog') },
+    { to: '/dealers', label: t('header.dealers') },
   ];
 
   const actionButtonBase = 'h-10 px-4 text-sm font-semibold';
 
   return (
     <header
-      className={`sticky top-0 z-[1200] border-b border-gray-cyan/20 backdrop-blur-lg transition-all duration-300 ${isScrolled ? 'bg-navy-blue/95 shadow-lg shadow-black/20' : 'bg-navy-blue/80'
+      className={`sticky top-0 z-[1200] border-b border-slate-800 transition-all duration-300 ${isScrolled ? 'bg-[#0b132b]/95 shadow-lg shadow-black/40' : 'bg-[#0b132b]'
         }`}
     >
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
-        <div className="relative flex items-center justify-between gap-2 py-3">
-          <div className="flex items-center gap-2 xl:gap-6 min-w-0">
-            <Link to="/" className="flex-shrink-0 flex items-center text-white" aria-label={t('header.home')}>
-              <img
-                src={SITE_LOGO}
-                alt={SITE_LOGO_ALT}
-                className="h-12 w-auto rounded sm:h-14 lg:h-16"
-              />
-            </Link>
-            <nav className="hidden xl:flex items-center gap-1">
-              {navigationItems.map((item) => (
+      {/* Top utility bar – secondary actions */}
+      <div className="hidden md:flex justify-end gap-6 bg-slate-950 px-4 py-2 text-xs text-slate-300">
+        <button
+          type="button"
+          onClick={() => navigate('/register-dealer')}
+          className="hover:text-white transition-colors"
+        >
+          {t('header.becomeDealer')}
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/help-center')}
+          className="hover:text-white transition-colors"
+        >
+          {t('header.helpCenter', { defaultValue: 'Help Center' })}
+        </button>
+      </div>
+
+      {/* Main navigation */}
+      <nav className="px-3 sm:px-4 lg:px-6 py-3 shadow-lg relative z-50">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+          {/* Logo / brand */}
+          <Link to="/" className="flex items-center gap-2 text-white" aria-label={t('header.home')}>
+            <div className="rounded-lg bg-blue-600 p-2">
+              <Zap className="h-6 w-6 text-white" fill="currentColor" />
+            </div>
+            <div className="flex flex-col leading-tight">
+              <span className="text-lg font-bold tracking-tight sm:text-xl">Makina Elektrike</span>
+              <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-blue-400">
+                EVs in Albania
+              </span>
+            </div>
+          </Link>
+
+          {/* Desktop navigation */}
+          <div className="hidden lg:flex flex-1 items-center justify-center">
+            <nav className="flex items-center gap-6 text-sm font-medium text-slate-100">
+              {primaryNav.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
@@ -165,160 +193,239 @@ const Header: React.FC = () => {
                 >
                   {item.label}
                   {isActivePath(item.to) && (
-                    <span className="absolute inset-x-2 -bottom-[6px] h-1 rounded-full bg-gradient-to-r from-gray-cyan via-white/70 to-gray-cyan" aria-hidden="true" />
+                    <span className="absolute inset-x-1 -bottom-1 h-0.5 rounded-full bg-blue-400" aria-hidden="true" />
                   )}
                 </Link>
               ))}
+
+              {/* Discover dropdown (secondary pages) */}
+              <div
+                className="relative"
+                onMouseEnter={() => setActiveDropdown('discover')}
+                onMouseLeave={() => setActiveDropdown(null)}
+              >
+                <button
+                  type="button"
+                  className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-slate-100 transition-colors hover:text-blue-400"
+                  onClick={() =>
+                    setActiveDropdown((current) => (current === 'discover' ? null : 'discover'))
+                  }
+                >
+                  {t('header.discover', { defaultValue: 'Discover' })}
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform duration-200 ${activeDropdown === 'discover' ? 'rotate-180' : ''
+                      }`}
+                  />
+                </button>
+                {activeDropdown === 'discover' && (
+                  <div className="absolute left-0 top-full mt-2 w-48 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 text-sm text-slate-100 shadow-xl">
+                    {discoverNav.map((item) => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        className="block px-4 py-2 hover:bg-slate-800 hover:text-blue-400"
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             </nav>
           </div>
 
-          <div className="flex items-center gap-2 lg:gap-3">
-            <div className="hidden lg:flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1.5 lg:px-3 lg:py-2 shadow-lg shadow-black/10">
-              {!user ? (
-                <>
-                  <Link to="/register" className={`btn btn-outline ${actionButtonBase}`}>
-                    {t('header.register')}
-                  </Link>
-                  <Link to="/register-dealer" className={`btn btn-outline ${actionButtonBase}`}>
-                    {t('header.becomeDealer')}
-                  </Link>
-                  <Link to="/login" className={`btn btn-primary ${actionButtonBase}`}>
-                    {t('header.login')}
-                  </Link>
-                </>
-              ) : (
-                <div className="relative" ref={accountMenuRef}>
-                  <button
-                    type="button"
-                    onClick={() => setAccountMenuOpen((open) => !open)}
-                    className="inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-sm font-medium text-white transition hover:border-gray-cyan/70 hover:text-gray-cyan"
-                    aria-haspopup="true"
-                    aria-expanded={accountMenuOpen}
-                  >
-                    <UserRound size={18} className="text-gray-cyan" />
-                    <span className="max-w-[10rem] truncate text-left">
-                      {user.displayName || user.email || t('header.account')}
-                    </span>
-                  </button>
-                  {accountMenuOpen && (
-                    <div className="absolute right-0 mt-3 w-56 origin-top-right rounded-xl border border-white/10 bg-navy-blue/95 p-2 shadow-2xl backdrop-blur-xl">
-                      <div className="px-3 py-2 text-xs uppercase tracking-wide text-gray-400">
-                        {t('header.accountMenuTitle')}
-                      </div>
-                      <div className="flex flex-col gap-1 text-sm">
-                        {role === 'admin' && (
-                          <Link
-                            to="/admin"
-                            className="flex items-center justify-between rounded-lg px-3 py-2 text-gray-200 transition hover:bg-white/10"
-                          >
-                            <span>{t('header.admin')}</span>
-                            <Settings size={16} />
-                          </Link>
-                        )}
-                        {role === 'dealer' && (
-                          <Link
-                            to="/dealer/dashboard"
-                            className="rounded-lg px-3 py-2 text-gray-200 transition hover:bg-white/10"
-                          >
-                            {t('header.dealerDashboard')}
-                          </Link>
-                        )}
-                        {role === 'pending' && (
-                          <Link
-                            to="/awaiting-approval"
-                            className="rounded-lg px-3 py-2 text-gray-200 transition hover:bg-white/10"
-                          >
-                            {t('header.awaitingApproval')}
-                          </Link>
-                        )}
-                        <button
-                          type="button"
-                          onClick={handleLogout}
-                          className="flex items-center justify-between rounded-lg px-3 py-2 text-left text-gray-200 transition hover:bg-white/10 disabled:opacity-60"
-                          disabled={loading}
-                        >
-                          <span>{t('header.logout')}</span>
-                          {loading ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              <span className="hidden h-6 w-px bg-white/15 lg:block" aria-hidden="true" />
-              <div className="hidden lg:block">
+          {/* Desktop utilities & auth */}
+          <div className="hidden lg:flex items-center gap-6">
+            {/* Utility icons */}
+            <div className="flex items-center gap-4 border-r border-slate-700 pr-5">
+              <Link
+                to="/favorites"
+                className="relative text-slate-300 transition-colors hover:text-red-400"
+                aria-label={t('header.favorites')}
+              >
+                <Heart className="h-5 w-5" />
+              </Link>
+              <div className="flex items-center text-slate-300 hover:text-white transition-colors">
                 <LanguageSwitcher />
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen((open) => !open)}
-              className="inline-flex items-center justify-center rounded-md p-2 text-white hover:text-gray-cyan hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-gray-cyan xl:hidden"
-              aria-expanded={mobileMenuOpen}
-              aria-label={mobileMenuOpen ? (t('header.closeMenu') as string) : (t('header.openMenu') as string)}
-            >
-              {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-            </button>
-          </div>
-          {mobileMenuOpen && (
-            <>
-              <div className="fixed inset-0 z-40 bg-black/60 xl:hidden" onClick={() => setMobileMenuOpen(false)} aria-hidden="true" />
-              <div className="absolute left-0 top-16 z-50 w-full rounded-b-lg border border-t-0 border-gray-cyan/20 bg-navy-blue/95 backdrop-blur-md shadow-xl xl:hidden">
-                <nav className="max-h-[calc(100vh-4rem)] overflow-y-auto px-4 pt-4 pb-6 space-y-3">
-                  {navigationItems.map((item) => (
-                    <Link key={item.to} to={item.to} className={mobileNavLinkClasses(item.to)}>
-                      {item.label}
-                    </Link>
-                  ))}
-                  {!user ? (
-                    <div className="pt-2 space-y-3">
-                      <Link to="/login" className="btn btn-primary w-full justify-center">
-                        {t('header.login')}
-                      </Link>
-                      <Link to="/register" className="btn btn-outline w-full justify-center">
-                        {t('header.register')}
-                      </Link>
-                      <Link to="/register-dealer" className="btn btn-outline w-full justify-center">
-                        {t('header.becomeDealer')}
-                      </Link>
+
+            {/* Auth area */}
+            {!user ? (
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate('/login')}
+                  className="text-sm font-medium text-slate-300 transition-colors hover:text-white"
+                >
+                  {t('header.login')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/register')}
+                  className="rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-colors hover:bg-blue-500"
+                >
+                  {t('header.register')}
+                </button>
+              </div>
+            ) : (
+              <div className="relative" ref={accountMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setAccountMenuOpen((open) => !open)}
+                  className="inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-sm font-medium text-white transition hover:border-gray-cyan/70 hover:text-gray-cyan"
+                  aria-haspopup="true"
+                  aria-expanded={accountMenuOpen}
+                >
+                  <UserRound size={18} className="text-gray-cyan" />
+                  <span className="max-w-[10rem] truncate text-left">
+                    {user.displayName || user.email || t('header.account')}
+                  </span>
+                </button>
+                {accountMenuOpen && (
+                  <div className="absolute right-0 mt-3 w-56 origin-top-right rounded-xl border border-white/10 bg-navy-blue/95 p-2 shadow-2xl backdrop-blur-xl">
+                    <div className="px-3 py-2 text-xs uppercase tracking-wide text-gray-400">
+                      {t('header.accountMenuTitle')}
                     </div>
-                  ) : (
-                    <div className="pt-2 space-y-3">
+                    <div className="flex flex-col gap-1 text-sm">
                       {role === 'admin' && (
-                        <Link to="/admin" className="btn btn-outline w-full justify-center">
-                          {t('header.admin')}
+                        <Link
+                          to="/admin"
+                          className="flex items-center justify-between rounded-lg px-3 py-2 text-gray-200 transition hover:bg-white/10"
+                        >
+                          <span>{t('header.admin')}</span>
+                          <Settings size={16} />
                         </Link>
                       )}
                       {role === 'dealer' && (
-                        <Link to="/dealer/dashboard" className="btn btn-outline w-full justify-center">
+                        <Link
+                          to="/dealer/dashboard"
+                          className="rounded-lg px-3 py-2 text-gray-200 transition hover:bg.white/10"
+                        >
                           {t('header.dealerDashboard')}
                         </Link>
                       )}
                       {role === 'pending' && (
-                        <Link to="/awaiting-approval" className="btn btn-outline w-full justify-center">
+                        <Link
+                          to="/awaiting-approval"
+                          className="rounded-lg px-3 py-2 text-gray-200 transition hover:bg-white/10"
+                        >
                           {t('header.awaitingApproval')}
                         </Link>
                       )}
                       <button
-                        onClick={handleLogout}
                         type="button"
-                        className="btn btn-outline w-full justify-center disabled:opacity-60"
+                        onClick={handleLogout}
+                        className="flex items-center justify-between rounded-lg px-3 py-2 text-left text-gray-200 transition hover:bg-white/10 disabled:opacity-60"
                         disabled={loading}
                       >
-                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        {t('header.logout')}
+                        <span>{t('header.logout')}</span>
+                        {loading ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
                       </button>
                     </div>
-                  )}
-                </nav>
-                <div className="border-t border-white/10 px-4 py-3">
-                  <LanguageSwitcher />
-                </div>
+                  </div>
+                )}
               </div>
-            </>
-          )}
+            )}
+          </div>
+
+          {/* Mobile menu toggle */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            className="inline-flex items-center justify-center rounded-md p-2 text-slate-200 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 lg:hidden"
+            aria-expanded={mobileMenuOpen}
+            aria-label={mobileMenuOpen ? (t('header.closeMenu') as string) : (t('header.openMenu') as string)}
+          >
+            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
         </div>
-      </div>
+
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden absolute left-0 top-full w-full border-t border-slate-800 bg-[#0b132b] px-4 pb-6 pt-4 shadow-2xl">
+            <div className="flex flex-col gap-3 text-sm font-medium text-white">
+              <Link to="/listings" className={mobileNavLinkClasses('/listings')}>
+                {t('header.listings', { defaultValue: 'Cars for Sale' })}
+              </Link>
+              <Link to="/models" className={mobileNavLinkClasses('/models')}>
+                {t('header.models')}
+              </Link>
+              <Link
+                to="/albania-charging-stations"
+                className={mobileNavLinkClasses('/albania-charging-stations')}
+              >
+                {t('header.chargingStations')}
+              </Link>
+              <Link to="/about" className={mobileNavLinkClasses('/about')}>
+                {t('header.about')}
+              </Link>
+              <Link to="/blog" className={mobileNavLinkClasses('/blog')}>
+                {t('header.blog')}
+              </Link>
+              <Link to="/dealers" className={mobileNavLinkClasses('/dealers')}>
+                {t('header.dealers')}
+              </Link>
+
+              <div className="my-2 h-px bg-slate-800" />
+
+              <div className="flex items-center justify-between rounded-lg bg-slate-900 px-3 py-2">
+                <span className="text-sm text-slate-100">{t('header.language')}</span>
+                <LanguageSwitcher />
+              </div>
+
+              <Link
+                to="/favorites"
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-100 hover:bg-slate-900"
+              >
+                <Heart className="h-5 w-5" />
+                <span>{t('header.favorites')}</span>
+              </Link>
+
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                {!user ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/login')}
+                      className="rounded-lg bg-slate-800 py-3 text-sm font-medium text-white"
+                    >
+                      {t('header.login')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/register')}
+                      className="rounded-lg bg-blue-600 py-3 text-sm font-medium text-white"
+                    >
+                      {t('header.register')}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    disabled={loading}
+                    className="col-span-2 rounded-lg bg-slate-800 py-3 text-sm font-medium text-white disabled:opacity-60"
+                  >
+                    {loading ? (
+                      <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+                    ) : null}
+                    {t('header.logout')}
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => navigate('/register-dealer')}
+                className="mt-4 text-center text-xs font-medium text-slate-400 underline"
+              >
+                {t('header.becomeDealer')}
+              </button>
+            </div>
+          </div>
+        )}
+      </nav>
     </header>
   );
 };
