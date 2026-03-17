@@ -199,11 +199,7 @@ const Header: React.FC = () => {
               ))}
 
               {/* Discover dropdown (secondary pages) */}
-              <div
-                className="relative"
-                onMouseEnter={() => setActiveDropdown('discover')}
-                onMouseLeave={() => setActiveDropdown(null)}
-              >
+              <div className="relative">
                 <button
                   type="button"
                   className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-slate-100 transition-colors hover:text-blue-400"
@@ -224,6 +220,7 @@ const Header: React.FC = () => {
                         key={item.to}
                         to={item.to}
                         className="block px-4 py-2 hover:bg-slate-800 hover:text-blue-400"
+                        onClick={() => setActiveDropdown(null)}
                       >
                         {item.label}
                       </Link>
