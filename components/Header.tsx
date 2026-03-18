@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Globe, Settings, LogOut, Menu, X, UserRound, Loader2, ChevronDown, Heart, Zap } from 'lucide-react';
+import { Globe, Settings, LogOut, Menu, X, UserRound, Loader2, ChevronDown, Heart } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { SITE_LOGO, SITE_LOGO_ALT } from '../constants/media';
 
@@ -25,7 +25,6 @@ const LanguageSwitcher: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-white transition-colors hover:text-gray-cyan"
         aria-haspopup="true"
-        aria-expanded={isOpen}
       >
         <Globe size={20} />
         <span className="hidden md:inline">{t('header.language')}</span>
@@ -58,6 +57,7 @@ const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
+  const discoverDropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -107,6 +107,18 @@ const Header: React.FC = () => {
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const handleDiscoverOutsideClick = (event: MouseEvent) => {
+      if (!discoverDropdownRef.current) return;
+      if (!discoverDropdownRef.current.contains(event.target as Node)) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleDiscoverOutsideClick);
+    return () => document.removeEventListener('mousedown', handleDiscoverOutsideClick);
   }, []);
 
   const isActivePath = (path: string) => {
@@ -169,16 +181,12 @@ const Header: React.FC = () => {
       <nav className="px-3 sm:px-4 lg:px-6 py-3 shadow-lg relative z-50">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           {/* Logo / brand */}
-          <Link to="/" className="flex items-center gap-2 text-white" aria-label={t('header.home')}>
-            <div className="rounded-lg bg-blue-600 p-2">
-              <Zap className="h-6 w-6 text-white" fill="currentColor" />
-            </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-lg font-bold tracking-tight sm:text-xl">Makina Elektrike</span>
-              <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-blue-400">
-                EVs in Albania
-              </span>
-            </div>
+          <Link to="/" className="flex-shrink-0 flex items-center text-white" aria-label={t('header.home')}>
+            <img
+              src={SITE_LOGO}
+              alt={SITE_LOGO_ALT}
+              className="h-12 w-auto rounded sm:h-14 lg:h-16"
+            />
           </Link>
 
           {/* Desktop navigation */}
@@ -199,7 +207,7 @@ const Header: React.FC = () => {
               ))}
 
               {/* Discover dropdown (secondary pages) */}
-              <div className="relative">
+              <div className="relative" ref={discoverDropdownRef}>
                 <button
                   type="button"
                   className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-slate-100 transition-colors hover:text-blue-400"
@@ -272,7 +280,6 @@ const Header: React.FC = () => {
                   onClick={() => setAccountMenuOpen((open) => !open)}
                   className="inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-sm font-medium text-white transition hover:border-gray-cyan/70 hover:text-gray-cyan"
                   aria-haspopup="true"
-                  aria-expanded={accountMenuOpen}
                 >
                   <UserRound size={18} className="text-gray-cyan" />
                   <span className="max-w-[10rem] truncate text-left">
@@ -297,7 +304,7 @@ const Header: React.FC = () => {
                       {role === 'dealer' && (
                         <Link
                           to="/dealer/dashboard"
-                          className="rounded-lg px-3 py-2 text-gray-200 transition hover:bg.white/10"
+                          className="rounded-lg px-3 py-2 text-gray-200 transition hover:bg-white/10"
                         >
                           {t('header.dealerDashboard')}
                         </Link>
@@ -331,7 +338,6 @@ const Header: React.FC = () => {
             type="button"
             onClick={() => setMobileMenuOpen((open) => !open)}
             className="inline-flex items-center justify-center rounded-md p-2 text-slate-200 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 lg:hidden"
-            aria-expanded={mobileMenuOpen}
             aria-label={mobileMenuOpen ? (t('header.closeMenu') as string) : (t('header.openMenu') as string)}
           >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}

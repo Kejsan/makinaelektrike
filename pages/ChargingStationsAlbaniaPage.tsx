@@ -549,6 +549,23 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
       addToast('Geolocation is not supported by your browser.', 'error');
       return;
     }
+
+    const fetchIpApproxLocation = async (): Promise<{ latitude: number; longitude: number } | null> => {
+      try {
+        // Approximate location fallback when browser network-provider geolocation fails.
+        // Public endpoint may have rate limits; if it fails we surface the original error.
+        const res = await fetch('https://ipapi.co/json/', { method: 'GET' });
+        if (!res.ok) return null;
+        const data = (await res.json()) as any;
+        const latitude = Number(data?.latitude);
+        const longitude = Number(data?.longitude);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+        return { latitude, longitude };
+      } catch {
+        return null;
+      }
+    };
+
     navigator.geolocation.getCurrentPosition(
       position => {
         const { latitude, longitude } = position.coords;
@@ -557,8 +574,26 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
         }
         setMapState({ center: [latitude, longitude], zoom: 14 });
       },
-      () => {
-        addToast('Unable to retrieve your location.', 'error');
+      error => {
+        // If the user denied permission, don't silently fall back.
+        if (error?.code === 1) {
+          addToast('Location permission denied. Please allow location access and try again.', 'error');
+          return;
+        }
+
+        void (async () => {
+          addToast('Network location unavailable. Using approximate IP location...', 'info');
+          const ipLoc = await fetchIpApproxLocation();
+          if (!ipLoc) {
+            addToast('Unable to retrieve your location.', 'error');
+            return;
+          }
+
+          if (mapRef.current) {
+            mapRef.current.flyTo([ipLoc.latitude, ipLoc.longitude], 14, { animate: true });
+          }
+          setMapState({ center: [ipLoc.latitude, ipLoc.longitude], zoom: 14 });
+        })();
       },
       { enableHighAccuracy: true, timeout: 10000 },
     );
@@ -775,17 +810,29 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                   <p className="text-sm font-semibold text-white">Auto-update on map move</p>
                   <p className="text-xs text-gray-400">Fetch stations automatically whenever you pan or zoom.</p>
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={autoUpdate}
-                  onClick={handleToggleAutoUpdate}
-                  className={`relative h-7 w-14 rounded-full transition ${autoUpdate ? 'bg-gray-cyan' : 'bg-gray-700'}`}
-                >
-                  <span
-                    className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${autoUpdate ? 'right-1' : 'left-1'}`}
-                  />
-                </button>
+                {autoUpdate ? (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked="true"
+                    title="Auto-update on map move"
+                    onClick={handleToggleAutoUpdate}
+                    className="relative h-7 w-14 rounded-full bg-gray-cyan transition"
+                  >
+                    <span className="absolute top-1 right-1 h-5 w-5 rounded-full bg-white transition" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked="false"
+                    title="Auto-update on map move"
+                    onClick={handleToggleAutoUpdate}
+                    className="relative h-7 w-14 rounded-full bg-gray-700 transition"
+                  >
+                    <span className="absolute top-1 left-1 h-5 w-5 rounded-full bg-white transition" />
+                  </button>
+                )}
               </div>
 
               {!autoUpdate && (
@@ -957,7 +1004,15 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
               </div>
             )}
             <div className="absolute bottom-3 right-4 rounded bg-black/70 px-3 py-1 text-xs text-gray-300">
-              Data © <a href="https://openchargemap.org" className="underline" target="_blank" rel="noreferrer">Open Charge Map contributors</a>
+              Data ©{' '}
+              <a
+                href="https://openchargemap.org"
+                className="underline"
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                Open Charge Map contributors
+              </a>
             </div>
           </div>
 
