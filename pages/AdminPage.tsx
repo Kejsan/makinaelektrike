@@ -463,18 +463,18 @@ const AdminPage: React.FC = () => {
   const filteredDealers = useMemo(() => {
     return dealerStatusBuckets[dealerFilter]
       .filter(dealer => 
-        dealer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        dealer.email?.toLowerCase().includes(searchQuery.toLowerCase())
+        (dealer.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (dealer.email || '').toLowerCase().includes(searchQuery.toLowerCase())
       )
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [dealerFilter, dealerStatusBuckets, searchQuery]);
 
   const filteredModels = useMemo(() => {
     return models
       .filter(model => {
         const matchesSearch = 
-          model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          model.make.toLowerCase().includes(searchQuery.toLowerCase());
+          (model.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (model.make || '').toLowerCase().includes(searchQuery.toLowerCase());
         
         let matchesFilter = true;
         if (modelFilter === 'featured') matchesFilter = model.isFeatured;
@@ -483,16 +483,16 @@ const AdminPage: React.FC = () => {
 
         return matchesSearch && matchesFilter;
       })
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [models, searchQuery, modelFilter]);
 
   const filteredBlogPosts = useMemo(() => {
     return blogPosts
       .filter(post => {
         const matchesSearch = 
-          post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          post.author?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          post.excerpt?.toLowerCase().includes(searchQuery.toLowerCase());
+          (post.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (post.author || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (post.excerpt || '').toLowerCase().includes(searchQuery.toLowerCase());
         
         let matchesFilter = true;
         if (blogFilter === 'published') matchesFilter = post.status === 'published';
@@ -515,7 +515,7 @@ const AdminPage: React.FC = () => {
   const filteredStations = useMemo(() => {
     return stations.filter((station) => {
       const matchesSearch =
-        station.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (station.address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (station.operator || '').toLowerCase().includes(searchQuery.toLowerCase());
       
       let matchesFilter = true;
@@ -524,7 +524,7 @@ const AdminPage: React.FC = () => {
 
       return matchesSearch && matchesFilter;
     })
-      .sort((a, b) => a.address.localeCompare(b.address));
+      .sort((a, b) => (a.address || '').localeCompare(b.address || ''));
   }, [stations, searchQuery, stationFilter]);
 
   const isAdmin = role === 'admin';

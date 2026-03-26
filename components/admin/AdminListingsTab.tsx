@@ -47,9 +47,9 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
   const filteredListings = useMemo(() => {
     return listings.filter(listing => {
       const matchesSearch = 
-        listing.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        listing.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        getDealerName(listing.dealerId).toLowerCase().includes(searchTerm.toLowerCase());
+        (listing.make || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (listing.model || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (getDealerName(listing.dealerId) || '').toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || listing.status === statusFilter;
 
