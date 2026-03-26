@@ -187,7 +187,7 @@ const DealerDetailPage: React.FC = () => {
 
                         <div className="p-8 space-y-6 relative">
                             <button
-                                onClick={() => toggleFavorite(dealer.id)}
+                                onClick={() => toggleFavorite(dealer.id, 'dealers')}
                                 className="absolute top-6 right-6 z-10 p-3 bg-white/10 rounded-full text-white hover:text-vivid-red transition-colors"
                                 aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
                             >

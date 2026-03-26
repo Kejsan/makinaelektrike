@@ -164,7 +164,7 @@ const ModelDetailPage: React.FC = () => {
                                 <h1 className="text-4xl font-extrabold text-white mt-1">{model.model_name}</h1>
                             </div>
                              <button
-                                onClick={() => toggleFavorite(model.id)}
+                                onClick={() => toggleFavorite(model.id, 'models')}
                                 className="p-3 bg-white/10 rounded-full text-white hover:text-vivid-red transition-colors flex-shrink-0"
                                 aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
                             >

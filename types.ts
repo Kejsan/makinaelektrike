@@ -101,6 +101,7 @@ interface ModelCore {
   image_url?: string;
   isFeatured?: boolean;
   imageGallery?: string[];
+  isActive?: boolean;
 }
 
 export interface ModelOwnershipMetadata extends FirestoreTimestamps {
@@ -209,6 +210,7 @@ export interface ChargingStationDocument {
   updatedAt?: Timestamp | null;
   createdBy?: string | null;
   updatedBy?: string | null;
+  isActive?: boolean;
 }
 
 export interface ChargingStation extends ChargingStationDocument {
@@ -224,6 +226,7 @@ export interface ChargingStationFormValues {
   googleMapsLink: string;
   latitude: number | '';
   longitude: number | '';
+  isActive?: boolean;
 }
 
 export type StationSource = 'custom' | 'ocm';

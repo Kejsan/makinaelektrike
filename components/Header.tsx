@@ -121,6 +121,17 @@ const Header: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleDiscoverOutsideClick);
   }, []);
 
+  const isDashboardRoute = location.pathname.startsWith('/admin') || 
+                           location.pathname.startsWith('/dealer/dashboard') || 
+                           location.pathname.startsWith('/dealer/listings');
+                           
+  // Hide header for master admins on dashboard routes to prevent layout overlaps
+  const isAdminDashboard = role === 'admin' && location.pathname.startsWith('/admin');
+
+  if (isAdminDashboard) {
+    return null;
+  }
+
   const isActivePath = (path: string) => {
     if (path === '/') {
       return location.pathname === '/';

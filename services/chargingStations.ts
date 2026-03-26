@@ -59,6 +59,7 @@ export const createChargingStation = async (
             updatedAt: serverTimestamp() as Timestamp,
             createdBy: userId,
             updatedBy: userId,
+            isActive: values.isActive !== undefined ? values.isActive : true,
         };
 
         const stationsCollection = collection(firestore, COLLECTION_NAME);
@@ -98,6 +99,7 @@ export const updateChargingStation = async (
             longitude: values.longitude !== '' ? Number(values.longitude) : null,
             updatedAt: serverTimestamp() as Timestamp,
             updatedBy: userId,
+            isActive: values.isActive,
         };
 
         await updateDoc(docRef, updateData);

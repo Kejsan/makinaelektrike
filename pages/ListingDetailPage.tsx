@@ -4,13 +4,15 @@ import { DataContext } from '../contexts/DataContext';
 import { Listing } from '../types';
 import SEO from '../components/SEO';
 import { useTranslation } from 'react-i18next';
-import { MapPin, Calendar, Gauge, Fuel, ChevronLeft, ChevronRight, Phone, MessageSquare, Share2, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { MapPin, Calendar, Gauge, Fuel, ChevronLeft, ChevronRight, Phone, MessageSquare, Share2, ShieldCheck, ArrowLeft, Heart } from 'lucide-react';
 import EnquiryModal from '../components/listings/EnquiryModal';
+import { useFavorites } from '../hooks/useFavorites';
 
 const ListingDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const { listings, dealers, loading } = useContext(DataContext);
     const { t } = useTranslation();
+    const { isFavorite, toggleFavorite } = useFavorites();
 
     // Find listing
     const listing = useMemo(() => listings.find(l => l.id === id), [listings, id]);

@@ -5,8 +5,19 @@ import { useTranslation } from 'react-i18next';
 import { Facebook, Instagram, Twitter, Linkedin } from 'lucide-react';
 import { SITE_LOGO, SITE_LOGO_ALT } from '../constants/media';
 
+import { useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
 const Footer: React.FC = () => {
   const { t } = useTranslation();
+  const location = useLocation();
+  const { role } = useAuth();
+  
+  const isAdminDashboard = (role === 'admin' || location.pathname.startsWith('/admin')) && location.pathname.startsWith('/admin');
+
+  if (isAdminDashboard) {
+    return null;
+  }
 
   return (
     <footer className="bg-transparent text-white mt-20 border-t border-white/10">

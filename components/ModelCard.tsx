@@ -19,7 +19,11 @@ const ModelCard: React.FC<{ model: Model }> = ({ model }) => {
     return (
         <div className="relative bg-white/5 backdrop-blur-md rounded-xl border border-white/10 shadow-lg overflow-hidden group transition-all duration-300 transform hover:-translate-y-1 hover:shadow-neon-cyan h-full flex flex-col">
              <button
-                onClick={() => toggleFavorite(model.id)}
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleFavorite(model.id, 'models');
+                }}
                 className="absolute top-4 right-4 z-10 p-2 bg-black/50 rounded-full text-white hover:text-vivid-red transition-colors"
                 aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
             >

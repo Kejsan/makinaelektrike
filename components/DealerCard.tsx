@@ -43,7 +43,11 @@ const DealerCard: React.FC<DealerCardProps> = ({ dealer, isLoading = false }) =>
   return (
     <div className="relative flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-lg backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-neon-cyan">
       <button
-        onClick={() => toggleFavorite(dealer.id)}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleFavorite(dealer.id, 'dealers');
+        }}
         className="absolute right-4 top-4 z-10 rounded-full bg-black/50 p-2 text-white transition-colors hover:text-vivid-red"
         aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
       >

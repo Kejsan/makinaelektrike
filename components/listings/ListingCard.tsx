@@ -1,8 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Listing } from '../../types';
-import { MapPin, Calendar, Gauge, Fuel } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Listing } from '../../types';
+import { MapPin, Calendar, Gauge, Fuel, Heart } from 'lucide-react';
+import { useFavorites } from '../../hooks/useFavorites';
 
 interface ListingCardProps {
     listing: Listing;
@@ -10,10 +11,23 @@ interface ListingCardProps {
 
 const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
     const { t } = useTranslation();
+    const { isFavorite, toggleFavorite } = useFavorites();
+    const favorited = isFavorite(listing.id);
     const mainImage = listing.images && listing.images.length > 0 ? listing.images[0] : '/placeholder-car.jpg';
 
     return (
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-gray-cyan/50 transition duration-300 group flex flex-col h-full">
+        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-gray-cyan/50 transition duration-300 group flex flex-col h-full relative">
+            <button
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleFavorite(listing.id, 'listings');
+                }}
+                className="absolute top-3 left-3 z-10 p-2 bg-black/50 rounded-full text-white hover:text-vivid-red transition-colors"
+                aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
+            >
+                <Heart size={18} className={`${favorited ? 'fill-vivid-red text-vivid-red' : 'fill-transparent'}`} />
+            </button>
             <Link to={`/listings/${listing.id}`} className="relative aspect-[16/10] overflow-hidden block">
                 <img
                     src={mainImage}

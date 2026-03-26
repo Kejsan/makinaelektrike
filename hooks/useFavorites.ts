@@ -14,28 +14,44 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import type { FavouriteEntry, UserRole } from '../types';
 
-const FAVORITES_KEY = 'makinaElektrikeFavorites';
+const FAVORITES_KEY = 'makinaElektrikeFavorites_v2';
+const LEGACY_FAVORITES_KEY = 'makinaElektrikeFavorites';
 
-const readLocalFavorites = (): string[] => {
+type LocalFavorite = { itemId: string; collection: string };
+
+const readLocalFavorites = (): LocalFavorite[] => {
   try {
+    // Try reading v2 first
     const storedFavorites = localStorage.getItem(FAVORITES_KEY);
-    if (!storedFavorites) {
-      return [];
+    if (storedFavorites) {
+      const parsed = JSON.parse(storedFavorites);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((v): v is LocalFavorite => typeof v === 'object' && v !== null && 'itemId' in v);
+      }
     }
 
-    const parsed = JSON.parse(storedFavorites);
-    if (!Array.isArray(parsed)) {
-      return [];
+    // Migration from legacy
+    const legacyFavorites = localStorage.getItem(LEGACY_FAVORITES_KEY);
+    if (legacyFavorites) {
+      const parsed = JSON.parse(legacyFavorites);
+      if (Array.isArray(parsed)) {
+        const migrated = parsed
+          .filter((v): v is string => typeof v === 'string')
+          .map(itemId => ({ itemId, collection: 'models' })); // Default to models for legacy
+        writeLocalFavorites(migrated);
+        // localStorage.removeItem(LEGACY_FAVORITES_KEY); // Optional: keep for safety or remove
+        return migrated;
+      }
     }
 
-    return parsed.filter((value): value is string => typeof value === 'string');
+    return [];
   } catch (error) {
     console.error('Error reading favorites from localStorage', error);
     return [];
   }
 };
 
-const writeLocalFavorites = (favorites: string[]) => {
+const writeLocalFavorites = (favorites: LocalFavorite[]) => {
   try {
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
   } catch (error) {
@@ -63,16 +79,16 @@ export const useFavorites = () => {
 
     if (!user) {
       const localFavorites = readLocalFavorites();
-      setFavorites(localFavorites);
+      setFavorites(localFavorites.map(f => f.itemId));
       setEntries(
-        localFavorites.map<FavouriteEntry>((itemId, index) => ({
-          id: itemId,
-          itemId,
+        localFavorites.map<FavouriteEntry>((fav) => ({
+          id: fav.itemId,
+          itemId: fav.itemId,
           userId: 'local-user',
           role: null,
           createdAt: null,
           updatedAt: null,
-          collection: index.toString(),
+          collection: fav.collection,
         })),
       );
       setLoading(false);
@@ -94,21 +110,35 @@ export const useFavorites = () => {
             role: (data?.role as UserRole | null | undefined) ?? role ?? null,
             createdAt: data?.createdAt ?? null,
             updatedAt: data?.updatedAt ?? null,
-            collection: data?.collection,
+            collection: data?.collection || 'models', // Default to models if missing
           };
         });
         const remoteFavorites = remoteEntries.map(entry => entry.itemId);
         setEntries(remoteEntries);
         setFavorites(remoteFavorites);
-        writeLocalFavorites(remoteFavorites);
+        
+        // Sync local storage v2
+        const localFormat = remoteEntries.map(e => ({ itemId: e.itemId, collection: e.collection || 'models' }));
+        writeLocalFavorites(localFormat);
+        
         setLoading(false);
       },
       (error: FirestoreError) => {
         console.error('Failed to subscribe to favourites', error);
         addToast('Failed to load favourites. Showing local data.', 'error');
         const localFavorites = readLocalFavorites();
-        setFavorites(localFavorites);
-        setEntries([]);
+        setFavorites(localFavorites.map(f => f.itemId));
+        setEntries(
+          localFavorites.map<FavouriteEntry>((fav) => ({
+            id: fav.itemId,
+            itemId: fav.itemId,
+            userId: 'local-user',
+            role: null,
+            createdAt: null,
+            updatedAt: null,
+            collection: fav.collection,
+          })),
+        );
         setLoading(false);
       },
     );
@@ -119,52 +149,58 @@ export const useFavorites = () => {
       unsubscribe();
       unsubscribeRef.current = null;
     };
-  }, [addToast, initializing, user]);
+  }, [addToast, initializing, user, role]);
 
   useEffect(() => () => {
     unsubscribeRef.current?.();
   }, []);
 
   const toggleFavorite = useCallback(
-    async (id: string) => {
-      const wasFavorite = favorites.includes(id);
+    async (itemId: string, collectionName: string = 'models') => {
+      const wasFavorite = favorites.includes(itemId);
       const previousFavorites = [...favorites];
       const previousEntries = [...entries];
+      
       const optimisticFavorites = wasFavorite
-        ? favorites.filter(favoriteId => favoriteId !== id)
-        : [...favorites, id];
+        ? favorites.filter(id => id !== itemId)
+        : [...favorites, itemId];
 
       setFavorites(optimisticFavorites);
       setEntries(prev =>
         wasFavorite
-          ? prev.filter(entry => entry.itemId !== id)
+          ? prev.filter(entry => entry.itemId !== itemId)
           : [
               ...prev,
               {
-                id,
-                itemId: id,
+                id: itemId,
+                itemId: itemId,
                 userId: user?.uid ?? 'local-user',
                 role: role ?? null,
                 createdAt: null,
                 updatedAt: null,
+                collection: collectionName,
               },
             ],
       );
 
       if (!user) {
-        writeLocalFavorites(optimisticFavorites);
+        const localFavorites = wasFavorite
+          ? readLocalFavorites().filter(f => f.itemId !== itemId)
+          : [...readLocalFavorites(), { itemId, collection: collectionName }];
+        writeLocalFavorites(localFavorites);
         return;
       }
 
-      const favouriteRef = doc(favouritesCollection(user.uid), id);
+      const favouriteRef = doc(favouritesCollection(user.uid), itemId);
 
       try {
         if (wasFavorite) {
           await deleteDoc(favouriteRef);
         } else {
-          const payload: Partial<FavouriteEntry> & { itemId: string; userId: string } = {
-            itemId: id,
+          const payload: any = {
+            itemId: itemId,
             userId: user.uid,
+            collection: collectionName,
             updatedAt: serverTimestamp(),
             createdAt: serverTimestamp(),
           };

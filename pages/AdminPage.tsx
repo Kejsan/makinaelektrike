@@ -16,8 +16,17 @@ import {
   RefreshCcw,
   UserPlus,
   Key,
+  CheckCircle,
+  CheckSquare,
+  Square,
+  FileText,
+  Home,
+  ExternalLink,
+  Search,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -162,6 +171,9 @@ const AdminPage: React.FC = () => {
     { id: string; type: 'approve' | 'reject' | 'deactivate' | 'reactivate' } | null
   >(null);
   const [dealerFilter, setDealerFilter] = useState<DealerFilterKey>('pending');
+  const [modelFilter, setModelFilter] = useState<'all' | 'featured' | 'visible' | 'hidden'>('all');
+  const [blogFilter, setBlogFilter] = useState<'all' | 'published' | 'draft'>('all');
+  const [stationFilter, setStationFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [offlineQueueOpen, setOfflineQueueOpen] = useState(false);
   const [offlineQueueCount, setOfflineQueueCount] = useState(() =>
     typeof window !== 'undefined' ? listOfflineMutations().length : 0,
@@ -169,6 +181,172 @@ const AdminPage: React.FC = () => {
   const [stations, setStations] = useState<ChargingStation[]>([]);
   const [stationsLoading, setStationsLoading] = useState(false);
   const [stationsError, setStationsError] = useState<string | null>(null);
+
+  // Search and Selection States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Reset selection and search on tab/filter change
+  useEffect(() => {
+    setSelectedIds([]);
+    setSearchQuery('');
+  }, [activeTab, dealerFilter, modelFilter, blogFilter, stationFilter]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = (ids: string[]) => {
+    if (selectedIds.length === ids.length && ids.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(ids);
+    }
+  };
+
+  const handleBulkDealerAction = async (action: 'approve' | 'deactivate' | 'delete' | 'reactivate') => {
+    if (!isAdmin || selectedIds.length === 0) return;
+    const confirmMsg = action === 'delete' ? 'Are you sure you want to delete selected dealers?' : null;
+    if (confirmMsg && !window.confirm(confirmMsg)) return;
+
+    addToast(`Processing bulk ${action}...`, 'info');
+    try {
+      await Promise.all(selectedIds.map(id => {
+        if (action === 'approve') return approveDealer(id);
+        if (action === 'deactivate') return deactivateDealer(id);
+        if (action === 'delete') return deleteDealer(id);
+        if (action === 'reactivate') return reactivateDealer(id);
+        return Promise.resolve();
+      }));
+      addToast(`Bulk ${action} completed successfully`, 'success');
+      setSelectedIds([]);
+    } catch (error) {
+      console.error(`Bulk ${action} failed:`, error);
+      addToast(`Bulk ${action} failed`, 'error');
+    }
+  };
+
+  const handleBulkModelAction = async (action: 'delete' | 'toggleFeatured' | 'toggleVisibility') => {
+    if (!isAdmin || selectedIds.length === 0) return;
+    const confirmMsg = action === 'delete' ? 'Are you sure you want to delete selected models?' : null;
+    if (confirmMsg && !window.confirm(confirmMsg)) return;
+
+    // Use current filter to determine explicit action if it's toggleVisibility
+    const explicitAction = action === 'toggleVisibility' 
+      ? (modelFilter === 'hidden' ? 'show' : 'hide') 
+      : action;
+
+    addToast(`Processing bulk ${explicitAction}...`, 'info');
+    try {
+      await Promise.all(selectedIds.map(id => {
+        if (action === 'delete') return deleteModel(id);
+        const model = models.find(m => m.id === id);
+        if (!model) return Promise.resolve();
+        
+        if (action === 'toggleFeatured') {
+          return updateModel(id, { isFeatured: !model.isFeatured });
+        }
+        if (action === 'toggleVisibility') {
+          // Explicitly set based on current filter state if possible, or just toggle
+          const targetVisibility = modelFilter === 'hidden' ? true : (modelFilter === 'visible' ? false : !model.isActive);
+          return updateModel(id, { isActive: targetVisibility });
+        }
+        return Promise.resolve();
+      }));
+      addToast(`Bulk ${explicitAction} completed successfully`, 'success');
+      setSelectedIds([]);
+    } catch (error) {
+      console.error(`Bulk ${explicitAction} failed:`, error);
+      addToast(`Bulk ${explicitAction} failed`, 'error');
+    }
+  };
+
+  const handleBulkListingAction = async (action: 'approve' | 'reject' | 'hide' | 'delete') => {
+    if (!isAdmin || selectedIds.length === 0) return;
+    const confirmMsg = action === 'delete' ? 'Are you sure you want to delete selected listings?' : null;
+    if (confirmMsg && !window.confirm(confirmMsg)) return;
+
+    addToast(`Processing bulk ${action}...`, 'info');
+    try {
+      await Promise.all(selectedIds.map(id => {
+        if (action === 'delete') return deleteListing(id);
+        if (action === 'approve') return updateListing(id, { status: 'active' });
+        if (action === 'reject') return updateListing(id, { status: 'rejected' });
+        if (action === 'hide') return updateListing(id, { status: 'inactive' });
+        return Promise.resolve();
+      }));
+      addToast(`Bulk ${action} completed successfully`, 'success');
+      setSelectedIds([]);
+    } catch (error) {
+      console.error(`Bulk ${action} failed:`, error);
+      addToast(`Bulk ${action} failed`, 'error');
+    }
+  };
+
+  const handleBulkBlogAction = async (action: 'publish' | 'draft' | 'delete') => {
+    if (!isAdmin || selectedIds.length === 0) return;
+    const confirmMsg = action === 'delete' ? 'Are you sure you want to delete selected posts?' : null;
+    if (confirmMsg && !window.confirm(confirmMsg)) return;
+
+    addToast(`Processing bulk ${action}...`, 'info');
+    try {
+      await Promise.all(selectedIds.map(id => {
+        if (action === 'delete') return deleteBlogPost(id);
+        if (action === 'publish' || action === 'draft') {
+          return updateBlogPost(id, { status: action === 'publish' ? 'published' : 'draft' });
+        }
+        return Promise.resolve();
+      }));
+      addToast(`Bulk ${action} completed successfully`, 'success');
+      setSelectedIds([]);
+    } catch (error) {
+      console.error(`Bulk ${action} failed:`, error);
+      addToast(`Bulk ${action} failed`, 'error');
+    }
+  };
+
+  const handleBulkStationAction = async (action: 'delete' | 'toggleActive') => {
+    if (!isAdmin || selectedIds.length === 0) return;
+    const confirmMsg = action === 'delete' ? 'Are you sure you want to delete selected stations?' : null;
+    if (confirmMsg && !window.confirm(confirmMsg)) return;
+
+    const explicitAction = action === 'toggleActive' 
+      ? (stationFilter === 'inactive' ? 'show' : 'hide') 
+      : action;
+
+    addToast(`Processing bulk ${explicitAction}...`, 'info');
+    try {
+      await Promise.all(selectedIds.map(async (id) => {
+        const station = stations.find(s => s.id === id);
+        if (action === 'delete') return deleteChargingStation(id);
+        if (action === 'toggleActive' && station) {
+          const targetVisibility = stationFilter === 'inactive' ? true : (stationFilter === 'active' ? false : !station.isActive);
+          return updateChargingStation(id, {
+            address: station.address,
+            plugTypes: station.plugTypes,
+            chargingSpeedKw: station.chargingSpeedKw,
+            operator: station.operator || '',
+            pricingDetails: station.pricingDetails || '',
+            googleMapsLink: station.googleMapsLink || '',
+            latitude: station.latitude ?? '',
+            longitude: station.longitude ?? '',
+            isActive: targetVisibility,
+          }, user!.uid);
+        }
+        return Promise.resolve();
+      }));
+      // Refresh stations after bulk action
+      const data = await fetchChargingStations();
+      setStations(data);
+      addToast(`Bulk ${explicitAction} completed successfully`, 'success');
+      setSelectedIds([]);
+    } catch (error) {
+      console.error(`Bulk ${explicitAction} failed:`, error);
+      addToast(`Bulk ${explicitAction} failed`, 'error');
+    }
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -283,10 +461,71 @@ const AdminPage: React.FC = () => {
   );
 
   const filteredDealers = useMemo(() => {
-    return [...dealerStatusBuckets[dealerFilter]].sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-  }, [dealerFilter, dealerStatusBuckets]);
+    return dealerStatusBuckets[dealerFilter]
+      .filter(dealer => 
+        dealer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        dealer.email?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [dealerFilter, dealerStatusBuckets, searchQuery]);
+
+  const filteredModels = useMemo(() => {
+    return models
+      .filter(model => {
+        const matchesSearch = 
+          model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          model.make.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        let matchesFilter = true;
+        if (modelFilter === 'featured') matchesFilter = model.isFeatured;
+        else if (modelFilter === 'visible') matchesFilter = model.isActive !== false;
+        else if (modelFilter === 'hidden') matchesFilter = model.isActive === false;
+
+        return matchesSearch && matchesFilter;
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [models, searchQuery, modelFilter]);
+
+  const filteredBlogPosts = useMemo(() => {
+    return blogPosts
+      .filter(post => {
+        const matchesSearch = 
+          post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          post.author?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          post.excerpt?.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        let matchesFilter = true;
+        if (blogFilter === 'published') matchesFilter = post.status === 'published';
+        else if (blogFilter === 'draft') matchesFilter = post.status === 'draft';
+
+        return matchesSearch && matchesFilter;
+      })
+      .sort((a, b) => {
+        // Simple sort by createdAt if available
+        const getSeconds = (val: any) => {
+          if (!val) return 0;
+          if (val.seconds) return val.seconds;
+          if (val instanceof Date) return val.getTime() / 1000;
+          return 0;
+        };
+        return getSeconds(b.createdAt) - getSeconds(a.createdAt);
+      });
+  }, [blogPosts, searchQuery, blogFilter]);
+
+  const filteredStations = useMemo(() => {
+    return stations.filter((station) => {
+      const matchesSearch =
+        station.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (station.operator || '').toLowerCase().includes(searchQuery.toLowerCase());
+      
+      let matchesFilter = true;
+      if (stationFilter === 'active') matchesFilter = station.isActive !== false;
+      else if (stationFilter === 'inactive') matchesFilter = station.isActive === false;
+
+      return matchesSearch && matchesFilter;
+    })
+      .sort((a, b) => a.address.localeCompare(b.address));
+  }, [stations, searchQuery, stationFilter]);
 
   const isAdmin = role === 'admin';
 
@@ -746,10 +985,77 @@ const AdminPage: React.FC = () => {
               <h3 className="text-lg font-semibold text-white">
                 {t('admin.filteredDealers', { defaultValue: 'Dealers' })}
               </h3>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-gray-300">
-                {filteredDealers.length}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-gray-300">
+                  {filteredDealers.length}
+                </span>
+                <button
+                  onClick={() => toggleSelectAll(filteredDealers.map(d => d.id))}
+                  className="text-xs text-gray-400 hover:text-white underline underline-offset-4"
+                >
+                  {selectedIds.length === filteredDealers.length && filteredDealers.length > 0 ? 'Deselect All' : 'Select All'}
+                </button>
+              </div>
             </header>
+
+            {/* Search and Bulk Actions Toolbar */}
+            <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center bg-black/20 p-4 rounded-xl border border-white/10">
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder={t('admin.searchPlaceholder', { defaultValue: 'Search...' })}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-gray-cyan/50"
+                />
+              </div>
+              
+              {selectedIds.length > 0 && (
+                <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                  <span className="text-[10px] uppercase font-bold text-gray-500 mr-1 whitespace-nowrap">{selectedIds.length} Selected</span>
+                  {dealerFilter === 'pending' && (
+                    <button
+                      onClick={() => handleBulkDealerAction('approve')}
+                      className="flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/30 whitespace-nowrap"
+                    >
+                      <Check size={14} /> {t('admin.approve')}
+                    </button>
+                  )}
+                  {dealerFilter === 'active' && (
+                    <button
+                      onClick={() => handleBulkDealerAction('deactivate')}
+                      className="flex items-center gap-1 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-semibold text-amber-400 hover:bg-amber-500/30 whitespace-nowrap"
+                    >
+                      <Power size={14} /> {t('admin.deactivate')}
+                    </button>
+                  )}
+                  {dealerFilter !== 'deleted' && (
+                    <button
+                      onClick={() => handleBulkDealerAction('delete')}
+                      className="flex items-center gap-1 rounded-lg bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-500/30 whitespace-nowrap"
+                    >
+                      <Trash2 size={14} /> {t('admin.delete')}
+                    </button>
+                  )}
+                  {dealerFilter === 'deleted' && (
+                    <button
+                      onClick={() => handleBulkDealerAction('reactivate')}
+                      className="flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/30 whitespace-nowrap"
+                    >
+                      <RefreshCcw size={14} /> {t('admin.restoreDealer', { defaultValue: 'Restore' })}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSelectedIds([])}
+                    className="p-1.5 text-gray-400 hover:text-white"
+                    title="Clear Selection"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
 
             {filteredDealers.length === 0 ? (
               renderEmptyState(emptyMessage)
@@ -938,8 +1244,17 @@ const AdminPage: React.FC = () => {
                   };
 
                   return (
-                    <li key={dealer.id} className="flex flex-col gap-4 py-4 first:pt-0 last:pb-0 md:flex-row md:items-start md:justify-between">
-                      <div className="space-y-2">
+                    <li key={dealer.id} className="group flex items-start gap-4 py-4 first:pt-0 last:pb-0 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors px-2 -mx-2 rounded-lg">
+                      <div className="pt-1.5 select-none">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(dealer.id)}
+                          onChange={() => toggleSelect(dealer.id)}
+                          className="h-4 w-4 rounded border-white/20 bg-white/5 text-emerald-500 focus:ring-emerald-500/50 transition-colors cursor-pointer"
+                        />
+                      </div>
+                      <div className="flex-1 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-base font-semibold text-white">{dealer.name}</p>
                           <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${statusClasses}`}>
@@ -995,6 +1310,7 @@ const AdminPage: React.FC = () => {
                             <span>{t('admin.delete')}</span>
                           </button>
                         )}
+                        </div>
                       </div>
                     </li>
                   );
@@ -1048,44 +1364,155 @@ const AdminPage: React.FC = () => {
             <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-gray-300">{models.length}</span>
           </header>
 
-          {models.length === 0 ? (
+          <div className="mb-6 space-y-4">
+            <div className="flex flex-wrap items-center gap-2 border-b border-white/5 pb-4">
+              {[
+                { label: t('admin.all'), value: 'all' },
+                { label: t('admin.featured'), value: 'featured' },
+                { label: t('admin.visible'), value: 'visible' },
+                { label: t('admin.hidden'), value: 'hidden' },
+              ].map((tab) => (
+                <button
+                  key={tab.value}
+                  onClick={() => setModelFilter(tab.value as any)}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                    modelFilter === tab.value
+                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                      : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="relative flex-1 min-w-[240px]">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder={t('admin.searchModels', { defaultValue: 'Search models by name or brand...' })}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 transition-all"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => toggleSelectAll(filteredModels.map(m => m.id))}
+                  className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors px-2 py-1"
+                >
+                  {selectedIds.length === filteredModels.length && filteredModels.length > 0
+                    ? t('admin.deselectAll', { defaultValue: 'Deselect All' })
+                    : t('admin.selectAll', { defaultValue: 'Select All' })}
+                </button>
+              </div>
+            </div>
+
+            {selectedIds.length > 0 && (
+              <div className="flex items-center gap-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 animate-in fade-in slide-in-from-top-2">
+                <span className="text-xs font-medium text-emerald-200">
+                  {t('admin.selectedCount', { defaultValue: '{{count}} selected', count: selectedIds.length })}
+                </span>
+                <div className="h-4 w-px bg-emerald-500/20 mx-1" />
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleBulkModelAction('toggleFeatured')}
+                    className="flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/30 whitespace-nowrap"
+                  >
+                    <Shield size={14} /> {t('admin.toggleFeatured', { defaultValue: 'Toggle Featured' })}
+                  </button>
+                  <button
+                    onClick={() => handleBulkModelAction('toggleVisibility')}
+                    className="flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/30 whitespace-nowrap"
+                  >
+                    {modelFilter === 'hidden' ? <Eye size={14} /> : <EyeOff size={14} />}
+                    {modelFilter === 'hidden' ? t('admin.show') : t('admin.hide')}
+                  </button>
+                  <button
+                    onClick={() => handleBulkModelAction('delete')}
+                    className="flex items-center gap-1 rounded-lg bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-500/30 whitespace-nowrap"
+                  >
+                    <Trash2 size={14} /> {t('admin.delete')}
+                  </button>
+                  <button
+                    onClick={() => setSelectedIds([])}
+                    className="p-1.5 text-gray-400 hover:text-white"
+                    title="Clear Selection"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {filteredModels.length === 0 ? (
             renderEmptyState(t('admin.noModels'))
           ) : (
             <ul className="divide-y divide-white/5">
-              {models.map(model => (
-                <li key={model.id} className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
-                  <div>
-                    <p className="font-semibold text-white">{model.brand} {model.model_name}</p>
-                    <p className="mt-1 text-xs text-gray-400">
-                      {model.range_wltp
-                        ? t('modelsPage.range', { defaultValue: 'Range (WLTP)' }) + ': ' + model.range_wltp + ' km'
-                        : t('admin.rangeUnknown', { defaultValue: 'Range unknown' })}
-                    </p>
-                    {model.isFeatured && (
-                      <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-200">
-                        {t('admin.featured')}
-                      </span>
-                    )}
+              {filteredModels.map(model => (
+                <li key={model.id} className="group flex items-start gap-4 py-4 first:pt-0 last:pb-0 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors px-2 -mx-2 rounded-lg">
+                  <div className="pt-1.5 select-none">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(model.id)}
+                      onChange={() => toggleSelect(model.id)}
+                      className="h-4 w-4 rounded border-white/20 bg-white/5 text-emerald-500 focus:ring-emerald-500/50 transition-colors cursor-pointer"
+                    />
                   </div>
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    <button
-                      onClick={() => setModelFormState({ mode: 'edit', entity: model })}
-                      disabled={modelUpdateLoading}
-                      className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                      aria-label={t('admin.editModel')}
-                    >
-                      <Pencil size={14} />
-                      <span>{t('admin.edit')}</span>
-                    </button>
-                    <button
-                      onClick={() => confirmAndDelete(() => deleteModel(model.id))}
-                      disabled={modelDeleteLoading}
-                      className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/30 hover:text-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      aria-label={t('admin.delete')}
-                    >
-                      {modelDeleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 size={14} />}
-                      <span>{t('admin.delete')}</span>
-                    </button>
+                  <div className="flex-1 flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-white">{model.brand} {model.model_name}</p>
+                      <p className="mt-1 text-xs text-gray-400">
+                        {model.range_wltp
+                          ? t('modelsPage.range', { defaultValue: 'Range (WLTP)' }) + ': ' + model.range_wltp + ' km'
+                          : t('admin.rangeUnknown', { defaultValue: 'Range unknown' })}
+                      </p>
+                      {model.isFeatured && (
+                        <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-200">
+                          {t('admin.featured')}
+                        </span>
+                      )}
+                      {model.isActive === false && (
+                        <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-gray-500/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400 border border-white/10">
+                          {t('admin.hidden')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <button
+                        onClick={() => updateModel(model.id, { isActive: model.isActive === false })}
+                        disabled={modelUpdateLoading}
+                        className={`inline-flex items-center gap-1 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                          model.isActive === false 
+                            ? 'bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30' 
+                            : 'bg-amber-500/20 text-amber-200 hover:bg-amber-500/30'
+                        }`}
+                        aria-label={model.isActive === false ? t('admin.show') : t('admin.hide')}
+                      >
+                        {model.isActive === false ? <Eye size={14} /> : <EyeOff size={14} />}
+                        <span>{model.isActive === false ? t('admin.show') : t('admin.hide')}</span>
+                      </button>
+                      <button
+                        onClick={() => setModelFormState({ mode: 'edit', entity: model })}
+                        disabled={modelUpdateLoading}
+                        className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                        aria-label={t('admin.editModel')}
+                      >
+                        <Pencil size={14} />
+                        <span>{t('admin.edit')}</span>
+                      </button>
+                      <button
+                        onClick={() => confirmAndDelete(() => deleteModel(model.id))}
+                        disabled={modelDeleteLoading}
+                        className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/30 hover:text-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        aria-label={t('admin.delete')}
+                      >
+                        {modelDeleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 size={14} />}
+                        <span>{t('admin.delete')}</span>
+                      </button>
+                    </div>
                   </div>
                 </li>
               ))}
@@ -1137,7 +1564,11 @@ const AdminPage: React.FC = () => {
           listings={listings} 
           dealers={dealers} 
           onUpdateStatus={(id, status) => updateListing(id, { status })} 
-          onDelete={deleteListing} 
+          onDelete={deleteListing}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
+          onSelectAll={toggleSelectAll}
+          onBulkAction={handleBulkListingAction}
         />
       </div>
     );
@@ -1159,40 +1590,143 @@ const AdminPage: React.FC = () => {
             <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-gray-300">{blogPosts.length}</span>
           </header>
 
-          {blogPosts.length === 0 ? (
+          <div className="mb-6 space-y-4">
+            <div className="flex flex-wrap items-center gap-2 border-b border-white/5 pb-4">
+              {[
+                { label: t('admin.all'), value: 'all' },
+                { label: t('admin.statusPublished'), value: 'published' },
+                { label: t('admin.statusDraft'), value: 'draft' },
+              ].map((tab) => (
+                <button
+                  key={tab.value}
+                  onClick={() => setBlogFilter(tab.value as any)}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                    blogFilter === tab.value
+                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                      : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="relative flex-1 min-w-[240px]">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder={t('admin.searchBlog', { defaultValue: 'Search blog posts...' })}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 transition-all"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => toggleSelectAll(filteredBlogPosts.map(p => p.id))}
+                  className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors px-2 py-1"
+                >
+                  {selectedIds.length === filteredBlogPosts.length && filteredBlogPosts.length > 0
+                    ? t('admin.deselectAll', { defaultValue: 'Deselect All' })
+                    : t('admin.selectAll', { defaultValue: 'Select All' })}
+                </button>
+              </div>
+            </div>
+
+            {selectedIds.length > 0 && (
+              <div className="flex items-center gap-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 animate-in fade-in slide-in-from-top-2">
+                <span className="text-xs font-medium text-emerald-200">
+                  {t('admin.selectedCount', { defaultValue: '{{count}} selected', count: selectedIds.length })}
+                </span>
+                <div className="h-4 w-px bg-emerald-500/20 mx-1" />
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleBulkBlogAction('publish')}
+                    className="flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/30 whitespace-nowrap"
+                  >
+                    <CheckCircle className="h-4 w-4" /> {t('admin.publish', { defaultValue: 'Publish' })}
+                  </button>
+                  <button
+                    onClick={() => handleBulkBlogAction('draft')}
+                    className="flex items-center gap-1 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-semibold text-amber-400 hover:bg-amber-500/30 whitespace-nowrap"
+                  >
+                    <Pencil className="h-4 w-4" /> {t('admin.draft', { defaultValue: 'Draft' })}
+                  </button>
+                  <button
+                    onClick={() => handleBulkBlogAction('delete')}
+                    className="flex items-center gap-1 rounded-lg bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-500/30 whitespace-nowrap"
+                  >
+                    <Trash2 size={14} /> {t('admin.delete')}
+                  </button>
+                  <button
+                    onClick={() => setSelectedIds([])}
+                    className="p-1.5 text-gray-400 hover:text-white"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {filteredBlogPosts.length === 0 ? (
             renderEmptyState(t('admin.noBlogPosts'))
           ) : (
             <ul className="divide-y divide-white/5">
-              {blogPosts.map(post => (
-                <li key={post.id} className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
-                  <div>
-                    <p className="font-semibold text-white">{post.title}</p>
-                    <p className="mt-1 text-sm text-gray-300">{post.author}</p>
-                    <p className="mt-2 text-xs text-gray-400">
-                      {post.date
-                        ? new Date(post.date).toLocaleDateString()
-                        : t('admin.dateUnknown', { defaultValue: 'Date unknown' })}
-                    </p>
+              {filteredBlogPosts.map(post => (
+                <li key={post.id} className="group flex items-start gap-4 py-4 first:pt-0 last:pb-0 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors px-2 -mx-2 rounded-lg">
+                  <div className="pt-1.5 select-none">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(post.id)}
+                      onChange={() => toggleSelect(post.id)}
+                      className="h-4 w-4 rounded border-white/20 bg-white/5 text-emerald-500 focus:ring-emerald-500/50 transition-colors cursor-pointer"
+                    />
                   </div>
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    <button
-                      onClick={() => setBlogFormState({ mode: 'edit', entity: post })}
-                      disabled={blogUpdateLoading}
-                      className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                      aria-label={t('admin.editBlogPost')}
-                    >
-                      <Pencil size={14} />
-                      <span>{t('admin.edit')}</span>
-                    </button>
-                    <button
-                      onClick={() => confirmAndDelete(() => deleteBlogPost(post.id))}
-                      disabled={blogDeleteLoading}
-                      className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/30 hover:text-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      aria-label={t('admin.delete')}
-                    >
-                      {blogDeleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 size={14} />}
-                      <span>{t('admin.delete')}</span>
-                    </button>
+                  <div className="flex-1 flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-white">{post.title}</p>
+                      <p className="mt-1 text-sm text-gray-300">{post.author}</p>
+                      <p className="mt-2 text-xs text-gray-400">
+                        {post.date
+                          ? new Date(post.date).toLocaleDateString()
+                          : t('admin.dateUnknown', { defaultValue: 'Date unknown' })}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <button
+                        onClick={() => updateBlogPost(post.id, { status: post.status === 'published' ? 'draft' : 'published' })}
+                        disabled={blogUpdateLoading}
+                        className={`inline-flex items-center gap-1 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                          post.status !== 'published' 
+                            ? 'bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30' 
+                            : 'bg-amber-500/20 text-amber-200 hover:bg-amber-500/30'
+                        }`}
+                        aria-label={post.status !== 'published' ? t('admin.publish') : t('admin.draft')}
+                      >
+                        {post.status !== 'published' ? <CheckCircle size={14} /> : <EyeOff size={14} />}
+                        <span>{post.status !== 'published' ? t('admin.publish') : t('admin.draft')}</span>
+                      </button>
+                      <button
+                        onClick={() => setBlogFormState({ mode: 'edit', entity: post })}
+                        disabled={blogUpdateLoading}
+                        className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                        aria-label={t('admin.editBlogPost')}
+                      >
+                        <Pencil size={14} />
+                        <span>{t('admin.edit')}</span>
+                      </button>
+                      <button
+                        onClick={() => confirmAndDelete(() => deleteBlogPost(post.id))}
+                        disabled={blogDeleteLoading}
+                        className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/30 hover:text-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        aria-label={t('admin.delete')}
+                      >
+                        {blogDeleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 size={14} />}
+                        <span>{t('admin.delete')}</span>
+                      </button>
+                    </div>
                   </div>
                 </li>
               ))}
@@ -1230,105 +1764,204 @@ const AdminPage: React.FC = () => {
   };
 
   const renderStationsPanel = () => {
-    let content: React.ReactNode;
+    if (stationsLoading) return renderLoadingState();
+    if (stationsError) return (
+      <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-6 py-10 text-center text-sm text-red-200">
+        <p className="text-base font-semibold">{stationsError}</p>
+      </div>
+    );
 
-    if (stationsLoading) {
-      content = renderLoadingState();
-    } else if (stationsError) {
-      content = (
-        <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-6 py-10 text-center text-sm text-red-200">
-          <p className="text-base font-semibold">{stationsError}</p>
-        </div>
-      );
-    } else if (stations.length === 0) {
-      content = renderEmptyState('No charging stations found. Add your first station!');
-    } else {
-      content = (
-        <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-white/10 bg-white/5">
-              <tr>
-                <th className="px-4 py-3 font-semibold text-white">Address</th>
-                <th className="px-4 py-3 font-semibold text-white">Plug Types</th>
-                <th className="px-4 py-3 font-semibold text-white">Speed (kW)</th>
-                <th className="px-4 py-3 font-semibold text-white">Pricing</th>
-                <th className="px-4 py-3 font-semibold text-white">Coordinates</th>
-                <th className="px-4 py-3 text-right font-semibold text-white">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {stations.map(station => (
-                <tr key={station.id} className="transition hover:bg-white/5">
-                  <td className="px-4 py-3 text-gray-300">{station.address}</td>
-                  <td className="px-4 py-3 text-gray-400">{station.plugTypes}</td>
-                  <td className="px-4 py-3 text-gray-400">{station.chargingSpeedKw} kW</td>
-                  <td className="px-4 py-3 text-gray-400">
-                    {station.pricingDetails ? (
-                      <span className="line-clamp-1" title={station.pricingDetails}>
-                        {station.pricingDetails}
-                      </span>
-                    ) : (
-                      <span className="text-gray-500">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-gray-400">
-                    {station.latitude && station.longitude ? (
-                      <span className="text-xs">
-                        {station.latitude.toFixed(4)}, {station.longitude.toFixed(4)}
-                      </span>
-                    ) : (
-                      <span className="text-gray-500">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {station.googleMapsLink && (
-                        <a
-                          href={station.googleMapsLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-gray-cyan hover:underline"
-                        >
-                          Map
-                        </a>
-                      )}
-                      <button
-                        onClick={() => setStationFormState({ mode: 'edit', entity: station })}
-                        className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-gray-200 transition hover:bg-white/10"
-                      >
-                        <Pencil size={12} />
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => confirmAndDelete(() => handleDeleteStation(station.id))}
-                        className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-200 transition hover:bg-red-500/30"
-                      >
-                        <Trash2 size={12} />
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-    }
+    const isAllSelected = filteredStations.length > 0 && 
+      filteredStations.every(s => selectedIds.includes(s.id));
 
     return (
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold text-white">Charging Stations ({stations.length})</h2>
+          <h2 className="text-xl font-semibold text-white">
+            {t('admin.manageStations', { defaultValue: 'Manage Charging Stations' })} ({stations.length})
+          </h2>
           <button
             onClick={() => setStationFormState({ mode: 'create' })}
             className="inline-flex items-center gap-2 rounded-lg bg-gray-cyan px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-cyan/90"
           >
             <Plus size={16} />
-            <span>Add Station</span>
+            <span>{t('admin.addStation', { defaultValue: 'Add Station' })}</span>
           </button>
         </div>
-        {content}
+
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-wrap items-center gap-2 border-b border-white/5 pb-4">
+            {[
+              { label: t('admin.all'), value: 'all' },
+              { label: t('admin.statusActive'), value: 'active' },
+              { label: t('admin.statusInactive'), value: 'inactive' },
+            ].map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setStationFilter(tab.value as any)}
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                  stationFilter === tab.value
+                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                    : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="relative flex-1 min-w-[240px]">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder={t('admin.searchStations', { defaultValue: 'Search stations by address or operator...' })}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-white placeholder-gray-500 focus:border-gray-cyan/50 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {selectedIds.length > 0 && (
+            <div className="flex items-center gap-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 animate-in fade-in slide-in-from-top-2">
+              <span className="text-xs font-medium text-emerald-200">
+                {t('admin.selectedCount', { defaultValue: '{{count}} selected', count: selectedIds.length })}
+              </span>
+              <div className="h-4 w-px bg-emerald-500/20 mx-1" />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => handleBulkStationAction('toggleActive')}
+                  className="flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/30 whitespace-nowrap"
+                >
+                  {stationFilter === 'inactive' ? <Eye size={14} /> : <EyeOff size={14} />}
+                  {stationFilter === 'inactive' ? t('admin.show') : t('admin.hide')}
+                </button>
+                <button
+                  onClick={() => handleBulkStationAction('delete')}
+                  className="flex items-center gap-1 rounded-lg bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-500/30 whitespace-nowrap"
+                >
+                  <Trash2 size={14} /> {t('admin.delete')}
+                </button>
+                <button
+                  onClick={() => setSelectedIds([])}
+                  className="p-1.5 text-gray-400 hover:text-white"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {filteredStations.length === 0 ? (
+          renderEmptyState(t('admin.noStationsFound', { defaultValue: 'No charging stations found.' }))
+        ) : (
+          <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="border-b border-white/10 bg-white/5">
+                <tr>
+                  <th className="px-4 py-3 min-w-[40px]">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={() => toggleSelectAll(filteredStations.map(s => s.id))}
+                      className="h-4 w-4 rounded border-white/20 bg-white/5 text-gray-cyan focus:ring-gray-cyan/50 transition-colors cursor-pointer"
+                    />
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-white">{t('admin.address')}</th>
+                  <th className="px-4 py-3 font-semibold text-white">{t('admin.plugTypes')}</th>
+                  <th className="px-4 py-3 font-semibold text-white text-center">{t('admin.speed')}</th>
+                  <th className="px-4 py-3 font-semibold text-white text-center">{t('admin.status')}</th>
+                  <th className="px-4 py-3 text-right font-semibold text-white">{t('admin.actions')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filteredStations.map(station => (
+                  <tr key={station.id} className="transition-colors hover:bg-white/[0.02] group">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(station.id)}
+                        onChange={() => toggleSelect(station.id)}
+                        className="h-4 w-4 rounded border-white/20 bg-white/5 text-gray-cyan focus:ring-gray-cyan/50 transition-colors cursor-pointer"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-gray-200">{station.address}</span>
+                        <span className="text-xs text-gray-500">{station.operator || 'Unknown Operator'}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-400">{station.plugTypes}</td>
+                    <td className="px-4 py-3 text-center text-gray-300 font-medium">
+                      {station.chargingSpeedKw} kW
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                        station.isActive !== false 
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                          : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+                      }`}>
+                        {station.isActive !== false ? t('admin.visible') : t('admin.hidden')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {station.googleMapsLink && (
+                          <a
+                            href={station.googleMapsLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-gray-400 transition hover:bg-white/10 hover:text-white"
+                          >
+                            <ExternalLink size={10} />
+                            {t('admin.viewMap', { defaultValue: 'Map' })}
+                          </a>
+                        )}
+                        <button
+                          onClick={() => updateChargingStation(station.id, {
+                            address: station.address,
+                            plugTypes: station.plugTypes,
+                            chargingSpeedKw: station.chargingSpeedKw,
+                            operator: station.operator || '',
+                            pricingDetails: station.pricingDetails || '',
+                            googleMapsLink: station.googleMapsLink || '',
+                            latitude: station.latitude ?? '',
+                            longitude: station.longitude ?? '',
+                            isActive: station.isActive === false,
+                          }, user!.uid)}
+                          className={`inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[10px] font-semibold transition ${
+                            station.isActive === false 
+                              ? 'bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30' 
+                              : 'bg-amber-500/20 text-amber-200 hover:bg-amber-500/30'
+                          }`}
+                        >
+                          {station.isActive === false ? <Eye size={10} /> : <EyeOff size={10} />}
+                          {station.isActive === false ? t('admin.show') : t('admin.hide')}
+                        </button>
+                        <button
+                          onClick={() => setStationFormState({ mode: 'edit', entity: station })}
+                          className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-gray-200 transition hover:bg-white/10"
+                        >
+                          <Pencil size={10} />
+                          {t('admin.edit')}
+                        </button>
+                        <button
+                          onClick={() => confirmAndDelete(() => handleDeleteStation(station.id))}
+                          className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-red-500/20 px-2 py-1 text-[10px] font-semibold text-red-200 transition hover:bg-red-500/30"
+                        >
+                          <Trash2 size={10} />
+                          {t('admin.delete')}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     );
   };
@@ -1339,7 +1972,7 @@ const AdminPage: React.FC = () => {
 
   return (
     <>
-    <div className="flex min-h-[calc(100vh-80px)] w-full">
+    <div className="flex min-h-screen w-full">
       <SEO
         title={t('admin.dashboardMetaTitle')}
         description={t('admin.dashboardMetaDescription')}
@@ -1403,6 +2036,18 @@ const AdminPage: React.FC = () => {
               </span>
             )}
           </button>
+
+          <button
+            onClick={() => navigate('/')}
+            className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
+          >
+            <div className="flex items-center gap-2">
+              <Home size={18} className="text-gray-cyan" />
+              <span>{t('admin.goToHomepage', { defaultValue: 'Platform Homepage' })}</span>
+            </div>
+            <ExternalLink size={14} className="text-gray-400" />
+          </button>
+
           <button
             onClick={handleLogout}
             className="flex w-full items-center justify-center space-x-2 rounded-lg bg-red-500/20 px-4 py-3 text-sm font-semibold text-red-400 transition hover:bg-red-500/30 hover:text-red-300"
