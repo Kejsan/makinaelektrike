@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Shield,
   LogOut,
@@ -27,6 +28,7 @@ import ModelForm, { ModelFormValues } from '../components/admin/ModelForm';
 import BlogPostForm, { BlogPostFormValues } from '../components/admin/BlogPostForm';
 import ChargingStationForm from '../components/admin/ChargingStationForm';
 import BulkImportModal, { BulkImportEntity } from '../components/admin/BulkImportModal';
+import BlogTextImportModal from '../components/admin/BlogTextImportModal';
 import OfflineQueuePanel from '../components/admin/OfflineQueuePanel';
 import AdminListingsTab from '../components/admin/AdminListingsTab';
 import { MigrationTool } from '../components/admin/MigrationTool';
@@ -63,17 +65,20 @@ interface ModalProps {
 }
 
 const AdminModal: React.FC<ModalProps> = ({ title, onClose, children }) => (
-  <div className={modalOverlayClass}>
-    <div className={`${modalContainerClass} max-w-3xl overflow-hidden bg-gray-900/95`}>
-      <div className={`${modalHeaderClass} border-b border-white/10 px-6 py-4`}>
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <button onClick={onClose} className={modalCloseButtonClass} aria-label="Close">
-          <X size={18} />
-        </button>
+  createPortal(
+    <div className={modalOverlayClass}>
+      <div className={`${modalContainerClass} max-w-3xl overflow-hidden bg-gray-900/95`}>
+        <div className={`${modalHeaderClass} border-b border-white/10 px-6 py-4`}>
+          <h2 className="text-lg font-semibold">{title}</h2>
+          <button onClick={onClose} className={modalCloseButtonClass} aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="max-h-[75vh] overflow-y-auto px-6 py-5">{children}</div>
       </div>
-      <div className="max-h-[75vh] overflow-y-auto px-6 py-5">{children}</div>
-    </div>
-  </div>
+    </div>,
+    document.body
+  )
 );
 
 type FormState<T> = { mode: 'create' | 'edit'; entity?: T } | null;
@@ -151,6 +156,7 @@ const AdminPage: React.FC = () => {
   const [dealerSubmitting, setDealerSubmitting] = useState(false);
   const [modelSubmitting, setModelSubmitting] = useState(false);
   const [blogSubmitting, setBlogSubmitting] = useState(false);
+  const [blogTextImportOpen, setBlogTextImportOpen] = useState(false);
   const [stationSubmitting, setStationSubmitting] = useState(false);
   const [dealerAction, setDealerAction] = useState<
     { id: string; type: 'approve' | 'reject' | 'deactivate' | 'reactivate' } | null
@@ -1202,7 +1208,7 @@ const AdminPage: React.FC = () => {
           <h2 className="text-xl font-semibold text-white">{t('admin.manageBlog')}</h2>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setBulkEntity('blog')}
+              onClick={() => setBlogTextImportOpen(true)}
               className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
             >
               <Upload size={16} />
@@ -1332,7 +1338,8 @@ const AdminPage: React.FC = () => {
   }
 
   return (
-    <div className="py-16">
+    <>
+    <div className="flex min-h-[calc(100vh-80px)] w-full">
       <SEO
         title={t('admin.dashboardMetaTitle')}
         description={t('admin.dashboardMetaDescription')}
@@ -1354,68 +1361,116 @@ const AdminPage: React.FC = () => {
         }}
         structuredData={structuredData}
       />
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-white shadow-2xl backdrop-blur-xl md:p-12">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="flex items-center space-x-4">
-                <Shield className="h-12 w-12 text-gray-cyan" />
-                <div>
-                  <h1 className="text-3xl font-extrabold sm:text-4xl">{t('admin.dashboard')}</h1>
-                  <p className="mt-1 text-sm text-gray-300">{user.email}</p>
-                </div>
-              </div>
+      
+      {/* Sidebar Layout */}
+      <aside className="hidden w-64 flex-col border-r border-white/10 bg-white/5 backdrop-blur-xl md:flex shrink-0">
+        <div className="border-b border-white/10 p-6">
+          <div className="flex items-center space-x-3">
+            <Shield className="h-8 w-8 text-gray-cyan" />
+            <h1 className="text-xl font-bold text-white">{t('admin.dashboard')}</h1>
+          </div>
+          <p className="mt-2 text-xs text-gray-400 break-all">{user.email}</p>
+        </div>
+
+        <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-6">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex w-full items-center px-4 py-3 text-sm font-medium rounded-xl transition-all ${
+                activeTab === tab.id
+                  ? 'bg-gray-cyan text-white shadow-lg'
+                  : 'text-gray-300 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="border-t border-white/10 p-4 space-y-3 bg-black/20">
+          <button
+            onClick={() => setOfflineQueueOpen(true)}
+            className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
+          >
+            <div className="flex items-center gap-2">
+              <ClipboardList size={18} />
+              <span>{t('admin.offlineQueueButton', { defaultValue: 'Offline queue' })}</span>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            {offlineQueueCount > 0 && (
+              <span className="rounded-full bg-gray-cyan px-2 py-0.5 text-xs font-semibold text-white">
+                {offlineQueueCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center justify-center space-x-2 rounded-lg bg-red-500/20 px-4 py-3 text-sm font-semibold text-red-400 transition hover:bg-red-500/30 hover:text-red-300"
+          >
+            <LogOut size={18} />
+            <span>{t('admin.logout')}</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col min-w-0">
+        {/* Mobile Header */}
+        <div className="md:hidden flex flex-col gap-4 border-b border-white/10 bg-white/5 backdrop-blur-xl p-4 sticky top-0 z-40">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Shield className="h-6 w-6 text-gray-cyan" />
+              <h1 className="text-lg font-bold text-white">{t('admin.dashboard')}</h1>
+            </div>
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setOfflineQueueOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
+                className="relative p-2 text-gray-300 hover:text-white transition rounded-lg hover:bg-white/10"
               >
-                <ClipboardList size={18} />
-                <span>{t('admin.offlineQueueButton', { defaultValue: 'Offline queue' })}</span>
+                <ClipboardList size={20} />
                 {offlineQueueCount > 0 && (
-                  <span className="rounded-full bg-gray-cyan px-2 py-0.5 text-xs font-semibold text-white">
+                  <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-gray-cyan text-[10px] font-bold text-white">
                     {offlineQueueCount}
                   </span>
                 )}
               </button>
               <button
                 onClick={handleLogout}
-                className="inline-flex items-center space-x-2 rounded-lg bg-gray-cyan/20 px-4 py-2 font-semibold text-white transition hover:bg-gray-cyan/30"
+                className="p-2 text-red-400 hover:text-red-300 transition rounded-lg hover:bg-red-500/20"
               >
-                <LogOut size={18} />
-                <span>{t('admin.logout')}</span>
+                <LogOut size={20} />
               </button>
             </div>
           </div>
-
-          <div className="mt-10">
-            <div className="flex flex-wrap gap-2 rounded-xl border border-white/10 bg-white/5 p-1 text-sm font-medium text-gray-300">
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 rounded-lg px-4 py-2 transition ${activeTab === tab.id
-                    ? 'bg-gray-cyan text-white'
-                    : 'hover:bg-white/10 hover:text-white'
-                    }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-8">
-              {activeTab === 'dealers' && renderDealersPanel()}
-              {activeTab === 'models' && renderModelsPanel()}
-              {activeTab === 'listings' && renderListingsPanel()}
-              {activeTab === 'blog' && renderBlogPanel()}
-              {activeTab === 'stations' && renderStationsPanel()}
-              {activeTab === 'migration' && <div className="mt-6"><MigrationTool /></div>}
-            </div>
+          
+          <div className="flex overflow-x-auto gap-2 pb-1 scrollbar-hide">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-none whitespace-nowrap rounded-xl px-5 py-2.5 text-sm font-medium transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-gray-cyan text-white shadow-md'
+                    : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
-      </div>
+
+        {/* Content Panel */}
+        <div className="flex-1 p-4 md:p-8 overflow-auto">
+          {activeTab === 'dealers' && renderDealersPanel()}
+          {activeTab === 'models' && renderModelsPanel()}
+          {activeTab === 'listings' && renderListingsPanel()}
+          {activeTab === 'blog' && renderBlogPanel()}
+          {activeTab === 'stations' && renderStationsPanel()}
+          {activeTab === 'migration' && <div className="mt-6"><MigrationTool /></div>}
+        </div>
+      </main>
+    </div>
 
       {dealerFormState && (
         <AdminModal
@@ -1486,9 +1541,18 @@ const AdminPage: React.FC = () => {
         </AdminModal>
       )}
 
-      {bulkEntity && (
+      {bulkEntity && bulkEntity !== 'blog' && (
         <AdminModal title={getBulkModalTitle(bulkEntity)} onClose={() => setBulkEntity(null)}>
           <BulkImportModal entity={bulkEntity} onClose={() => setBulkEntity(null)} />
+        </AdminModal>
+      )}
+
+      {blogTextImportOpen && (
+        <AdminModal
+          title={t('admin.bulkUploadPosts', { defaultValue: 'Bulk upload blog posts' })}
+          onClose={() => setBlogTextImportOpen(false)}
+        >
+          <BlogTextImportModal onClose={() => setBlogTextImportOpen(false)} />
         </AdminModal>
       )}
       {activationModalDealer && (
@@ -1568,7 +1632,7 @@ const AdminPage: React.FC = () => {
           </form>
         </AdminModal>
       )}
-    </div>
+    </>
   );
 };
 

@@ -159,6 +159,18 @@ interface BlogPostMetadata extends FirestoreTimestamps {
   publishedAt?: Timestamp | null;
 }
 
+export interface BlogPostTranslation {
+  title: string;
+  excerpt: string;
+  metaTitle: string;
+  metaDescription: string;
+  focusKeyword?: string;
+  canonicalUrl?: string;
+  metaRobots?: string;
+  sections: BlogPostSection[];
+  faqs?: BlogPostFaq[];
+}
+
 export interface BlogPost extends BlogPostMetadata {
   id: string;
   slug: string;
@@ -170,10 +182,17 @@ export interface BlogPost extends BlogPostMetadata {
   imageUrl: string;
   metaTitle: string;
   metaDescription: string;
+  focusKeyword?: string;
+  canonicalUrl?: string;
+  metaRobots?: string;
   tags: string[];
   sections: BlogPostSection[];
   faqs?: BlogPostFaq[];
   cta?: BlogPostCta;
+  translations?: {
+    en?: BlogPostTranslation;
+    it?: BlogPostTranslation;
+  };
 }
 
 // Charging Stations
