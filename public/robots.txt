@@ -1,6 +1,6 @@
 # =========================
 # MakinaElektrike robots.txt
-# Updated: 2026-02-20
+# Updated: 2026-03-30
 # =========================
 
 Sitemap: https://makinaelektrike.com/sitemap.xml

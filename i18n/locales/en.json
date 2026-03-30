@@ -760,12 +760,15 @@
       {
         "question": "How can dealers partner with you?",
         "answer": "Dealers can apply through the registration page; our team verifies credentials and onboards approved partners."
-      },
-      {
-        "question": "Do you cover commercial fleets?",
-        "answer": "We are expanding resources for business fleets and welcome enquiries from logistics, taxi and corporate operators."
       }
-    ]
+    ],
+    "transparencyTitle": "Transparency & Responsible Use of Information",
+    "transparencyP1": "We work diligently to vet the specifications, dealership details, pricing indicators, and charging ecosystem data that we publish. Even so, EV technology and market availability evolve quickly, so every visitor should treat the information on Makina Elektrike as guidance rather than a guaranteed promise. Listings, incentives, and technical specifications can change without notice, and delays in third-party updates may mean that some pages display data that is no longer current.",
+    "transparencyP2": "By using our platform, you acknowledge that the content is offered on an \"as is, as available\" basis without warranties of any kind. We encourage shoppers, dealers, and partners to contact manufacturers or official representatives to confirm critical facts before making purchasing or operational decisions. Trademarks and logos referenced throughout the site remain the property of their respective owners, and no endorsement or partnership should be inferred unless explicitly stated.",
+    "transparencyP3": "If you discover an omission or inaccuracy, please let us know through our contact page. We continually refine our editorial process to keep the community informed while respecting ownership rights, and we may update or remove materials at any time if we believe doing so protects the integrity of the information we provide.",
+    "collaborationCtaTitle": "Open for New Collaborations",
+    "collaborationCtaDescription": "We are open to new collaboration opportunities based on the needs of dealers, fleets, transportation services, taxi companies, and users.",
+    "collaborationCtaButton": "Contact Us"
   },
   "contactPage": {
     "title": "Contact Us",

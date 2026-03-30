@@ -461,20 +461,22 @@ const AdminPage: React.FC = () => {
   );
 
   const filteredDealers = useMemo(() => {
+    const q = String(searchQuery || '').toLowerCase();
     return dealerStatusBuckets[dealerFilter]
       .filter(dealer => 
-        (dealer.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (dealer.email || '').toLowerCase().includes(searchQuery.toLowerCase())
+        String(dealer.name || '').toLowerCase().includes(q) ||
+        String(dealer.email || '').toLowerCase().includes(q)
       )
-      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
   }, [dealerFilter, dealerStatusBuckets, searchQuery]);
 
   const filteredModels = useMemo(() => {
+    const q = String(searchQuery || '').toLowerCase();
     return models
       .filter(model => {
         const matchesSearch = 
-          (model.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (model.make || '').toLowerCase().includes(searchQuery.toLowerCase());
+          String(model.name || '').toLowerCase().includes(q) ||
+          String(model.make || '').toLowerCase().includes(q);
         
         let matchesFilter = true;
         if (modelFilter === 'featured') matchesFilter = model.isFeatured;
@@ -483,16 +485,21 @@ const AdminPage: React.FC = () => {
 
         return matchesSearch && matchesFilter;
       })
-      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
   }, [models, searchQuery, modelFilter]);
 
   const filteredBlogPosts = useMemo(() => {
+    const q = String(searchQuery || '').toLowerCase();
     return blogPosts
       .filter(post => {
+        // Use String() coercion to guard against object-valued fields (e.g., multilingual title stored as {en, it})
+        const title = typeof post.title === 'string' ? post.title : String(post.title ?? '');
+        const author = typeof post.author === 'string' ? post.author : String(post.author ?? '');
+        const excerpt = typeof post.excerpt === 'string' ? post.excerpt : String(post.excerpt ?? '');
         const matchesSearch = 
-          (post.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (post.author || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (post.excerpt || '').toLowerCase().includes(searchQuery.toLowerCase());
+          title.toLowerCase().includes(q) ||
+          author.toLowerCase().includes(q) ||
+          excerpt.toLowerCase().includes(q);
         
         let matchesFilter = true;
         if (blogFilter === 'published') matchesFilter = post.status === 'published';
@@ -513,10 +520,11 @@ const AdminPage: React.FC = () => {
   }, [blogPosts, searchQuery, blogFilter]);
 
   const filteredStations = useMemo(() => {
+    const q = String(searchQuery || '').toLowerCase();
     return stations.filter((station) => {
       const matchesSearch =
-        (station.address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (station.operator || '').toLowerCase().includes(searchQuery.toLowerCase());
+        String(station.address || '').toLowerCase().includes(q) ||
+        String(station.operator || '').toLowerCase().includes(q);
       
       let matchesFilter = true;
       if (stationFilter === 'active') matchesFilter = station.isActive !== false;
@@ -524,7 +532,7 @@ const AdminPage: React.FC = () => {
 
       return matchesSearch && matchesFilter;
     })
-      .sort((a, b) => (a.address || '').localeCompare(b.address || ''));
+      .sort((a, b) => String(a.address || '').localeCompare(String(b.address || '')));
   }, [stations, searchQuery, stationFilter]);
 
   const isAdmin = role === 'admin';

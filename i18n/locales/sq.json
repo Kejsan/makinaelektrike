@@ -34,7 +34,7 @@
     "dealerSignup": "Regjistrohu si shitës",
     "sitemap": "Harta e faqes",
     "cookies": "Politika e cookie-ve",
-    "credits": "Bërë nga",
+    "credits": "Krijuar nga",
     "rightsReserved": "Të gjitha të drejtat e rezervuara.",
     "socialTitle": "Qëndro i lidhur",
     "moreInfo": "Më shumë informacione ligjore",
@@ -760,12 +760,15 @@
       {
         "question": "Si mund të bashkëpunojë një shitës?",
         "answer": "Shitësit aplikojnë përmes faqes së regjistrimit; ekipi ynë verifikon kredencialet dhe i on-bordon partnerët e aprovuar."
-      },
-      {
-        "question": "A mbuloni flota biznesi?",
-        "answer": "Po, po zgjerojmë burimet për flota dhe mirëpresim kërkesa nga transporti, taksitë dhe kompanitë."
       }
-    ]
+    ],
+    "transparencyTitle": "Transparenca & Përdorimi i Përgjegjshëm i Informacionit",
+    "transparencyP1": "Ne përpiqemi maksimalisht për të verifikuar specifikimet, detajet e shitësve, çmimet dhe platformat e karikimit që publikojmë. Gjithsesi, teknologjia EV dhe disponueshmëria në treg evoluojnë shpejt. Çdo vizitor duhet ta konsiderojë këtë informacion si udhëzues dhe jo si një garanci. Gjetjet, stimulimet dhe specifikimet teknike mund të ndryshojnë pa njoftim, dhe përditësimet e palëve të treta mund të shkaktojnë vonesa.",
+    "transparencyP2": "Duke përdorur platformën tonë, pranoni që përmbajtja ofrohet \"siç është\" pa garanci të asnjë lloji. Inkurajojmë blerësit, shitësit dhe partnerët të konfirmojnë faktet vendimtare me përfaqësuesit zyrtarë përpara marrjes së vendimeve. Markat tregtare dhe llogot e përmendura në këtë faqe mbeten pronë e zotëruesve përkatës.",
+    "transparencyP3": "Nëse vini re një pasaktësi, ju lutemi na njoftoni përmes faqes së kontaktit. Ne përsosim vazhdimisht procesin tonë redaktues për të mbajtur komunitetin të informuar duke respektuar të drejtat e pronësisë, dhe mund të përditësojmë apo heqim materiale në çdo kohë.",
+    "collaborationCtaTitle": "Hapur për Bashkëpunime të Reja",
+    "collaborationCtaDescription": "Ne jemi të hapur ndaj mundësive të reja të bashkëpunimit bazuar në nevojat e konçesionarëve, flotave, shërbimeve të transportit, kompanive taksi dhe përdoruesve.",
+    "collaborationCtaButton": "Na Kontaktoni"
   },
   "contactPage": {
     "title": "Na kontaktoni",

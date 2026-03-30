@@ -423,12 +423,15 @@
       {
         "question": "Come può collaborare un concessionario?",
         "answer": "Basta candidarsi tramite la pagina di registrazione; verifichiamo le credenziali e abilitiamo i partner approvati."
-      },
-      {
-        "question": "Coprite anche flotte aziendali?",
-        "answer": "Stiamo ampliando le risorse dedicate alle flotte e accogliamo richieste da aziende, taxi e logistica."
       }
-    ]
+    ],
+    "transparencyTitle": "Trasparenza e uso responsabile delle informazioni",
+    "transparencyP1": "Ci impegniamo a verificare le specifiche, i dettagli dei concessionari, gli indicatori di prezzo e i dati sull'ecosistema di ricarica che pubblichiamo. Tuttavia, la tecnologia EV e la disponibilità sul mercato si evolvono rapidamente. Ogni visitatore deve considerare queste informazioni come guida e non come una promessa garantita. Annunci, incentivi e specifiche tecniche possono variare senza preavviso e gli aggiornamenti di terze parti potrebbero causare ritardi.",
+    "transparencyP2": "Utilizzando la piattaforma, accetti che i contenuti sono offerti \"così come sono\" e senza garanzie. Incoraggiamo acquirenti, concessionari e partner a verificare i fatti essenziali presso produttori o rappresentanti ufficiali prima di prendere decisioni. I marchi e i loghi qui presenti restano di proprietà dei rispettivi titolari e non implicano partnership a meno che non sia specificato.",
+    "transparencyP3": "Se rilevate inesattezze, vi preghiamo di avvisarci tramite la pagina contatti. Perfezioniamo continuamente il nostro processo editoriale per mantenere la community informata, rispettando i diritti di proprietà e aggiornando i materiali ogniqualvolta sia necessario a tutela dell'integrità dell'informazione fornita.",
+    "collaborationCtaTitle": "Aperti a nuove collaborazioni",
+    "collaborationCtaDescription": "Siamo aperti a valutare nuove opportunità di collaborazione in base alle necessità di concessionari, flotte, servizi di trasporto, compagnie di taxi e utenti.",
+    "collaborationCtaButton": "Contattaci"
   },
   "contactPage": {
     "title": "Contattaci",

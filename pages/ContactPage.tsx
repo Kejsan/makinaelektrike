@@ -83,7 +83,22 @@ const ContactPage: React.FC = () => {
             </div>
           ))}
         </div>
-        <div className="mt-12 bg-white/5 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 p-8">
+        <div className="mt-12 bg-gradient-to-r from-gray-cyan/20 to-vivid-red/20 border border-white/10 rounded-xl p-8 text-center space-y-4 relative overflow-hidden">
+          <div className="relative z-10">
+            <h2 className="text-3xl font-bold text-white">{t('aboutPage.collaborationCtaTitle')}</h2>
+            <p className="mt-3 text-gray-300 text-lg max-w-2xl mx-auto">{t('aboutPage.collaborationCtaDescription')}</p>
+            <div className="pt-6">
+              <button
+                onClick={() => document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' })}
+                className="inline-flex justify-center rounded-md border border-transparent bg-vivid-red px-8 py-3 text-base font-medium text-white shadow-sm transition-all hover:bg-opacity-90 hover:shadow-lg hover:shadow-vivid-red/50 focus:outline-none focus:ring-2 focus:ring-vivid-red focus:ring-offset-2"
+              >
+                {t('aboutPage.collaborationCtaButton')}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="contact-form" className="mt-12 bg-white/5 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 p-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             <div className="space-y-6">
               <div>

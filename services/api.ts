@@ -83,6 +83,18 @@ export const sortBlogPostsByDateDesc = (posts: BlogPost[]) =>
     return secondTime - firstTime;
   });
 
+const isPublicBlogPost = (post: BlogPost) => {
+  if (post.published === false) {
+    return false;
+  }
+
+  if (post.status === 'draft') {
+    return false;
+  }
+
+  return true;
+};
+
 const mapDealersRaw = createCollectionMapper<Dealer>();
 const normalizeDealerStatus = (dealer: Dealer): Dealer => {
   const explicitStatus = dealer.status as DealerStatus | undefined;
@@ -511,10 +523,10 @@ export const subscribeToBlogPosts = (
 export const subscribeToPublishedBlogPosts = (
   options: SubscriptionOptions<BlogPost>,
 ): Unsubscribe => {
-  const postsQuery = query(blogPostsCollection, where('published', '==', true));
+  const postsQuery = query(blogPostsCollection);
   return subscribeToCollection(
     postsQuery,
-    snapshot => sortBlogPostsByDateDesc(mapBlogPosts(snapshot)),
+    snapshot => sortBlogPostsByDateDesc(mapBlogPosts(snapshot).filter(isPublicBlogPost)),
     options,
   );
 };

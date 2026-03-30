@@ -158,6 +158,7 @@ interface BlogPostMetadata extends FirestoreTimestamps {
   updatedBy?: string | null;
   published?: boolean;
   publishedAt?: Timestamp | null;
+  status?: 'draft' | 'published';
 }
 
 export interface BlogPostTranslation {
