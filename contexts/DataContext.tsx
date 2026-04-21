@@ -685,8 +685,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     (input: DealerInput): DealerInput => {
       const actorUid = normalizeOptionalString(userUid);
       const status = (input.status as DealerStatus | undefined) ?? 'pending';
-      const isActive =
-        input.isActive === undefined ? (status === 'approved' ? true : input.isActive ?? true) : input.isActive;
+      const isActive = input.isActive === undefined ? status === 'approved' : input.isActive;
 
       const hydrated: DealerInput = {
         ...input,

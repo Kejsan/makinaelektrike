@@ -1,17 +1,5 @@
 import type { Model } from '../types';
-
-const BASE_URL = 'https://api.api-ninjas.com/v1';
-
-const { VITE_API_NINJAS_KEY } = import.meta.env;
-
-const apiKey = (VITE_API_NINJAS_KEY ?? '').trim();
-
-if (!apiKey) {
-  // Surface a clear error at import-time to make misconfiguration obvious during development.
-  console.warn(
-    'API Ninjas key is missing. Set VITE_API_NINJAS_KEY in your environment to enable EV lookups.',
-  );
-}
+import { fetchFunctionJson } from './serverFunctions';
 
 type QueryParams = Record<string, string | number | undefined | null>;
 
@@ -49,10 +37,6 @@ interface ElectricVehicleResponse {
   weight_kg?: number | string | null;
   cargo_volume_l?: number | string | null;
 }
-
-export const API_NINJAS_CONFIG = {
-  BASE_URL,
-};
 
 const buildQueryString = (params: QueryParams) => {
   const searchParams = new URLSearchParams();
@@ -188,58 +172,17 @@ const normalizeElectricVehicle = (vehicle: ElectricVehicleResponse): Model => {
   } satisfies Model;
 };
 
-const buildHeaders = () => ({
-  Accept: 'application/json',
-  'X-Api-Key': apiKey,
-});
-
-const assertApiKey = () => {
-  if (!apiKey) {
-    throw new Error('API Ninjas key is not configured. Please set VITE_API_NINJAS_KEY.');
-  }
-};
-
-const handleError = async (response: Response, context: string) => {
-  if (response.status === 429) {
-    throw new Error('API Ninjas rate limit exceeded. Please try again later.');
-  }
-
-  let detail = '';
-  try {
-    const body = await response.text();
-    detail = body || response.statusText;
-  } catch (error) {
-    console.error('Failed to read API Ninjas error response', error);
-  }
-  throw new Error(`${context}: ${response.status} ${detail}`);
-};
-
-async function fetchFromApi<T>(endpoint: string, params?: QueryParams, signal?: AbortSignal): Promise<T> {
-  assertApiKey();
-  const queryString = params ? buildQueryString(params) : '';
-  const suffix = queryString ? `?${queryString}` : '';
-  const response = await fetch(`${BASE_URL}${endpoint}${suffix}`, {
-    headers: buildHeaders(),
-    signal,
-  });
-
-  if (!response.ok) {
-    await handleError(response, `API Ninjas request to ${endpoint} failed`);
-  }
-
-  return response.json();
-}
-
 export async function getElectricVehicle(
   make?: string,
   model?: string,
   signal?: AbortSignal,
 ): Promise<Model[]> {
-  const vehicles = await fetchFromApi<ElectricVehicleResponse[]>(
-    '/electricvehicle',
-    { make: make?.trim(), model: model?.trim() },
+  const queryString = buildQueryString({ make: make?.trim(), model: model?.trim() });
+  const query = Object.fromEntries(new URLSearchParams(queryString).entries());
+  const vehicles = await fetchFunctionJson<ElectricVehicleResponse[]>('api-ninjas-electricvehicle', {
+    query,
     signal,
-  );
+  });
 
   return vehicles.map(normalizeElectricVehicle);
 }

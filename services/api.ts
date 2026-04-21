@@ -394,7 +394,11 @@ export const subscribeToDealers = (
 export const subscribeToApprovedDealers = (
   options: SubscriptionOptions<Dealer>,
 ): Unsubscribe => {
-  const dealersQuery = query(dealersCollection, where('approved', '==', true));
+  const dealersQuery = query(
+    dealersCollection,
+    where('approved', '==', true),
+    where('isActive', '==', true),
+  );
   return subscribeToCollection(
     dealersQuery,
     snapshot =>

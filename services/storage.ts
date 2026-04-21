@@ -1,22 +1,14 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { storage } from './firebase';
 
-// Initialize R2 Client (S3 Compatible)
-const accessKeyId = import.meta.env.VITE_R2_ACCESS_KEY_ID;
-const secretAccessKey = import.meta.env.VITE_R2_SECRET_ACCESS_KEY;
-const endpoint = import.meta.env.VITE_R2_ENDPOINT || 'https://d399432f7c48ddf1336a2e1cd489ba07.r2.cloudflarestorage.com';
-const bucketName = import.meta.env.VITE_R2_BUCKET_NAME || 'makinaelektrike';
-
-const r2 = new S3Client({
-  region: 'auto',
-  endpoint,
-  credentials: {
-    accessKeyId: accessKeyId || '',
-    secretAccessKey: secretAccessKey || '',
-  },
-});
-
-const BUCKET_NAME = bucketName;
-const PUBLIC_URL = import.meta.env.VITE_R2_PUBLIC_URL || 'https://pub-c15556a0b3fc473f8df3c05a32a23860.r2.dev';
+const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+  'image/gif',
+]);
 
 const sanitizeFileName = (name: string) =>
   name
@@ -34,28 +26,25 @@ export const buildFileName = (file: File, fallbackBase: string) => {
   return hasExtension ? `${timestamp}-${baseName}.${extension}` : `${timestamp}-${baseName}`;
 };
 
-export const uploadFile = async (objectPath: string, file: File): Promise<string> => {
-  try {
-    // Convert File to Uint8Array to avoid AWS SDK stream issues in browser
-    const arrayBuffer = await file.arrayBuffer();
-    const fileContent = new Uint8Array(arrayBuffer);
-
-    const command = new PutObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: objectPath,
-      Body: fileContent,
-      ContentType: file.type,
-      // ACL: 'public-read', // R2 doesn't support ACLs the same way, public access is bucket-level
-    });
-
-    await r2.send(command);
-
-    // Construct public URL
-    return `${PUBLIC_URL}/${objectPath}`;
-  } catch (error) {
-    console.error('Error uploading to R2:', error);
-    throw error;
+const assertSafeImageUpload = (file: File) => {
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+    throw new Error('Unsupported image format. Please upload a JPEG, PNG, WebP, AVIF, or GIF file.');
   }
+
+  if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+    throw new Error('Image is too large. Please upload a file smaller than 10 MB.');
+  }
+};
+
+export const uploadFile = async (objectPath: string, file: File): Promise<string> => {
+  assertSafeImageUpload(file);
+
+  const storageRef = ref(storage, objectPath);
+  await uploadBytes(storageRef, file, {
+    contentType: file.type,
+    cacheControl: 'public,max-age=31536000,immutable',
+  });
+  return getDownloadURL(storageRef);
 };
 
 const buildObjectPath = (segments: string[]) => segments.filter(Boolean).join('/');

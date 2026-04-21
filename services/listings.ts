@@ -138,14 +138,14 @@ export const subscribeToListingsByDealer = (
     return subscribeToCollection(q, mapListings, options);
 };
 
-import { uploadFile } from './storage';
+import { buildFileName, uploadFile } from './storage';
 
-export const uploadListingImage = async (userId: string, listingId: string, file: File): Promise<string> => {
-    const path = `listings/${userId}/${listingId}/main_${Date.now()}_${file.name}`;
+export const uploadListingImage = async (dealerId: string, listingId: string, file: File): Promise<string> => {
+    const path = `listings/${dealerId}/${listingId}/${buildFileName(file, 'listing-main')}`;
     return uploadFile(path, file);
 };
 
-export const uploadListingGalleryImage = async (userId: string, listingId: string, file: File): Promise<string> => {
-    const path = `listings/${userId}/${listingId}/gallery_${Date.now()}_${file.name}`;
+export const uploadListingGalleryImage = async (dealerId: string, listingId: string, file: File): Promise<string> => {
+    const path = `listings/${dealerId}/${listingId}/${buildFileName(file, 'listing-gallery')}`;
     return uploadFile(path, file);
 };

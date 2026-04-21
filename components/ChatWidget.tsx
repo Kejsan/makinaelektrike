@@ -1,10 +1,19 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { X, Send, Sparkles, User } from 'lucide-react';
-import { GoogleGenAI, Chat } from "@google/genai";
 import { DataContext } from '../contexts/DataContext';
+import { sendChatMessage } from '../services/gemini';
 
 // Simple markdown parser
+const escapeHtml = (text: string) =>
+    text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
 const parseMarkdown = (text: string) => {
+    text = escapeHtml(text);
     // Bold: **text** or __text__
     text = text.replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1$2</strong>');
     // Italics: *text* or _text_
@@ -32,41 +41,21 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [chat, setChat] = useState<Chat | null>(null);
     const { dealers, models } = useContext(DataContext);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const requestControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
-        if (isOpen && !chat) {
-            try {
-                const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_KEY as string });
-
-                const modelDataSummary = models.map(m => `${m.brand} ${m.model_name} (Type: ${m.body_type}, Range: ${m.range_wltp}km)`).join(', ');
-                const dealerDataSummary = dealers.map(d => `${d.name} in ${d.city} (Brands: ${d.brands.join('/')})`).join(', ');
-
-                const systemInstruction = `You are a helpful and friendly AI assistant for "Makina Elektrike", an online directory for electric vehicles in Albania.
-                Your goal is to help users find the perfect electric vehicle and dealership.
-                You have access to the following data from the website:
-                - AVAILABLE MODELS: ${modelDataSummary}
-                - AVAILABLE DEALERSHIPS: ${dealerDataSummary}
-                Use this information to answer user questions about available cars, their specifications, and where to find them.
-                If a user asks a general question about EVs, answer it to the best of your ability.
-                Keep your answers concise and easy to read. Use markdown for formatting like lists or bold text.
-                Always communicate in the language of the user's question.`;
-
-                const newChat = ai.chats.create({
-                    model: 'gemini-2.5-flash',
-                    config: { systemInstruction }
-                });
-
-                setChat(newChat);
-                setMessages([{ role: 'model', text: 'Hello! How can I help you find the perfect electric car today?' }]);
-            } catch (error) {
-                console.error("Failed to initialize Gemini AI:", error);
-                setMessages([{ role: 'model', text: 'Sorry, the AI assistant is currently unavailable.' }]);
-            }
+        if (isOpen && messages.length === 0) {
+            setMessages([{ role: 'model', text: 'Hello! How can I help you find the perfect electric car today?' }]);
         }
-    }, [isOpen, chat, dealers, models]);
+    }, [isOpen, messages.length]);
+
+    useEffect(() => {
+        return () => {
+            requestControllerRef.current?.abort();
+        };
+    }, []);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -75,18 +64,31 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     useEffect(scrollToBottom, [messages]);
 
     const handleSend = async () => {
-        if (input.trim() === '' || isLoading || !chat) return;
+        if (input.trim() === '' || isLoading) return;
 
-        const userMessage: Message = { role: 'user', text: input };
+        const nextMessage = input.trim();
+        const history = [...messages];
+        const userMessage: Message = { role: 'user', text: nextMessage };
         setMessages(prev => [...prev, userMessage]);
         setInput('');
         setIsLoading(true);
+        requestControllerRef.current?.abort();
+        const controller = new AbortController();
+        requestControllerRef.current = controller;
 
         try {
-            const response = await chat.sendMessage({ message: userMessage.text });
-            const modelResponse: Message = { role: 'model', text: response.text };
+            const responseText = await sendChatMessage(
+                history,
+                nextMessage,
+                { dealers, models },
+                controller.signal,
+            );
+            const modelResponse: Message = { role: 'model', text: responseText };
             setMessages(prev => [...prev, modelResponse]);
         } catch (error) {
+            if ((error as Error)?.name === 'AbortError') {
+                return;
+            }
             console.error('Error sending message to Gemini:', error);
             const errorMessage: Message = { role: 'model', text: "I'm having trouble connecting right now. Please try again later." };
             setMessages(prev => [...prev, errorMessage]);

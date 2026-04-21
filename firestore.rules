@@ -2,77 +2,207 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // --- AUTHENTICATION HELPERS ---
-    
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     function isUser(userId) {
-      return request.auth.uid == userId;
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Securely fetch user's role from the database
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
-    
+
     function isAdmin() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        getUserData().role == 'admin';
     }
 
-    // --- COLLECTION RULES ---
+    function isDealerOwnerById(dealerId) {
+      return isAuthenticated() && (
+        dealerId == request.auth.uid ||
+        (
+          exists(/databases/$(database)/documents/dealers/$(dealerId)) &&
+          get(/databases/$(database)/documents/dealers/$(dealerId)).data.ownerUid == request.auth.uid
+        )
+      );
+    }
 
-    // 1. USERS: The Foundation of Security
+    function isDealerOwner(dealerData) {
+      return isAuthenticated() && dealerData.ownerUid == request.auth.uid;
+    }
+
+    function isPublicDealer(dealerData) {
+      return dealerData.approved == true &&
+        dealerData.isActive == true &&
+        dealerData.isDeleted != true;
+    }
+
+    function isPublicListing(listingData) {
+      return listingData.status == 'approved' || listingData.status == 'active';
+    }
+
+    function isListingOwner(listingData) {
+      return isAuthenticated() && (
+        listingData.ownerUid == request.auth.uid ||
+        isDealerOwnerById(listingData.dealerId)
+      );
+    }
+
     match /users/{userId} {
       allow read: if isAuthenticated() && (isUser(userId) || isAdmin());
-      allow create: if isAuthenticated() && isUser(userId);
-      allow update: if isAuthenticated() && isUser(userId) && 
-        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status']));
-      allow write: if isAdmin();
 
-      // Favourites sub-collection
+      allow create: if isUser(userId) &&
+        !exists(/databases/$(database)/documents/users/$(userId)) &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.email == request.auth.token.email &&
+        (
+          request.resource.data.role == 'user' ||
+          request.resource.data.role == 'pending'
+        ) &&
+        (
+          !('status' in request.resource.data) ||
+          request.resource.data.status == 'pending'
+        );
+
+      allow update: if isUser(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'role',
+          'status',
+          'uid',
+        ]);
+
+      allow delete: if isAdmin();
+
       match /favourites/{favId} {
-        allow read, write: if isAuthenticated() && isUser(userId);
+        allow read, write: if isUser(userId);
       }
     }
 
-    // 2. DEALERS
     match /dealers/{dealerId} {
-      allow read: if true;
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow read: if isAdmin() || isDealerOwner(resource.data) || isPublicDealer(resource.data);
+
+      allow create: if isAdmin() || (
+        isAuthenticated() &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.approved != true &&
+        request.resource.data.isActive != true &&
+        request.resource.data.isDeleted != true &&
+        request.resource.data.status == 'pending'
+      );
+
+      allow update: if isAdmin() || (
+        isDealerOwner(resource.data) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'approved',
+          'approvedAt',
+          'rejectedAt',
+          'rejectionReason',
+          'isActive',
+          'isDeleted',
+          'deletedAt',
+          'status',
+          'ownerUid',
+          'createdBy',
+        ])
+      );
+
+      allow delete: if isAdmin();
     }
 
-    // 3. LISTINGS
     match /listings/{listingId} {
-      allow read: if true;
-      allow create: if (isAuthenticated() && request.resource.data.dealerId == request.auth.uid) || isAdmin();
-      allow update, delete: if (isAuthenticated() && resource.data.dealerId == request.auth.uid) || isAdmin();
-    }
-    
-    // 4. ENQUIRIES
-    match /enquiries/{enquiryId} {
-      allow create: if true;
-      allow read: if isAuthenticated() && (
-        resource.data.dealerId == request.auth.uid || isAdmin()
+      allow read: if isAdmin() || isListingOwner(resource.data) || isPublicListing(resource.data);
+
+      allow create: if isAdmin() || (
+        isAuthenticated() &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        isDealerOwnerById(request.resource.data.dealerId) &&
+        request.resource.data.status == 'pending'
       );
+
+      allow update: if isAdmin() || (
+        isListingOwner(resource.data) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'status',
+          'approvedAt',
+          'rejectedAt',
+          'rejectionReason',
+          'dealerId',
+          'ownerUid',
+        ])
+      );
+
+      allow delete: if isAdmin();
     }
-    
-    // 5. SUPPORTING COLLECTIONS
+
+    match /enquiries/{enquiryId} {
+      allow create: if request.resource.data.keys().hasOnly([
+        'listingId',
+        'dealerId',
+        'name',
+        'email',
+        'phone',
+        'message',
+        'status',
+        'createdAt',
+      ]) &&
+        request.resource.data.dealerId is string &&
+        request.resource.data.listingId is string &&
+        request.resource.data.name is string &&
+        request.resource.data.email is string &&
+        request.resource.data.message is string &&
+        request.resource.data.status == 'new' &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 120 &&
+        request.resource.data.email.size() > 0 &&
+        request.resource.data.email.size() <= 254 &&
+        request.resource.data.message.size() > 0 &&
+        request.resource.data.message.size() <= 5000;
+
+      allow read: if isAdmin() || isDealerOwnerById(resource.data.dealerId);
+    }
+
     match /models/{modelId} {
       allow read: if true;
-      allow write: if isAdmin(); // Restrict models to admin for stability
+
+      allow create: if isAdmin() || (
+        isAuthenticated() &&
+        request.resource.data.ownerUid == request.auth.uid
+      );
+
+      allow update: if isAdmin() || (
+        isAuthenticated() &&
+        resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.ownerUid == resource.data.ownerUid
+      );
+
+      allow delete: if isAdmin() || (
+        isAuthenticated() &&
+        resource.data.ownerUid == request.auth.uid
+      );
     }
-    
+
     match /dealerModels/{modelId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+
+      allow create: if isAdmin() || (
+        isAuthenticated() &&
+        isDealerOwnerById(request.resource.data.dealer_id)
+      );
+
+      allow update: if isAdmin() || (
+        isAuthenticated() &&
+        isDealerOwnerById(resource.data.dealer_id)
+      );
+
+      allow delete: if isAdmin() || (
+        isAuthenticated() &&
+        isDealerOwnerById(resource.data.dealer_id)
+      );
     }
-    
+
     match /blogPosts/{postId} {
       allow read: if true;
       allow write: if isAdmin();

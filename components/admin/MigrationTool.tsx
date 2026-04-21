@@ -106,9 +106,19 @@ export const MigrationTool: React.FC = () => {
         URL.revokeObjectURL(url);
     };
 
+    const escapeHtml = (value: unknown) =>
+        String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
     const generatePDF = (data: any[], type: string) => {
-        const printWindow = window.open('', '_blank');
+        const printWindow = window.open('', '_blank', 'noopener,noreferrer');
         if (!printWindow) return;
+
+        printWindow.opener = null;
 
         const headers = Object.keys(data[0]).filter(k => typeof data[0][k] !== 'object');
         
@@ -126,15 +136,15 @@ export const MigrationTool: React.FC = () => {
                     </style>
                 </head>
                 <body>
-                    <h1>${type.replace(/_/g, ' ')} Data Export</h1>
-                    <p>Generated on: ${new Date().toLocaleString()}</p>
+                    <h1>${escapeHtml(type.replace(/_/g, ' '))} Data Export</h1>
+                    <p>Generated on: ${escapeHtml(new Date().toLocaleString())}</p>
                     <table>
                         <thead>
-                            <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                            <tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr>
                         </thead>
                         <tbody>
                             ${data.map(row => `
-                                <tr>${headers.map(h => `<td>${row[h] || ''}</td>`).join('')}</tr>
+                                <tr>${headers.map(h => `<td>${escapeHtml(row[h])}</td>`).join('')}</tr>
                             `).join('')}
                         </tbody>
                     </table>

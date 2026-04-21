@@ -1,32 +1,12 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-
-// Use a simpler mock structure
-const mockGenerateContent = vi.fn();
-
-vi.mock('@google/genai', () => {
-  return {
-    GoogleGenAI: vi.fn().mockImplementation(() => ({
-      models: {
-        generateContent: mockGenerateContent
-      }
-    }))
-  };
-});
-
-const mockEnv = (key: string, value: string) => {
-  process.env[key] = value;
-};
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('gemini service', () => {
   beforeEach(() => {
-    vi.resetModules();
     vi.clearAllMocks();
-    mockEnv('GEMINI_API_KEY', 'test-key');
-    mockEnv('VITE_ENABLE_GEMINI_PREFILL', 'true');
   });
 
   it('normalizes Gemini payloads into Model shape with AI source', async () => {
-    const { normalizeGeminiModel } = await import('./gemini');
+    const { normalizeGeminiModel } = await import('./geminiShared');
 
     const model = normalizeGeminiModel(
       {
@@ -54,12 +34,19 @@ describe('gemini service', () => {
     });
   });
 
-  it('strips markdown code blocks before parsing JSON', async () => {
-    const markdownResponse = '```json\n{"brand": "BYD", "model_name": "SEALION 7"}\n```';
-    // Success case: response.text() returns the markdown
-    mockGenerateContent.mockResolvedValueOnce({ 
-      response: { text: () => markdownResponse } 
+  it('posts enrichment requests to the server-side function', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: 'byd-sealion-7',
+        brand: 'BYD',
+        model_name: 'SEALION 7',
+        source: 'ai',
+        isFeatured: false,
+        imageGallery: [],
+      }),
     });
+    vi.stubGlobal('fetch', fetchMock);
 
     const { enrichModelWithGemini } = await import('./gemini');
     const result = await enrichModelWithGemini('BYD', 'SEALION 7');
@@ -67,28 +54,32 @@ describe('gemini service', () => {
     expect(result).toMatchObject({
       brand: 'BYD',
       model_name: 'SEALION 7',
+      source: 'ai',
     });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/.netlify/functions/gemini-enrich-model',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
   });
 
-  it('throws a readable error when Gemini is enabled but the response cannot be parsed', async () => {
-    // Error case: response.text() returns non-json
-    mockGenerateContent.mockResolvedValueOnce({ 
-      response: { text: () => 'not-json' } 
+  it('surfaces function errors with readable messages', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () =>
+        JSON.stringify({
+          error: 'Gemini response parsing failed: Unexpected token',
+        }),
     });
+    vi.stubGlobal('fetch', fetchMock);
 
     const { enrichModelWithGemini } = await import('./gemini');
 
-    try {
-      await enrichModelWithGemini('Test', 'Model');
-      throw new Error('Should have thrown');
-    } catch (e: any) {
-      expect(e.message).toMatch(/parsing failed/i);
-      expect(e.message).toMatch(/Raw text:/i);
-    }
+    await expect(enrichModelWithGemini('Test', 'Model')).rejects.toThrow(
+      /parsing failed/i,
+    );
   });
 });
-
-
-
-
-

@@ -4,15 +4,13 @@ The `/albania-charging-stations` route displays live data from Open Charge Map w
 
 ## Environment variables
 
-The page expects an Open Charge Map API key at build time. Provide it to Vite/Netlify using either the `VITE_OCM_API_KEY` or `OCM_API_KEY` variable (both are recognised at build time).
+The page expects an Open Charge Map API key on the server side. Provide it to Netlify or your local dev server using `OCM_API_KEY`.
 
 ```
-VITE_OCM_API_KEY=your_open_charge_map_key
-# or
 OCM_API_KEY=your_open_charge_map_key
 ```
 
-If no key is supplied the client will attempt unauthenticated requests, which Open Charge Map may heavily throttle. Always configure a dedicated key for production builds to avoid disruptions.
+If no key is supplied the server proxy will reject requests. Always configure a dedicated key for production and local development to avoid disruptions.
 
 ## Map defaults
 
