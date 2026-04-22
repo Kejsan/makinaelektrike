@@ -1,11 +1,11 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { Dealer } from '../types';
 import { MapPin, Heart, ArrowRight, ShieldAlert, BadgeCheck } from 'lucide-react';
 import { useFavorites } from '../hooks/useFavorites';
 import { DEALERSHIP_PLACEHOLDER_IMAGE } from '../constants/media';
 import OptimizedImage from './OptimizedImage';
+import Link from './LocalizedLink';
 
 interface DealerCardProps {
   dealer?: Dealer | null;
@@ -35,7 +35,7 @@ const DealerCard: React.FC<DealerCardProps> = ({ dealer, isLoading = false }) =>
   const imageUrl =
     dealer.logo_url || dealer.image_url || dealer.imageGallery?.[0] || DEALERSHIP_PLACEHOLDER_IMAGE;
   const city =
-    dealer.location || dealer.city || t('common.unknownCity', { defaultValue: 'Unknown location' });
+    dealer.location || dealer.city || t('common.unknownCity');
   const status = dealer.status ?? (dealer.approved === false ? 'pending' : 'approved');
   const isPending = status === 'pending';
   const isInactive = dealer.isActive === false;
@@ -50,7 +50,7 @@ const DealerCard: React.FC<DealerCardProps> = ({ dealer, isLoading = false }) =>
           toggleFavorite(dealer.id, 'dealers');
         }}
         className="absolute right-4 top-4 z-10 rounded-full bg-black/50 p-2 text-white transition-colors hover:text-vivid-red"
-        aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
+        aria-label={favorited ? t('common.favoriteRemove') : t('common.favoriteAdd')}
       >
         <Heart size={20} className={`${favorited ? 'fill-vivid-red text-vivid-red' : 'fill-transparent'}`} />
       </button>
@@ -65,7 +65,7 @@ const DealerCard: React.FC<DealerCardProps> = ({ dealer, isLoading = false }) =>
           {dealer.isFeatured && (
             <div className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full bg-emerald-500/90 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-950 shadow-lg">
               <BadgeCheck size={14} />
-              {t('dealerDetails.officialBadge', { defaultValue: 'Official Dealer' })}
+              {t('dealerDetails.officialBadge')}
             </div>
           )}
           {showStatusBadge && (
@@ -78,8 +78,8 @@ const DealerCard: React.FC<DealerCardProps> = ({ dealer, isLoading = false }) =>
             >
               <ShieldAlert size={14} />
               {isPending
-                ? t('dealersPage.pendingApproval', { defaultValue: 'Pending approval' })
-                : t('dealersPage.inactiveDealer', { defaultValue: 'Inactive dealer' })}
+                ? t('dealersPage.pendingApproval')
+                : t('dealersPage.inactiveDealer')}
             </div>
           )}
         </div>

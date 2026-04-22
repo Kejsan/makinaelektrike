@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -8,12 +7,14 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { UserPlus } from 'lucide-react';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import LocalizedNavigate from '../components/LocalizedNavigate';
+import useLocalizedNavigate from '../hooks/useLocalizedNavigate';
 
 const RegisterUserPage: React.FC = () => {
   const { t } = useTranslation();
   const { registerUser, loading, user, role, initializing } = useAuth();
   const { addToast } = useToast();
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
   const [formError, setFormError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -33,11 +34,11 @@ const RegisterUserPage: React.FC = () => {
   }
 
   if (user && role === 'pending') {
-    return <Navigate to="/awaiting-approval" replace />;
+    return <LocalizedNavigate to="/awaiting-approval" replace />;
   }
 
   if (user) {
-    return <Navigate to="/favorites" replace />;
+    return <LocalizedNavigate to="/favorites" replace />;
   }
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,6 +114,7 @@ const RegisterUserPage: React.FC = () => {
         description={metaDescription}
         keywords={t('registerUserPage.metaKeywords', { returnObjects: true }) as string[]}
         canonical={`${BASE_URL}/register/`}
+        robots="noindex, nofollow"
         openGraph={{
           title: metaTitle,
           description: metaDescription,

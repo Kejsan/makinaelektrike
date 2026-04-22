@@ -1,9 +1,9 @@
 import React, { useContext, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import SEO from '../components/SEO';
 import { DataContext } from '../contexts/DataContext';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import Link from '../components/LocalizedLink';
 
 const SitemapPage: React.FC = () => {
   const { t } = useTranslation();
@@ -33,7 +33,7 @@ const SitemapPage: React.FC = () => {
         title: t('sitemap.sections.company.title'),
         items: [
           { to: '/about', label: t('header.about') },
-          { to: '/help-center', label: t('header.helpCenter', { defaultValue: 'Help Center' }) },
+          { to: '/help-center', label: t('header.helpCenter') },
           { to: '/contact', label: t('footer.contact') },
           { to: '/sitemap', label: t('footer.sitemap') },
         ],

@@ -1,8 +1,8 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import Link from '../components/LocalizedLink';
 
 interface LegalSection {
   title: string;

@@ -7,6 +7,9 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataContext, DataProvider } from './contexts/DataContext';
 import { ToastProvider, ToastContainer } from './contexts/ToastContext';
 import ScrollRestoration from './components/ScrollRestoration';
+import LocalePathSync from './components/LocalePathSync';
+import LocalizedNavigate from './components/LocalizedNavigate';
+import { ALTERNATE_LOCALES, buildLocalizedRoutePath } from './utils/localizedRouting';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
 const DealersListPage = lazy(() => import('./pages/DealersListPage'));
@@ -34,6 +37,33 @@ const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
 const CookiesPolicyPage = lazy(() => import('./pages/CookiesPolicyPage'));
 const HelpCenterPage = lazy(() => import('./pages/HelpCenterPage'));
+
+const PUBLIC_ROUTE_DEFINITIONS: Array<{ path: string; element: React.ReactElement }> = [
+  { path: '/', element: <HomePage /> },
+  { path: '/dealers', element: <DealersListPage /> },
+  { path: '/dealers/:id', element: <DealerDetailPage /> },
+  { path: '/albania-charging-stations', element: <ChargingStationsAlbaniaPage /> },
+  { path: '/models', element: <ModelsListPage /> },
+  { path: '/models/:id', element: <ModelDetailPage /> },
+  { path: '/listings', element: <ListingsPage /> },
+  { path: '/listings/:id', element: <ListingDetailPage /> },
+  { path: '/blog', element: <BlogPage /> },
+  { path: '/blog/:slug', element: <BlogPostPage /> },
+  { path: '/about', element: <AboutPage /> },
+  { path: '/help-center', element: <HelpCenterPage /> },
+  { path: '/contact', element: <ContactPage /> },
+  { path: '/favorites', element: <FavoritesPage /> },
+  { path: '/awaiting-approval', element: <AwaitingApprovalPage /> },
+  { path: '/register', element: <RegisterUserPage /> },
+  { path: '/register-dealer', element: <RegisterDealerPage /> },
+  { path: '/login', element: <LoginPage /> },
+  { path: '/sitemap', element: <SitemapPage /> },
+  { path: '/privacy-policy', element: <PrivacyPolicyPage /> },
+  { path: '/terms', element: <TermsOfServicePage /> },
+  { path: '/cookie-policy', element: <CookiesPolicyPage /> },
+];
+
+const PUBLIC_ROUTE_LOCALES = [undefined, ...ALTERNATE_LOCALES] as const;
 
 const LoadingScreen = () => (
   <div className="flex items-center justify-center py-24">
@@ -105,6 +135,7 @@ const App: React.FC = () => {
 
   return (
     <BrowserRouter>
+      <LocalePathSync />
       <ScrollRestoration />
       <ToastProvider>
         <AuthProvider>
@@ -113,31 +144,30 @@ const App: React.FC = () => {
               <Header />
               <main className="flex-grow">
                 <Routes>
-                  <Route path="/" element={<RouteContent><HomePage /></RouteContent>} />
-                  <Route path="/dealers" element={<RouteContent><DealersListPage /></RouteContent>} />
-                  <Route path="/dealers/:id" element={<RouteContent><DealerDetailPage /></RouteContent>} />
-                  <Route path="/albania-charging-stations" element={<RouteContent><ChargingStationsAlbaniaPage /></RouteContent>} />
-                  <Route path="/models" element={<RouteContent><ModelsListPage /></RouteContent>} />
-                  <Route path="/models/:id" element={<RouteContent><ModelDetailPage /></RouteContent>} />
-                  <Route path="/listings" element={<RouteContent><ListingsPage /></RouteContent>} />
-                  <Route path="/listings/:id" element={<RouteContent><ListingDetailPage /></RouteContent>} />
-                  <Route path="/blog" element={<RouteContent><BlogPage /></RouteContent>} />
-                  <Route path="/blog/:slug" element={<RouteContent><BlogPostPage /></RouteContent>} />
-                  <Route path="/about" element={<RouteContent><AboutPage /></RouteContent>} />
-                  <Route path="/help-center" element={<RouteContent><HelpCenterPage /></RouteContent>} />
-                  <Route path="/contact" element={<RouteContent><ContactPage /></RouteContent>} />
-                  <Route path="/favorites" element={<RouteContent><FavoritesPage /></RouteContent>} />
-                  <Route path="/register" element={<RouteContent><RegisterUserPage /></RouteContent>} />
-                  <Route path="/register-dealer" element={<RouteContent><RegisterDealerPage /></RouteContent>} />
-                  <Route path="/login" element={<RouteContent><LoginPage /></RouteContent>} />
-                  <Route path="/sitemap" element={<RouteContent><SitemapPage /></RouteContent>} />
-                  <Route path="/privacy-policy" element={<RouteContent><PrivacyPolicyPage /></RouteContent>} />
-                  <Route path="/terms" element={<RouteContent><TermsOfServicePage /></RouteContent>} />
-                  <Route path="/cookie-policy" element={<RouteContent><CookiesPolicyPage /></RouteContent>} />
-                  <Route path="/privacy" element={<Navigate to="/privacy-policy" replace />} />
-                  <Route path="/cookies" element={<Navigate to="/cookie-policy" replace />} />
+                  {PUBLIC_ROUTE_LOCALES.map(locale =>
+                    PUBLIC_ROUTE_DEFINITIONS.map(route => (
+                      <Route
+                        key={`${locale ?? 'sq'}:${route.path}`}
+                        path={buildLocalizedRoutePath(route.path, locale)}
+                        element={<RouteContent>{route.element}</RouteContent>}
+                      />
+                    ))
+                  )}
+                  {PUBLIC_ROUTE_LOCALES.map(locale => (
+                    <Route
+                      key={`${locale ?? 'sq'}:/privacy`}
+                      path={buildLocalizedRoutePath('/privacy', locale)}
+                      element={<LocalizedNavigate to="/privacy-policy" replace />}
+                    />
+                  ))}
+                  {PUBLIC_ROUTE_LOCALES.map(locale => (
+                    <Route
+                      key={`${locale ?? 'sq'}:/cookies`}
+                      path={buildLocalizedRoutePath('/cookies', locale)}
+                      element={<LocalizedNavigate to="/cookie-policy" replace />}
+                    />
+                  ))}
                   <Route path="/admin/login" element={<RouteContent><AdminLoginPage /></RouteContent>} />
-                  <Route path="/awaiting-approval" element={<RouteContent><AwaitingApprovalPage /></RouteContent>} />
                   <Route
                     path="/dealer/listings"
                     element={

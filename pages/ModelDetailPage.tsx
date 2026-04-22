@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Model, Dealer } from '../types';
 import { Battery, Zap, Gauge, ChevronsRight, ArrowUpRight, ArrowLeft, Car, Users, Power, Bolt, Heart } from 'lucide-react';
@@ -10,6 +10,7 @@ import { BASE_URL } from '../constants/seo';
 import { MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
 import GallerySection from '../components/GallerySection';
 import OptimizedImage from '../components/OptimizedImage';
+import Link from '../components/LocalizedLink';
 
 const SpecItem: React.FC<{ icon: React.ReactNode, label: string, value?: string | number | null }> = ({ icon, label, value }) => (
     <div className="flex flex-col items-center justify-center p-4 bg-white/5 backdrop-blur-md rounded-xl border border-white/10 text-center transition-all duration-300 hover:bg-white/10 hover:border-gray-cyan/50">
@@ -38,27 +39,37 @@ const ModelDetailPage: React.FC = () => {
         };
     }, []);
 
-    if (loading) return <div className="text-center py-10 text-white">Loading...</div>;
+    if (loading) return <div className="text-center py-10 text-white">{t('common.loading')}</div>;
     if (!model) {
+        const missingCanonical = id ? `${BASE_URL}/models/${id}/` : `${BASE_URL}/models/`;
+
         return (
             <div className="text-center py-10 text-white">
                 <SEO
-                    title="Modeli nuk u gjet | Makina Elektrike"
-                    description="Modeli i kërkuar nuk ekziston më ose është zhvendosur."
-                    canonical={id ? `${BASE_URL}/models/${id}/` : `${BASE_URL}/models/`}
+                    title={`${t('modelDetails.notFoundTitle')} | Makina Elektrike`}
+                    description={t('modelDetails.notFoundDescription')}
+                    canonical={missingCanonical}
                     openGraph={{
-                        title: 'Modeli nuk u gjet | Makina Elektrike',
-                        description: 'Modeli i kërkuar nuk ekziston më ose është zhvendosur.',
-                        url: id ? `${BASE_URL}/models/${id}/` : `${BASE_URL}/models/`,
+                        title: `${t('modelDetails.notFoundTitle')} | Makina Elektrike`,
+                        description: t('modelDetails.notFoundDescription'),
+                        url: missingCanonical,
                         type: 'product',
                     }}
                     twitter={{
-                        title: 'Modeli nuk u gjet | Makina Elektrike',
-                        description: 'Modeli i kërkuar nuk ekziston më ose është zhvendosur.',
+                        title: `${t('modelDetails.notFoundTitle')} | Makina Elektrike`,
+                        description: t('modelDetails.notFoundDescription'),
                         site: '@makinaelektrike',
                     }}
                 />
-                Model not found.
+                <h1 className="text-3xl font-bold">{t('modelDetails.notFoundTitle')}</h1>
+                <p className="mt-4 text-gray-300">{t('modelDetails.notFoundBody')}</p>
+                <Link
+                    to="/models"
+                    className="mt-8 inline-flex items-center gap-2 rounded-lg bg-gray-cyan px-5 py-3 font-semibold text-white transition hover:bg-gray-cyan/90"
+                >
+                    <ArrowLeft size={18} />
+                    {t('modelDetails.backLink')}
+                </Link>
             </div>
         );
     }
@@ -167,7 +178,7 @@ const ModelDetailPage: React.FC = () => {
                              <button
                                 onClick={() => toggleFavorite(model.id, 'models')}
                                 className="p-3 bg-white/10 rounded-full text-white hover:text-vivid-red transition-colors flex-shrink-0"
-                                aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
+                                aria-label={favorited ? t('common.favoriteRemove') : t('common.favoriteAdd')}
                             >
                                 <Heart size={24} className={`${favorited ? 'fill-vivid-red text-vivid-red' : 'fill-transparent'}`} />
                             </button>
@@ -221,15 +232,13 @@ const ModelDetailPage: React.FC = () => {
                             ))}
                         </div>
                     ) : (
-                         <p className="text-center text-gray-400">Information on availability coming soon.</p>
+                         <p className="text-center text-gray-400">{t('modelDetails.availabilityComingSoon')}</p>
                     )}
                 </div>
 
                 <GallerySection
-                    title={t('modelDetails.galleryTitle', { defaultValue: 'Model gallery' })}
-                    description={t('modelDetails.gallerySubtitle', {
-                        defaultValue: 'Swipe through additional photos of this EV.',
-                    })}
+                    title={t('modelDetails.galleryTitle')}
+                    description={t('modelDetails.gallerySubtitle')}
                     images={galleryImages}
                 />
 

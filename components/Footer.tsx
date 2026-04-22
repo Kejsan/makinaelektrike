@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Facebook, Instagram, Twitter, Linkedin } from 'lucide-react';
 import { SITE_LOGO, SITE_LOGO_ALT } from '../constants/media';
+import Link from './LocalizedLink';
 
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -86,7 +86,7 @@ const Footer: React.FC = () => {
               <ul className="mt-4 space-y-2 text-gray-300">
                 <li>
                   <Link to="/listings" className="transition-colors hover:text-white">
-                    {t('header.listings', { defaultValue: 'Cars for Sale' })}
+                    {t('header.listings')}
                   </Link>
                 </li>
                 <li>
@@ -132,7 +132,7 @@ const Footer: React.FC = () => {
                 </li>
                 <li>
                   <Link to="/help-center" className="transition-colors hover:text-white">
-                    {t('header.helpCenter', { defaultValue: 'Help Center' })}
+                    {t('header.helpCenter')}
                   </Link>
                 </li>
                 <li>

@@ -1,19 +1,19 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { Model } from '../types';
 import { Heart, ArrowRight, Battery, Gauge, ShieldCheck } from 'lucide-react';
 import { useFavorites } from '../hooks/useFavorites';
 import { MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
 import OptimizedImage from './OptimizedImage';
+import Link from './LocalizedLink';
 
 const ModelCard: React.FC<{ model: Model }> = ({ model }) => {
     const { t } = useTranslation();
     const { isFavorite, toggleFavorite } = useFavorites();
     const favorited = isFavorite(model.id);
     const imageUrl = model.image_url || model.imageGallery?.[0] || MODEL_PLACEHOLDER_IMAGE;
-    const battery = model.battery_capacity ? `${model.battery_capacity} kWh` : t('modelsPage.rangeUnknown', { defaultValue: 'Unknown' });
-    const range = model.range_wltp ? `${model.range_wltp} km` : t('modelsPage.rangeUnknown', { defaultValue: 'Unknown' });
+    const battery = model.battery_capacity ? `${model.battery_capacity} kWh` : t('modelsPage.rangeUnknown');
+    const range = model.range_wltp ? `${model.range_wltp} km` : t('modelsPage.rangeUnknown');
     const batteryPercent = model.battery_capacity ? Math.min(100, Math.round((model.battery_capacity / 120) * 100)) : null;
     const rangePercent = model.range_wltp ? Math.min(100, Math.round((model.range_wltp / 700) * 100)) : null;
 
@@ -26,7 +26,7 @@ const ModelCard: React.FC<{ model: Model }> = ({ model }) => {
                     toggleFavorite(model.id, 'models');
                 }}
                 className="absolute top-4 right-4 z-10 p-2 bg-black/50 rounded-full text-white hover:text-vivid-red transition-colors"
-                aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
+                aria-label={favorited ? t('common.favoriteRemove') : t('common.favoriteAdd')}
             >
                 <Heart size={20} className={`${favorited ? 'fill-vivid-red text-vivid-red' : 'fill-transparent'}`} />
             </button>
@@ -44,7 +44,7 @@ const ModelCard: React.FC<{ model: Model }> = ({ model }) => {
                     {model.ownerDealerId && (
                         <div className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full bg-emerald-500/80 px-3 py-1 text-xs font-semibold text-black">
                             <ShieldCheck size={14} />
-                            {t('modelDetails.availableAt', { defaultValue: 'Available at these Dealerships' })}
+                            {t('modelDetails.availableAt')}
                         </div>
                     )}
                 </div>

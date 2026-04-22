@@ -1,12 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate as useRouterNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Globe, Settings, LogOut, Menu, X, UserRound, Loader2, ChevronDown, Heart } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { SITE_LOGO, SITE_LOGO_ALT } from '../constants/media';
+import Link from './LocalizedLink';
+import useLocalizedNavigate from '../hooks/useLocalizedNavigate';
+import { buildLocalizedPath, isLocalizablePath, normalizeAppLocale } from '../utils/localizedRouting';
 
 const LanguageSwitcher: React.FC = () => {
   const { i18n, t } = useTranslation();
+  const navigate = useRouterNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const languages = {
     en: 'English',
@@ -15,7 +20,14 @@ const LanguageSwitcher: React.FC = () => {
   };
 
   const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng);
+    const nextLocale = normalizeAppLocale(lng);
+    const currentPath = `${location.pathname}${location.search}${location.hash}`;
+
+    if (isLocalizablePath(location.pathname)) {
+      navigate(buildLocalizedPath(currentPath, nextLocale));
+    }
+
+    void i18n.changeLanguage(nextLocale);
     setIsOpen(false);
   };
 
@@ -50,7 +62,7 @@ const LanguageSwitcher: React.FC = () => {
 const Header: React.FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
   const { user, role, logout, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -148,14 +160,14 @@ const Header: React.FC = () => {
     }`;
 
   const primaryNav = [
-    { to: '/listings', label: t('header.listings', { defaultValue: 'Cars for Sale' }) },
+    { to: '/listings', label: t('header.listings') },
     { to: '/models', label: t('header.models') },
     { to: '/albania-charging-stations', label: t('header.chargingStations') },
   ];
 
   const discoverNav = [
     { to: '/about', label: t('header.about') },
-    { to: '/help-center', label: t('header.helpCenter', { defaultValue: 'Help Center' }) },
+    { to: '/help-center', label: t('header.helpCenter') },
     { to: '/blog', label: t('header.blog') },
     { to: '/dealers', label: t('header.dealers') },
   ];
@@ -179,7 +191,7 @@ const Header: React.FC = () => {
           onClick={() => navigate('/help-center')}
           className="hover:text-white transition-colors"
         >
-          {t('header.helpCenter', { defaultValue: 'Help Center' })}
+          {t('header.helpCenter')}
         </button>
       </div>
 
@@ -221,7 +233,7 @@ const Header: React.FC = () => {
                     setActiveDropdown((current) => (current === 'discover' ? null : 'discover'))
                   }
                 >
-                  {t('header.discover', { defaultValue: 'Discover' })}
+                  {t('header.discover')}
                   <ChevronDown
                     className={`h-4 w-4 transition-transform duration-200 ${activeDropdown === 'discover' ? 'rotate-180' : ''
                       }`}
@@ -355,7 +367,7 @@ const Header: React.FC = () => {
           <div className="lg:hidden absolute left-0 top-full w-full border-t border-slate-800 bg-[#0b132b] px-4 pb-6 pt-4 shadow-2xl">
             <div className="flex flex-col gap-3 text-sm font-medium text-white">
               <Link to="/listings" className={mobileNavLinkClasses('/listings')}>
-                {t('header.listings', { defaultValue: 'Cars for Sale' })}
+                {t('header.listings')}
               </Link>
               <Link to="/models" className={mobileNavLinkClasses('/models')}>
                 {t('header.models')}
@@ -373,7 +385,7 @@ const Header: React.FC = () => {
                 {t('header.blog')}
               </Link>
               <Link to="/help-center" className={mobileNavLinkClasses('/help-center')}>
-                {t('header.helpCenter', { defaultValue: 'Help Center' })}
+                {t('header.helpCenter')}
               </Link>
               <Link to="/dealers" className={mobileNavLinkClasses('/dealers')}>
                 {t('header.dealers')}

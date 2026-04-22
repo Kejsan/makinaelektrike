@@ -1,16 +1,18 @@
 import React, { useMemo, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { UserRound, Store, ShieldCheck, ArrowRight } from 'lucide-react';
 import SEO from '../components/SEO';
 import { useAuth } from '../contexts/AuthContext';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import Link from '../components/LocalizedLink';
+import LocalizedNavigate from '../components/LocalizedNavigate';
+import useLocalizedNavigate from '../hooks/useLocalizedNavigate';
 
 type AccountType = 'user' | 'dealer';
 
 const LoginPage: React.FC = () => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
   const { login, loading, error, user, role, initializing } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,15 +46,15 @@ const LoginPage: React.FC = () => {
   }
 
   if (user && role === 'pending') {
-    return <Navigate to="/awaiting-approval" replace />;
+    return <LocalizedNavigate to="/awaiting-approval" replace />;
   }
 
   if (user && role === 'dealer') {
-    return <Navigate to="/dealer/dashboard" replace />;
+    return <LocalizedNavigate to="/dealer/dashboard" replace />;
   }
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <LocalizedNavigate to="/" replace />;
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -94,6 +96,7 @@ const LoginPage: React.FC = () => {
         description={t('loginPage.metaDescription')}
         keywords={t('loginPage.metaKeywords', { returnObjects: true }) as string[]}
         canonical={`${BASE_URL}/login/`}
+        robots="noindex, nofollow"
         openGraph={{
           title: t('loginPage.metaTitle'),
           description: t('loginPage.metaDescription'),

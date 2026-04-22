@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Building2 } from 'lucide-react';
 import { useAuth, mapErrorToMessage } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import LocalizedNavigate from '../components/LocalizedNavigate';
+import useLocalizedNavigate from '../hooks/useLocalizedNavigate';
 
 const RegisterDealerPage: React.FC = () => {
   const { t } = useTranslation();
   const { registerDealer, loading, user, role, initializing } = useAuth();
   const { addToast } = useToast();
-  const navigate = useNavigate();
+  const navigate = useLocalizedNavigate();
   const [formError, setFormError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     companyName: '',
@@ -34,11 +35,11 @@ const RegisterDealerPage: React.FC = () => {
   }
 
   if (user && role === 'pending') {
-    return <Navigate to="/awaiting-approval" replace />;
+    return <LocalizedNavigate to="/awaiting-approval" replace />;
   }
 
   if (user && role !== 'pending') {
-    return <Navigate to="/" replace />;
+    return <LocalizedNavigate to="/" replace />;
   }
 
   const handleChange = (
@@ -115,6 +116,7 @@ const RegisterDealerPage: React.FC = () => {
         description={metaDescription}
         keywords={t('registerDealerPage.metaKeywords', { returnObjects: true }) as string[]}
         canonical={`${BASE_URL}/register-dealer/`}
+        robots="noindex, nofollow"
         openGraph={{
           title: metaTitle,
           description: metaDescription,

@@ -5,6 +5,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import enTranslations from './locales/en.json';
 import sqTranslations from './locales/sq.json';
 import itTranslations from './locales/it.json';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../utils/localizedRouting';
 
 const resources = {
   en: { translation: enTranslations },
@@ -17,12 +18,16 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: 'en',
+    supportedLngs: [...SUPPORTED_LOCALES],
+    fallbackLng: DEFAULT_LOCALE,
+    load: 'languageOnly',
+    cleanCode: true,
     interpolation: {
       escapeValue: false,
     },
     detection: {
-      order: ['localStorage', 'navigator'],
+      order: ['path', 'localStorage', 'navigator'],
+      lookupFromPathIndex: 0,
       caches: ['localStorage'],
     },
   })

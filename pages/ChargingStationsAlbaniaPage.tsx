@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -32,6 +32,8 @@ import { StationProperties, fetchStations } from '../services/ocm';
 import type { StationFeatureCollection } from '../services/ocm';
 import { fetchChargingStations, mergeStationsWithOCM } from '../services/chargingStations';
 import { useToast } from '../contexts/ToastContext';
+import Link from '../components/LocalizedLink';
+import { buildLocalizedPath } from '../utils/localizedRouting';
 
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIconRetina,
@@ -447,9 +449,10 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
       if (searchTerm.trim()) params.set('q', searchTerm.trim());
       if (!autoUpdate) params.set('auto', 'false');
 
-      const url = `${window.location.origin}/albania-charging-stations?${params.toString()}`;
+      const url = `${window.location.origin}${buildLocalizedPath('/albania-charging-stations', t('header.language') ? undefined as never : 'sq')}`;
+      const shareUrl = `${window.location.origin}${buildLocalizedPath(window.location.pathname, 'sq').startsWith('/en') || buildLocalizedPath(window.location.pathname, 'sq').startsWith('/it') ? window.location.pathname : window.location.pathname}?${params.toString()}`;
       navigator.clipboard
-        .writeText(url)
+        .writeText(shareUrl)
         .then(() => addToast('Shareable link copied to clipboard', 'success'))
         .catch(() => addToast('Unable to copy link', 'error'));
     },

@@ -5,6 +5,7 @@ import OptimizedImage from '../components/OptimizedImage';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import { ABOUT_PAGE_IMAGE, SITE_LOGO, SITE_LOGO_ALT } from '../constants/media';
+import Link from '../components/LocalizedLink';
 
 const AboutPage: React.FC = () => {
   const { t } = useTranslation();
@@ -101,9 +102,9 @@ const AboutPage: React.FC = () => {
                 <h2 className="text-3xl font-bold text-white">{t('aboutPage.collaborationCtaTitle')}</h2>
                 <p className="mt-3 text-gray-300 text-lg max-w-2xl mx-auto">{t('aboutPage.collaborationCtaDescription')}</p>
                 <div className="pt-6">
-                  <a href="/contact" className="inline-flex justify-center rounded-md border border-transparent bg-vivid-red px-8 py-3 text-base font-medium text-white shadow-sm transition-all hover:bg-opacity-90 hover:shadow-lg hover:shadow-vivid-red/50 focus:outline-none focus:ring-2 focus:ring-vivid-red focus:ring-offset-2">
+                  <Link to="/contact" className="inline-flex justify-center rounded-md border border-transparent bg-vivid-red px-8 py-3 text-base font-medium text-white shadow-sm transition-all hover:bg-opacity-90 hover:shadow-lg hover:shadow-vivid-red/50 focus:outline-none focus:ring-2 focus:ring-vivid-red focus:ring-offset-2">
                     {t('aboutPage.collaborationCtaButton')}
-                  </a>
+                  </Link>
                 </div>
               </div>
             </section>

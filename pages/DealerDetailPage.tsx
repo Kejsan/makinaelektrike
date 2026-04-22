@@ -1,5 +1,5 @@
 import React, { useMemo, useContext } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Dealer, Model } from '../types';
 import { MapPin, Phone, Mail, Globe, ArrowLeft, Heart, ShieldCheck } from 'lucide-react';
@@ -12,6 +12,7 @@ import { BASE_URL } from '../constants/seo';
 import { DEALERSHIP_PLACEHOLDER_IMAGE } from '../constants/media';
 import GallerySection from '../components/GallerySection';
 import OptimizedImage from '../components/OptimizedImage';
+import Link from '../components/LocalizedLink';
 
 const DealerDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -22,27 +23,37 @@ const DealerDetailPage: React.FC = () => {
     const faqItems = t('dealerDetails.faqItems', { returnObjects: true }) as Array<{ question: string; answer: string }>;
     const { isFavorite, toggleFavorite } = useFavorites();
 
-    if (loading) return <div className="text-center py-10 text-white">Loading...</div>;
+    if (loading) return <div className="text-center py-10 text-white">{t('common.loading')}</div>;
     if (!dealer) {
+        const missingCanonical = id ? `${BASE_URL}/dealers/${id}/` : `${BASE_URL}/dealers/`;
+
         return (
             <div className="text-center py-10 text-white">
                 <SEO
-                    title="Dealeri nuk u gjet | Makina Elektrike"
-                    description="Dealeri i kërkuar nuk ekziston më ose është zhvendosur."
-                    canonical={id ? `${BASE_URL}/dealers/${id}/` : `${BASE_URL}/dealers/`}
+                    title={`${t('dealerDetails.notFoundTitle')} | Makina Elektrike`}
+                    description={t('dealerDetails.notFoundDescription')}
+                    canonical={missingCanonical}
                     openGraph={{
-                        title: 'Dealeri nuk u gjet | Makina Elektrike',
-                        description: 'Dealeri i kërkuar nuk ekziston më ose është zhvendosur.',
-                        url: id ? `${BASE_URL}/dealers/${id}/` : `${BASE_URL}/dealers/`,
+                        title: `${t('dealerDetails.notFoundTitle')} | Makina Elektrike`,
+                        description: t('dealerDetails.notFoundDescription'),
+                        url: missingCanonical,
                         type: 'business.business',
                     }}
                     twitter={{
-                        title: 'Dealeri nuk u gjet | Makina Elektrike',
-                        description: 'Dealeri i kërkuar nuk ekziston më ose është zhvendosur.',
+                        title: `${t('dealerDetails.notFoundTitle')} | Makina Elektrike`,
+                        description: t('dealerDetails.notFoundDescription'),
                         site: '@makinaelektrike',
                     }}
                 />
-                Dealer not found.
+                <h1 className="text-3xl font-bold">{t('dealerDetails.notFoundTitle')}</h1>
+                <p className="mt-4 text-gray-300">{t('dealerDetails.notFoundBody')}</p>
+                <Link
+                    to="/dealers"
+                    className="mt-8 inline-flex items-center gap-2 rounded-lg bg-gray-cyan px-5 py-3 font-semibold text-white transition hover:bg-gray-cyan/90"
+                >
+                    <ArrowLeft size={18} />
+                    {t('dealerDetails.notFoundCta')}
+                </Link>
             </div>
         );
     }
@@ -56,30 +67,22 @@ const DealerDetailPage: React.FC = () => {
         return (
             <div className="text-center py-10 text-white">
                 <SEO
-                    title={t('dealerDetails.notAvailableTitle', { defaultValue: 'Dealer unavailable' })}
-                    description={t('dealerDetails.notAvailableDescription', {
-                        defaultValue: 'This dealership is no longer available or is undergoing review.',
-                    })}
+                    title={t('dealerDetails.notAvailableTitle')}
+                    description={t('dealerDetails.notAvailableDescription')}
                     canonical={id ? `${BASE_URL}/dealers/${id}/` : `${BASE_URL}/dealers/`}
                     openGraph={{
-                        title: t('dealerDetails.notAvailableTitle', { defaultValue: 'Dealer unavailable' }),
-                        description: t('dealerDetails.notAvailableDescription', {
-                            defaultValue: 'This dealership is no longer available or is undergoing review.',
-                        }),
+                        title: t('dealerDetails.notAvailableTitle'),
+                        description: t('dealerDetails.notAvailableDescription'),
                         url: id ? `${BASE_URL}/dealers/${id}/` : `${BASE_URL}/dealers/`,
                         type: 'business.business',
                     }}
                     twitter={{
-                        title: t('dealerDetails.notAvailableTitle', { defaultValue: 'Dealer unavailable' }),
-                        description: t('dealerDetails.notAvailableDescription', {
-                            defaultValue: 'This dealership is no longer available or is undergoing review.',
-                        }),
+                        title: t('dealerDetails.notAvailableTitle'),
+                        description: t('dealerDetails.notAvailableDescription'),
                         site: '@makinaelektrike',
                     }}
                 />
-                {t('dealerDetails.notAvailableMessage', {
-                    defaultValue: 'This dealer is not currently active on Makina Elektrike.',
-                })}
+                {t('dealerDetails.notAvailableMessage')}
             </div>
         );
     }
@@ -196,7 +199,7 @@ const DealerDetailPage: React.FC = () => {
                             <button
                                 onClick={() => toggleFavorite(dealer.id, 'dealers')}
                                 className="absolute top-6 right-6 z-10 p-3 bg-white/10 rounded-full text-white hover:text-vivid-red transition-colors"
-                                aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
+                                aria-label={favorited ? t('common.favoriteRemove') : t('common.favoriteAdd')}
                             >
                                 <Heart size={24} className={`${favorited ? 'fill-vivid-red text-vivid-red' : 'fill-transparent'}`} />
                             </button>
@@ -204,7 +207,7 @@ const DealerDetailPage: React.FC = () => {
                             <div className="flex flex-wrap gap-3">
                                 <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-300">
                                     <ShieldCheck size={14} />
-                                    {t('dealerDetails.approved', { defaultValue: 'Approved dealer' })}
+                                    {t('dealerDetails.approved')}
                                 </span>
                             </div>
                             <div className="space-y-4">
@@ -235,7 +238,7 @@ const DealerDetailPage: React.FC = () => {
                                         </a>
                                     </p>
                                 )}
-                                {dealer.website && <p className="flex items-center text-gray-300"><Globe className="text-gray-cyan mr-3" size={20} /><a href={dealer.website} target="_blank" rel="noopener noreferrer" className="hover:underline">Visit Website</a></p>}
+                                {dealer.website && <p className="flex items-center text-gray-300"><Globe className="text-gray-cyan mr-3" size={20} /><a href={dealer.website} target="_blank" rel="noopener noreferrer" className="hover:underline">{t('dealerDetails.visitWebsite')}</a></p>}
                             </div>
 
                             {dealer.description && (
@@ -254,7 +257,7 @@ const DealerDetailPage: React.FC = () => {
 
                             <div>
                                 <h3 className="font-semibold text-white">{t('dealerDetails.languagesSpoken')}</h3>
-                                <p className="text-gray-300">{dealer.languages?.length ? dealer.languages.join(', ') : t('dealerDetails.noLanguages', { defaultValue: 'No languages specified' })}</p>
+                                <p className="text-gray-300">{dealer.languages?.length ? dealer.languages.join(', ') : t('dealerDetails.noLanguages')}</p>
                             </div>
                             {(dealer.description || dealer.notes) && <div>
                                 <h3 className="font-semibold text-white">{t('dealerDetails.notes')}</h3>
@@ -294,15 +297,13 @@ const DealerDetailPage: React.FC = () => {
                             {dealerModels.map(model => <ModelCard key={model.id} model={model} />)}
                         </div>
                     ) : (
-                        <p className="text-center text-gray-400">No specific models listed for this dealer.</p>
+                        <p className="text-center text-gray-400">{t('dealerDetails.noDealerModels')}</p>
                     )}
                 </div>
 
                 <GallerySection
-                    title={t('dealerDetails.galleryTitle', { defaultValue: 'Showroom gallery' })}
-                    description={t('dealerDetails.gallerySubtitle', {
-                        defaultValue: 'Take a closer look at the dealership environment and recent deliveries.',
-                    })}
+                    title={t('dealerDetails.galleryTitle')}
+                    description={t('dealerDetails.gallerySubtitle')}
                     images={galleryImages}
                 />
 

@@ -12,10 +12,17 @@ import {
   type Timestamp,
 } from 'firebase/firestore/lite';
 import blogPostsData from '../data/blogPosts';
+import {
+  DEFAULT_LOCALE,
+  SUPPORTED_LOCALES,
+  buildAbsoluteLocalizedUrl,
+  buildLocalizedPath,
+  toHreflang,
+} from '../utils/localizedRouting';
 
 dotenv.config();
 
-const SITE = 'https://makinaelektrike.com';
+const SITE = (process.env.VITE_SITE_URL || 'https://makinaelektrike.com').replace(/\/+$/, '');
 const MAX_URLS_PER_SITEMAP = 45000;
 
 const MAIN_URLS = [
@@ -32,15 +39,19 @@ const MAIN_URLS = [
   { loc: '/privacy-policy/', changefreq: 'monthly', priority: '0.3' },
   { loc: '/terms/', changefreq: 'monthly', priority: '0.3' },
   { loc: '/cookie-policy/', changefreq: 'monthly', priority: '0.3' },
-  { loc: '/register/', changefreq: 'monthly', priority: '0.4' },
-  { loc: '/register-dealer/', changefreq: 'monthly', priority: '0.4' },
 ] as const;
+
+type SitemapAlternate = {
+  hreflang: string;
+  href: string;
+};
 
 type SitemapUrl = {
   loc: string;
   lastmod?: string;
   changefreq?: string;
   priority?: string;
+  alternates?: SitemapAlternate[];
 };
 
 type SitemapSection = {
@@ -136,9 +147,12 @@ const chunk = <T,>(items: T[], size: number): T[][] => {
 
 const buildUrlSetXml = (urls: SitemapUrl[]) => `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
   .map(
-    url => `  <url>\n    <loc>${escapeXml(`${SITE}${url.loc}`)}</loc>\n    <lastmod>${url.lastmod ?? today}</lastmod>${url.changefreq ? `\n    <changefreq>${url.changefreq}</changefreq>` : ''}${url.priority ? `\n    <priority>${url.priority}</priority>` : ''}\n  </url>`,
+    url => `  <url>\n    <loc>${escapeXml(`${SITE}${url.loc}`)}</loc>${url.alternates?.length ? `\n${url.alternates.map(alternate => `    <xhtml:link rel="alternate" hreflang="${escapeXml(alternate.hreflang)}" href="${escapeXml(alternate.href)}" />`).join('\n')}` : ''}\n    <lastmod>${url.lastmod ?? today}</lastmod>${url.changefreq ? `\n    <changefreq>${url.changefreq}</changefreq>` : ''}${url.priority ? `\n    <priority>${url.priority}</priority>` : ''}\n  </url>`,
   )
-  .join('\n')}\n</urlset>\n`;
+  .join('\n')}\n</urlset>\n`.replace(
+  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
+);
 
 const buildSitemapIndexXml = (
   sitemaps: Array<{ loc: string; lastmod: string }>,
@@ -288,10 +302,31 @@ const getDynamicListings = async (): Promise<SitemapUrl[]> => {
 };
 
 const getMainUrls = (): SitemapUrl[] =>
-  MAIN_URLS.map(entry => ({
+  MAIN_URLS.flatMap(entry => expandLocalizedUrls({
     ...entry,
     lastmod: today,
   }));
+
+function buildAlternateSet(loc: string): SitemapAlternate[] {
+  return [
+    ...SUPPORTED_LOCALES.map(locale => ({
+      hreflang: toHreflang(locale),
+      href: buildAbsoluteLocalizedUrl(SITE, loc, locale),
+    })),
+    {
+      hreflang: 'x-default',
+      href: buildAbsoluteLocalizedUrl(SITE, loc, DEFAULT_LOCALE),
+    },
+  ];
+}
+
+function expandLocalizedUrls(entry: SitemapUrl): SitemapUrl[] {
+  return SUPPORTED_LOCALES.map(locale => ({
+    ...entry,
+    loc: buildLocalizedPath(entry.loc, locale),
+    alternates: buildAlternateSet(entry.loc),
+  }));
+}
 
 const writeSitemapFiles = async (sections: SitemapSection[]) => {
   fs.rmSync(sitemapDir, { recursive: true, force: true });
@@ -349,10 +384,10 @@ const buildSitemaps = async () => {
 
   const sections: SitemapSection[] = [
     { key: 'main', urls: mainUrls },
-    { key: 'dealers', urls: dealerUrls },
-    { key: 'models', urls: modelUrls },
-    { key: 'listings', urls: listingUrls },
-    { key: 'blog', urls: blogUrls },
+    { key: 'dealers', urls: dealerUrls.flatMap(expandLocalizedUrls) },
+    { key: 'models', urls: modelUrls.flatMap(expandLocalizedUrls) },
+    { key: 'listings', urls: listingUrls.flatMap(expandLocalizedUrls) },
+    { key: 'blog', urls: blogUrls.flatMap(expandLocalizedUrls) },
   ].filter(section => section.urls.length > 0);
 
   const generatedFiles = await writeSitemapFiles(sections);

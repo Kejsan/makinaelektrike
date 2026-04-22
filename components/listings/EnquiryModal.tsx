@@ -23,7 +23,6 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
         email: '',
         phone: '',
         message: t('enquiry.defaultMessage', {
-            defaultValue: 'Hi, I am interested in this {{make}} {{model}}. Is it still available?',
             make: listing.make,
             model: listing.model
         })
@@ -52,7 +51,7 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                 message: formData.message,
             });
 
-            addToast(t('enquiry.success', { defaultValue: 'Message sent successfully!' }), 'success');
+            addToast(t('enquiry.success'), 'success');
             setFormData(initialFormData);
             onClose();
         } catch (error) {
@@ -60,7 +59,7 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
             addToast(
                 error instanceof Error
                     ? error.message
-                    : t('enquiry.error', { defaultValue: 'Failed to send message. Please try again.' }),
+                    : t('enquiry.error'),
                 'error'
             );
         } finally {
@@ -81,10 +80,10 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
 
                 <div className="overflow-y-auto p-6">
                     <h2 className="text-2xl font-bold text-white mb-2">
-                        {t('enquiry.title', { defaultValue: 'Contact Seller' })}
+                        {t('enquiry.title')}
                     </h2>
                     <p className="text-gray-400 text-sm mb-6">
-                        {t('enquiry.subtitle', { defaultValue: 'Send a message to the dealer about this vehicle.' })}
+                        {t('enquiry.subtitle')}
                     </p>
 
                     {dealer && (
@@ -111,7 +110,7 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-gray-400 text-xs uppercase font-bold mb-2">
-                                {t('common.name', { defaultValue: 'Name' })}
+                                {t('common.name')}
                             </label>
                             <input
                                 type="text"
@@ -119,14 +118,14 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-gray-cyan outline-none transition"
                                 value={formData.name}
                                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                placeholder={t('common.namePlaceholder', { defaultValue: 'Your Name' })}
+                                placeholder={t('common.namePlaceholder')}
                             />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-gray-400 text-xs uppercase font-bold mb-2">
-                                    {t('common.email', { defaultValue: 'Email' })}
+                                    {t('common.email')}
                                 </label>
                                 <input
                                     type="email"
@@ -139,7 +138,7 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                             </div>
                             <div>
                                 <label className="block text-gray-400 text-xs uppercase font-bold mb-2">
-                                    {t('common.phone', { defaultValue: 'Phone' })}
+                                    {t('common.phone')}
                                 </label>
                                 <input
                                     type="tel"
@@ -153,7 +152,7 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
 
                         <div>
                             <label className="block text-gray-400 text-xs uppercase font-bold mb-2">
-                                {t('common.message', { defaultValue: 'Message' })}
+                                {t('common.message')}
                             </label>
                             <textarea
                                 required
@@ -174,7 +173,7 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                             ) : (
                                 <>
                                     <Send size={20} />
-                                    {t('enquiry.send', { defaultValue: 'Send Message' })}
+                                    {t('enquiry.send')}
                                 </>
                             )}
                         </button>

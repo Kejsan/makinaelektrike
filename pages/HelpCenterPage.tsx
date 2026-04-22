@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   BookOpen,
@@ -14,6 +13,7 @@ import {
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import { getHelpCenterContent } from '../data/helpCenterContent';
+import Link from '../components/LocalizedLink';
 
 const iconMap = {
   'getting-started': BookOpen,

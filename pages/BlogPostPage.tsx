@@ -1,15 +1,17 @@
 import React, { useContext, useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Clock, ArrowLeft, Tag, HelpCircle } from 'lucide-react';
 import { DataContext } from '../contexts/DataContext';
 import type { BlogPostList } from '../types';
 import OptimizedImage from '../components/OptimizedImage';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import Link from '../components/LocalizedLink';
 
-const formatDate = (value: string) => {
+const formatDate = (value: string, language: string) => {
   try {
-    return new Date(value).toLocaleDateString('sq-AL', {
+    return new Date(value).toLocaleDateString(language || 'sq', {
       day: '2-digit',
       month: 'long',
       year: 'numeric',
@@ -45,6 +47,7 @@ const renderList = (list: BlogPostList) => {
 
 const BlogPostPage: React.FC = () => {
   const { slug } = useParams();
+  const { i18n, t } = useTranslation();
   const { blogPosts } = useContext(DataContext);
 
   const post = useMemo(
@@ -53,37 +56,37 @@ const BlogPostPage: React.FC = () => {
   );
 
   if (!post) {
+    const missingCanonical = slug ? `${BASE_URL}/blog/${slug}/` : `${BASE_URL}/blog/`;
+
     return (
       <div className="py-24">
         <div className="max-w-3xl mx-auto px-4 text-center text-white">
           <SEO
-            title="Artikulli nuk u gjet | Makina Elektrike"
-            description="Artikulli i kërkuar nuk ekziston më ose është zhvendosur."
-            canonical={`${BASE_URL}/blog/${slug ?? ''}`}
+            title={`${t('blogPage.notFoundTitle')} | Makina Elektrike`}
+            description={t('blogPage.notFoundDescription')}
+            canonical={missingCanonical}
             openGraph={{
-              title: 'Artikulli nuk u gjet | Makina Elektrike',
-              description: 'Artikulli i kërkuar nuk ekziston më ose është zhvendosur.',
-              url: `${BASE_URL}/blog/${slug ?? ''}`,
+              title: `${t('blogPage.notFoundTitle')} | Makina Elektrike`,
+              description: t('blogPage.notFoundDescription'),
+              url: missingCanonical,
               type: 'article',
               images: [DEFAULT_OG_IMAGE],
             }}
             twitter={{
-              title: 'Artikulli nuk u gjet | Makina Elektrike',
-              description: 'Artikulli i kërkuar nuk ekziston më ose është zhvendosur.',
+              title: `${t('blogPage.notFoundTitle')} | Makina Elektrike`,
+              description: t('blogPage.notFoundDescription'),
               image: DEFAULT_OG_IMAGE,
               site: '@makinaelektrike',
             }}
           />
-          <h1 className="text-3xl font-bold">Artikulli nuk u gjet</h1>
-          <p className="mt-4 text-gray-300">
-            Përmbajtja që po kërkoni mund të jetë zhvendosur ose nuk ekziston më.
-          </p>
+          <h1 className="text-3xl font-bold">{t('blogPage.notFoundTitle')}</h1>
+          <p className="mt-4 text-gray-300">{t('blogPage.notFoundBody')}</p>
           <Link
             to="/blog"
             className="inline-flex items-center gap-2 mt-8 rounded-lg bg-gray-cyan px-5 py-3 font-semibold text-white transition hover:bg-gray-cyan/90"
           >
             <ArrowLeft size={18} />
-            Kthehu te blogu
+            {t('blogPage.backToBlog')}
           </Link>
         </div>
       </div>
@@ -164,12 +167,12 @@ const BlogPostPage: React.FC = () => {
         <div className="relative h-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-end pb-10">
           <Link to="/blog" className="inline-flex items-center gap-2 text-sm font-semibold text-white/80 hover:text-white transition mb-4">
             <ArrowLeft size={16} />
-            Kthehu te të gjitha artikujt
+            {t('blogPage.backToAllPosts')}
           </Link>
           <div className="flex flex-wrap items-center gap-3 text-gray-200 text-sm">
-            <span>{formatDate(post.date)}</span>
+            <span>{formatDate(post.date, i18n.resolvedLanguage || i18n.language)}</span>
             <span className="flex items-center gap-1"><Clock size={16} /> {post.readTime}</span>
-            <span>nga {post.author}</span>
+            <span>{t('blogPage.authorPrefix')} {post.author}</span>
           </div>
           <h1 className="mt-4 text-3xl sm:text-5xl font-extrabold text-white drop-shadow-lg">
             {post.title}
@@ -207,7 +210,7 @@ const BlogPostPage: React.FC = () => {
         {post.faqs && post.faqs.length > 0 && (
           <section className="bg-white/5 border border-white/10 rounded-2xl p-8 shadow-lg">
             <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-              <HelpCircle size={24} /> Pyetje të shpeshta
+              <HelpCircle size={24} /> {t('blogPage.faqTitle')}
             </h2>
             <div className="space-y-6">
               {post.faqs.map(faq => (

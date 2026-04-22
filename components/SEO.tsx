@@ -1,4 +1,14 @@
 import { useEffect } from 'react';
+import {
+  DEFAULT_LOCALE,
+  SUPPORTED_LOCALES,
+  buildAbsoluteLocalizedUrl,
+  buildLocalizedPath,
+  isLocalizablePath,
+  normalizeAppLocale,
+  stripLocalePrefix,
+  toHreflang,
+} from '../utils/localizedRouting';
 
 export interface OpenGraphConfig {
   title?: string;
@@ -83,6 +93,56 @@ const toAbsoluteMetaUrl = (value?: string | null) => {
   return new URL(value, window.location.origin).toString();
 };
 
+const toCanonicalBasePath = (value?: string | null) => {
+  if (!value) {
+    if (typeof window === 'undefined') {
+      return '/';
+    }
+
+    return stripLocalePrefix(window.location.pathname).pathname;
+  }
+
+  if (/^https?:/i.test(value)) {
+    try {
+      return stripLocalePrefix(new URL(value).pathname).pathname;
+    } catch {
+      return value;
+    }
+  }
+
+  return stripLocalePrefix(value).pathname;
+};
+
+const getCanonicalOrigin = (value?: string | null) => {
+  if (value && /^https?:/i.test(value)) {
+    try {
+      return new URL(value).origin;
+    } catch {
+      return typeof window !== 'undefined' ? window.location.origin : undefined;
+    }
+  }
+
+  return typeof window !== 'undefined' ? window.location.origin : undefined;
+};
+
+const getDefaultOpenGraphLocale = () => {
+  if (typeof document === 'undefined') {
+    return 'sq_AL';
+  }
+
+  const language = document.documentElement.lang.toLowerCase().split('-')[0];
+
+  switch (language) {
+    case 'en':
+      return 'en_US';
+    case 'it':
+      return 'it_IT';
+    case 'sq':
+    default:
+      return 'sq_AL';
+  }
+};
+
 const SEO = ({
   title,
   description,
@@ -100,6 +160,22 @@ const SEO = ({
     document.title = title;
 
     const cleanups: Array<() => void> = [];
+    const currentLocale =
+      typeof window !== 'undefined'
+        ? normalizeAppLocale(stripLocalePrefix(window.location.pathname).locale)
+        : DEFAULT_LOCALE;
+    const canonicalBasePath = toCanonicalBasePath(canonical);
+    const resolvedCanonical =
+      canonicalBasePath && isLocalizablePath(canonicalBasePath)
+        ? buildLocalizedPath(canonicalBasePath, currentLocale)
+        : canonical;
+    const canonicalHref = toAbsoluteMetaUrl(resolvedCanonical ?? canonical);
+    const canonicalOrigin = getCanonicalOrigin(canonical);
+    const shouldAddAlternateLinks =
+      !robots.toLowerCase().includes('noindex') &&
+      Boolean(canonicalOrigin) &&
+      Boolean(canonicalBasePath) &&
+      isLocalizablePath(canonicalBasePath);
 
     cleanups.push(
       setMetaTag(
@@ -152,9 +228,9 @@ const SEO = ({
       const {
         title: ogTitle = title,
         description: ogDescription = description,
-        url: ogUrl = canonical,
+        url: ogUrl = canonicalHref ?? canonical,
         type = 'website',
-        locale = 'sq_AL',
+        locale = getDefaultOpenGraphLocale(),
         siteName = 'Makina Elektrike',
       } = openGraph || {};
 
@@ -400,13 +476,13 @@ const SEO = ({
     }
 
     let canonicalCleanup: (() => void) | undefined;
-    if (canonical) {
+    if (canonicalHref) {
       const existingCanonical =
         document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
 
       if (existingCanonical) {
         const previousHref = existingCanonical.getAttribute('href');
-        existingCanonical.setAttribute('href', canonical);
+        existingCanonical.setAttribute('href', canonicalHref);
 
         canonicalCleanup = () => {
           if (previousHref) {
@@ -418,13 +494,46 @@ const SEO = ({
       } else {
         const link = document.createElement('link');
         link.setAttribute('rel', 'canonical');
-        link.setAttribute('href', canonical);
+        link.setAttribute('href', canonicalHref);
         document.head.appendChild(link);
 
         canonicalCleanup = () => {
           link.remove();
         };
       }
+    }
+
+    let alternateLinksCleanup: (() => void) | undefined;
+    if (shouldAddAlternateLinks && canonicalOrigin) {
+      const generatedAlternateLinks = [
+        ...SUPPORTED_LOCALES.map(locale => {
+          const link = document.createElement('link');
+          link.setAttribute('rel', 'alternate');
+          link.setAttribute('hreflang', toHreflang(locale));
+          link.setAttribute(
+            'href',
+            buildAbsoluteLocalizedUrl(canonicalOrigin, canonicalBasePath, locale),
+          );
+          link.setAttribute('data-generated-alternate', 'true');
+          document.head.appendChild(link);
+          return link;
+        }),
+      ];
+
+      const xDefaultLink = document.createElement('link');
+      xDefaultLink.setAttribute('rel', 'alternate');
+      xDefaultLink.setAttribute('hreflang', 'x-default');
+      xDefaultLink.setAttribute(
+        'href',
+        buildAbsoluteLocalizedUrl(canonicalOrigin, canonicalBasePath, DEFAULT_LOCALE),
+      );
+      xDefaultLink.setAttribute('data-generated-alternate', 'true');
+      document.head.appendChild(xDefaultLink);
+      generatedAlternateLinks.push(xDefaultLink);
+
+      alternateLinksCleanup = () => {
+        generatedAlternateLinks.forEach(link => link.remove());
+      };
     }
 
     let structuredDataCleanup: (() => void) | undefined;
@@ -443,6 +552,7 @@ const SEO = ({
       document.title = previousTitle;
       cleanups.forEach(cleanup => cleanup());
       canonicalCleanup?.();
+      alternateLinksCleanup?.();
       structuredDataCleanup?.();
     };
   }, [

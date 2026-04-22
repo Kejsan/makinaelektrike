@@ -1,11 +1,11 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Listing } from '../../types';
 import { MapPin, Calendar, Gauge, Fuel, Heart } from 'lucide-react';
 import { useFavorites } from '../../hooks/useFavorites';
 import OptimizedImage from '../OptimizedImage';
 import { MODEL_PLACEHOLDER_IMAGE } from '../../constants/media';
+import Link from '../LocalizedLink';
 
 interface ListingCardProps {
     listing: Listing;
@@ -26,7 +26,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
                     toggleFavorite(listing.id, 'listings');
                 }}
                 className="absolute top-3 left-3 z-10 p-2 bg-black/50 rounded-full text-white hover:text-vivid-red transition-colors"
-                aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
+                aria-label={favorited ? t('common.favoriteRemove') : t('common.favoriteAdd')}
             >
                 <Heart size={18} className={`${favorited ? 'fill-vivid-red text-vivid-red' : 'fill-transparent'}`} />
             </button>
@@ -44,7 +44,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
                 </div>
                 {listing.isFeatured && (
                     <div className="absolute top-3 left-3 bg-yellow-500/90 text-black px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider">
-                        Featured
+                        {t('common.featured')}
                     </div>
                 )}
             </Link>
@@ -72,7 +72,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
                     </div>
                     <div className="flex items-center gap-2">
                         <MapPin size={16} className="text-gray-500" />
-                        <span className="truncate">{listing.location?.city || 'Albania'}</span>
+                        <span className="truncate">{listing.location?.city || t('listings.locationFallback')}</span>
                     </div>
                 </div>
 
@@ -81,7 +81,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
                         to={`/listings/${listing.id}`}
                         className="block w-full text-center py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold transition border border-white/5"
                     >
-                        {t('common.viewDetails', { defaultValue: 'View Details' })}
+                        {t('common.viewDetails')}
                     </Link>
                 </div>
             </div>

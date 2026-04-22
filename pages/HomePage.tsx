@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import Link from '../components/LocalizedLink';
 import { BlogPost } from '../types';
 import { Car, Building, Search, Loader2 } from 'lucide-react';
 import OptimizedImage from '../components/OptimizedImage';

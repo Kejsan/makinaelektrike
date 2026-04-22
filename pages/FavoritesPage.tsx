@@ -119,7 +119,7 @@ const FavoritesPage: React.FC = () => {
         }
 
         if (favoriteListings.length) {
-            lines.push(`--- ${t('listings.title', { defaultValue: t('header.listings') })} ---`);
+            lines.push(`--- ${t('listings.title')} ---`);
             favoriteListings.forEach(l => lines.push(`- ${l.title} (${l.price}€)`));
             lines.push('');
         }
@@ -152,6 +152,7 @@ const FavoritesPage: React.FC = () => {
                 title={t('favoritesPage.metaTitle')}
                 description={t('favoritesPage.metaDescription')}
                 canonical={`${BASE_URL}/favorites/`}
+                robots="noindex, nofollow"
             />
 
             {/* Header Section */}
@@ -195,7 +196,7 @@ const FavoritesPage: React.FC = () => {
                     <div className="flex mt-16 overflow-x-auto no-scrollbar gap-2 p-1.5 bg-white/5 border border-white/10 rounded-2xl max-w-fit backdrop-blur-md">
                         {[
                             { id: 'models', label: t('favoritesPage.models'), count: favoriteModels.length },
-                            { id: 'listings', label: t('listings.title', { defaultValue: t('header.listings') }), count: favoriteListings.length },
+                            { id: 'listings', label: t('listings.title'), count: favoriteListings.length },
                             { id: 'dealers', label: t('favoritesPage.dealers'), count: favoriteDealers.length }
                         ].map(tab => (
                             <button
@@ -262,8 +263,8 @@ const FavoritesPage: React.FC = () => {
                                     <>
                                         <option value="price-asc">{t('filter.price_asc')}</option>
                                         <option value="price-desc">{t('filter.price_desc')}</option>
-                                        <option value="year-desc">{t('filter.year_desc', { defaultValue: 'Year (Newest)' })}</option>
-                                        <option value="year-asc">{t('filter.year_asc', { defaultValue: 'Year (Oldest)' })}</option>
+                                        <option value="year-desc">{t('filter.year_desc')}</option>
+                                        <option value="year-asc">{t('filter.year_asc')}</option>
                                     </>
                                 )}
                             </select>
@@ -467,7 +468,7 @@ const FavoritesPage: React.FC = () => {
                                 </div>
                                 <div>
                                     <h2 className="text-3xl font-black text-white tracking-tighter">{t('favoritesPage.compareModalTitle')}</h2>
-                                    <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mt-1">{t('favoritesPage.sideBySide', { defaultValue: 'Side-by-side spec comparison' })}</p>
+                                    <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mt-1">{t('favoritesPage.sideBySide')}</p>
                                 </div>
                             </div>
                             <button onClick={() => setShowCompareModal(false)} className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-500 hover:border-red-500 transition-all">
@@ -497,17 +498,17 @@ const FavoritesPage: React.FC = () => {
                                 </thead>
                                 <tbody className="text-base">
                                     {[
-                                        { key: 'year_start', label: t('favoritesPage.year', { defaultValue: 'Year' }) },
+                                        { key: 'year_start', label: t('favoritesPage.year') },
                                         { key: 'battery_capacity', label: t('modelDetails.battery'), format: (v: any) => v ? `${v} kWh` : '-' },
                                         { key: 'range_wltp', label: t('modelDetails.range'), format: (v: any) => v ? `${v} km` : '-' },
                                         { key: 'acceleration_0_100', label: t('modelDetails.acceleration'), format: (v: any) => v ? `${v}s` : '-' },
                                         { key: 'top_speed', label: t('modelDetails.topSpeed'), format: (v: any) => v ? `${v} km/h` : '-' },
                                         { key: 'power_kw', label: t('modelDetails.power'), format: (v: any) => v ? `${v} kW` : '-' },
-                                        { key: 'torque_nm', label: t('modelDetails.torque', { defaultValue: 'Torque' }), format: (v: any) => v ? `${v} Nm` : '-' },
-                                        { key: 'drive_type', label: t('modelDetails.drive', { defaultValue: 'Drive' }) },
-                                        { key: 'seats', label: t('modelDetails.seats', { defaultValue: 'Seats' }) },
-                                        { key: 'weight_kg', label: t('favoritesPage.weight', { defaultValue: 'Weight' }), format: (v: any) => v ? `${v} kg` : '-' },
-                                        { key: 'cargo_volume_l', label: t('favoritesPage.cargo', { defaultValue: 'Cargo' }), format: (v: any) => v ? `${v} L` : '-' },
+                                        { key: 'torque_nm', label: t('modelDetails.torque'), format: (v: any) => v ? `${v} Nm` : '-' },
+                                        { key: 'drive_type', label: t('modelDetails.drive') },
+                                        { key: 'seats', label: t('modelDetails.seats') },
+                                        { key: 'weight_kg', label: t('favoritesPage.weight'), format: (v: any) => v ? `${v} kg` : '-' },
+                                        { key: 'cargo_volume_l', label: t('favoritesPage.cargo'), format: (v: any) => v ? `${v} L` : '-' },
                                     ].map((spec, idx) => (
                                         <tr key={spec.key} className={`group/row transition-all ${idx % 2 === 0 ? 'bg-white/[0.02]' : 'bg-transparent'}`}>
                                             <td className="p-6 border-white/5 text-gray-400 font-black text-sm group-hover/row:text-white transition-colors">{spec.label}</td>

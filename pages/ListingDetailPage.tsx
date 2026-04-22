@@ -1,5 +1,5 @@
 import React, { useContext, useMemo, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { DataContext } from '../contexts/DataContext';
 import SEO from '../components/SEO';
 import OptimizedImage from '../components/OptimizedImage';
@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { MapPin, Gauge, ChevronLeft, ChevronRight, Phone, MessageSquare, ShieldCheck, ArrowLeft } from 'lucide-react';
 import EnquiryModal from '../components/listings/EnquiryModal';
 import { DEALERSHIP_PLACEHOLDER_IMAGE, MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
+import Link from '../components/LocalizedLink';
 
 const ListingDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -91,7 +92,7 @@ const ListingDetailPage: React.FC = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <Link to="/listings" className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition">
                     <ArrowLeft size={20} />
-                    {t('common.backToListings', { defaultValue: 'Back to Listings' })}
+                    {t('common.backToListings')}
                 </Link>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
@@ -167,7 +168,7 @@ const ListingDetailPage: React.FC = () => {
                                 className="flex items-center justify-center gap-2 bg-gray-cyan text-gray-900 font-bold py-4 rounded-xl hover:bg-cyan-400 transition transform hover:-translate-y-0.5 shadow-lg shadow-cyan-500/20"
                             >
                                 <MessageSquare size={20} />
-                                {t('listings.contactSeller', { defaultValue: 'Contact Seller' })}
+                                {t('listings.contactSeller')}
                             </button>
                             {dealer?.contact_phone && (
                                 <a
@@ -176,14 +177,14 @@ const ListingDetailPage: React.FC = () => {
                                     title={dealer.contact_phone}
                                 >
                                     <Phone size={20} />
-                                    {t('listings.callNow', { defaultValue: 'Call Now' })}
+                                    {t('listings.callNow')}
                                 </a>
                             )}
                         </div>
 
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-8">
                             <h3 className="text-lg font-bold mb-4 border-b border-white/10 pb-2">
-                                {t('listings.specifications', { defaultValue: 'Specifications' })}
+                                {t('listings.specifications')}
                             </h3>
                             <div className="grid grid-cols-2 gap-y-4 text-sm">
                                 {specificationRows.map(row => (
@@ -198,7 +199,7 @@ const ListingDetailPage: React.FC = () => {
                         {listing.description && (
                             <div className="mb-8">
                                 <h3 className="text-lg font-bold mb-4 text-white">
-                                    {t('listings.description', { defaultValue: 'Description' })}
+                                    {t('listings.description')}
                                 </h3>
                                 <p className="text-gray-300 leading-relaxed whitespace-pre-wrap text-sm border-l-2 border-gray-cyan pl-4">
                                     {listing.description}
@@ -216,7 +217,7 @@ const ListingDetailPage: React.FC = () => {
                                 />
                                 <div className="text-center sm:text-left">
                                     <div className="text-gray-400 text-xs uppercase tracking-wider font-bold mb-1">
-                                        {t('listings.soldBy', { defaultValue: 'Sold by' })}
+                                        {t('listings.soldBy')}
                                     </div>
                                     <h3 className="text-xl font-bold text-white mb-2">{dealer.name}</h3>
 
