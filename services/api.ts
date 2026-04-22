@@ -21,6 +21,7 @@ import {
 import { firestore } from './firebase';
 import type { Dealer, DealerDocument, Model, DealerModel, BlogPost, DealerStatus } from '../types';
 import { omitUndefined } from '../utils/object';
+import { normalizeBlogPostImage } from '../data/blogImages';
 
 export type WithId<T> = T & { id: string };
 
@@ -123,7 +124,9 @@ const normalizeDealerStatus = (dealer: Dealer): Dealer => {
 const mapDealers = (snapshot: QuerySnapshot<DocumentData>): Dealer[] =>
   mapDealersRaw(snapshot).map(normalizeDealerStatus);
 const mapModels = createCollectionMapper<Model>();
-const mapBlogPosts = createCollectionMapper<BlogPost>();
+const mapBlogPosts = createCollectionMapper<BlogPost>(snapshot =>
+  normalizeBlogPostImage({ id: snapshot.id, ...(snapshot.data() as Omit<BlogPost, 'id'>) }),
+);
 const mapDealerModels = createCollectionMapper<WithId<DealerModel>>();
 const mapDealerModelsWithoutId = (snapshot: QuerySnapshot<DocumentData>): DealerModel[] =>
   mapDealerModels(snapshot).map(({ id: _id, ...rest }) => rest);
@@ -487,7 +490,7 @@ export const getBlogPostById = async (id: string): Promise<BlogPost | null> => {
   if (!snapshot.exists()) {
     return null;
   }
-  return { id: snapshot.id, ...(snapshot.data() as Omit<BlogPost, 'id'>) };
+  return normalizeBlogPostImage({ id: snapshot.id, ...(snapshot.data() as Omit<BlogPost, 'id'>) });
 };
 
 export const createBlogPost = async (payload: Omit<BlogPost, 'id'>): Promise<BlogPost> => {
@@ -501,7 +504,7 @@ export const createBlogPost = async (payload: Omit<BlogPost, 'id'>): Promise<Blo
   const snapshot = await getDoc(docRef);
   const { createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = snapshot.data() as Record<string, unknown>;
 
-  return { id: snapshot.id, ...(rest as Omit<BlogPost, 'id'>) };
+  return normalizeBlogPostImage({ id: snapshot.id, ...(rest as Omit<BlogPost, 'id'>) });
 };
 
 export const updateBlogPost = async (id: string, updates: Partial<BlogPost>): Promise<BlogPost> => {
@@ -510,7 +513,7 @@ export const updateBlogPost = async (id: string, updates: Partial<BlogPost>): Pr
   await updateDoc(postRef, { ...sanitizedUpdates, updatedAt: serverTimestamp() });
   const snapshot = await getDoc(postRef);
   const { createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = snapshot.data() as Record<string, unknown>;
-  return { id: snapshot.id, ...(rest as Omit<BlogPost, 'id'>) };
+  return normalizeBlogPostImage({ id: snapshot.id, ...(rest as Omit<BlogPost, 'id'>) });
 };
 
 export const deleteBlogPost = async (id: string): Promise<void> => {

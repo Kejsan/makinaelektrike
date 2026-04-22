@@ -1,4 +1,5 @@
 import { BlogPost } from '../types';
+import { getLocalBlogImagePath } from './blogImages';
 
 const blogPosts: BlogPost[] = [
   {
@@ -10,8 +11,7 @@ const blogPosts: BlogPost[] = [
     author: 'Redaksia Makina Elektrike',
     date: '2025-02-14',
     readTime: '7 minuta lexim',
-    imageUrl:
-      'https://images.unsplash.com/photo-1529429617124-aee0014819be?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: getLocalBlogImagePath('mite-per-makinat-elektrike-qe-duhet-ti-harroni'),
     metaTitle:
       'Mitet më të mëdha për makinat elektrike: çfarë është e vërtetë? | Makina Elektrike',
     metaDescription:
@@ -93,8 +93,7 @@ const blogPosts: BlogPost[] = [
     author: 'Redaksia Makina Elektrike',
     date: '2025-02-18',
     readTime: '10 minuta lexim',
-    imageUrl:
-      'https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: getLocalBlogImagePath('si-funksionojne-makinat-elektrike-dhe-bateria-e-tyre'),
     metaTitle:
       'Si funksionon një makinë elektrike? Udhëzues i plotë për motorin dhe baterinë | Makina Elektrike',
     metaDescription:
@@ -184,8 +183,7 @@ const blogPosts: BlogPost[] = [
     author: 'Redaksia Makina Elektrike',
     date: '2025-02-21',
     readTime: '8 minuta lexim',
-    imageUrl:
-      'https://images.unsplash.com/photo-1617787459344-0a1d0c07e556?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: getLocalBlogImagePath('krahasimi-byd-atto-3-vw-id3-dhe-mg4'),
     metaTitle:
       'Krahasimi i BYD Atto 3, VW ID.3 dhe MG 4 – autonomi, performancë dhe çmim | Makina Elektrike',
     metaDescription:
@@ -273,8 +271,7 @@ const blogPosts: BlogPost[] = [
     author: 'Redaksia Makina Elektrike',
     date: '2025-02-25',
     readTime: '8 minuta lexim',
-    imageUrl:
-      'https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: getLocalBlogImagePath('keshilla-per-te-zgjedhur-makinen-elektrike-te-pare'),
     metaTitle:
       '10 këshilla për të zgjedhur EV-në e parë – udhëzues për fillestarët | Makina Elektrike',
     metaDescription:
@@ -344,8 +341,7 @@ const blogPosts: BlogPost[] = [
     author: 'Redaksia Makina Elektrike',
     date: '2025-03-01',
     readTime: '6 minuta lexim',
-    imageUrl:
-      'https://images.unsplash.com/photo-1529429617124-aee0014819be?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: getLocalBlogImagePath('histori-suksesi-makine-elektrike-ne-tirane'),
     metaTitle:
       'Rrëfim personal: përvoja e parë me një makinë elektrike në Tiranë | Makina Elektrike',
     metaDescription:
@@ -421,8 +417,7 @@ const blogPosts: BlogPost[] = [
     author: 'Redaksia Makina Elektrike',
     date: '2025-03-04',
     readTime: '7 minuta lexim',
-    imageUrl:
-      'https://images.unsplash.com/photo-1517948287329-34690375d0a7?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: getLocalBlogImagePath('karikimi-vs-karburanti-sa-kushton-ne-te-vertete'),
     metaTitle:
       'Karikimi i EV vs karburanti – kursimet në Shqipëri | Makina Elektrike',
     metaDescription:
@@ -493,8 +488,7 @@ const blogPosts: BlogPost[] = [
     author: 'Redaksia Makina Elektrike',
     date: '2025-03-07',
     readTime: '6 minuta lexim',
-    imageUrl:
-      'https://images.unsplash.com/photo-1549923746-c502d488b3ea?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: getLocalBlogImagePath('lehtesirat-fiskale-per-makinat-elektrike-ne-shqiperi'),
     metaTitle:
       'Lehtësirat fiskale për makinat elektrike në Shqipëri – çfarë përfitoni? | Makina Elektrike',
     metaDescription:
@@ -559,8 +553,7 @@ const blogPosts: BlogPost[] = [
     author: 'Redaksia Makina Elektrike',
     date: '2025-03-11',
     readTime: '6 minuta lexim',
-    imageUrl:
-      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: getLocalBlogImagePath('si-te-zgjasni-jeten-e-baterise-se-makines-elektrike'),
     metaTitle:
       'Si të zgjasni jetën e baterisë së makinës elektrike – këshilla praktike | Makina Elektrike',
     metaDescription:
@@ -629,8 +622,7 @@ const blogPosts: BlogPost[] = [
     author: 'Redaksia Makina Elektrike',
     date: '2025-03-15',
     readTime: '7 minuta lexim',
-    imageUrl:
-      'https://images.unsplash.com/photo-1603565816287-12e9c7d5c886?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: getLocalBlogImagePath('udhezues-per-rrjetet-e-karikimit-ne-shqiperi'),
     metaTitle:
       'Ku mund ta karikoni EV-në në Shqipëri? Harta dhe udhëzues | Makina Elektrike',
     metaDescription:
@@ -707,8 +699,7 @@ const blogPosts: BlogPost[] = [
     author: 'Redaksia Makina Elektrike',
     date: '2025-03-18',
     readTime: '7 minuta lexim',
-    imageUrl:
-      'https://images.unsplash.com/photo-1549924231-f129b911e442?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: getLocalBlogImagePath('baterite-lfp-vs-nmc-cilen-te-zgjedhni'),
     metaTitle:
       'Dallimet mes baterive LFP dhe NMC – udhëzues për zgjedhjen e baterisë | Makina Elektrike',
     metaDescription:
@@ -790,8 +781,7 @@ const blogPosts: BlogPost[] = [
     author: 'Redaksia Makina Elektrike',
     date: '2025-03-22',
     readTime: '8 minuta lexim',
-    imageUrl:
-      'https://images.unsplash.com/photo-1525609004556-c46c7d6cf023?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: getLocalBlogImagePath('makina-elektrike-te-perdoruara-a-ia-vlen-investimi'),
     metaTitle:
       'Makina elektrike të përdorura – ia vlen investimi? | Makina Elektrike',
     metaDescription:
@@ -865,8 +855,7 @@ const blogPosts: BlogPost[] = [
     author: 'Redaksia Makina Elektrike',
     date: '2025-03-26',
     readTime: '8 minuta lexim',
-    imageUrl:
-      'https://images.unsplash.com/photo-1465446751832-9f11e5460d7d?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: getLocalBlogImagePath('a-jane-makinat-elektrike-me-te-mira-per-mjedisin'),
     metaTitle:
       'Makinat elektrike dhe mjedisi: faktet që duhet të dini | Makina Elektrike',
     metaDescription:
@@ -938,8 +927,7 @@ const blogPosts: BlogPost[] = [
     author: 'Redaksia Makina Elektrike',
     date: '2025-03-30',
     readTime: '9 minuta lexim',
-    imageUrl:
-      'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: getLocalBlogImagePath('shpenzim-apo-investim-kostot-e-ev-ne-shqiperi'),
     metaTitle:
       'Kostoja e makinave elektrike në Shqipëri – shpenzim apo investim? | Makina Elektrike',
     metaDescription:
@@ -1012,8 +1000,7 @@ const blogPosts: BlogPost[] = [
     author: 'Redaksia Makina Elektrike',
     date: '2025-04-02',
     readTime: '7 minuta lexim',
-    imageUrl:
-      'https://images.unsplash.com/photo-1518306727298-4c7e97c4228c?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: getLocalBlogImagePath('e-ardhmja-e-infrastruktures-se-karikimit-ne-shqiperi'),
     metaTitle:
       'E ardhmja e karikimit të EV-ve në Shqipëri: sfidat dhe mundësitë | Makina Elektrike',
     metaDescription:

@@ -71,6 +71,18 @@ const setMetaTag = (
   };
 };
 
+const toAbsoluteMetaUrl = (value?: string | null) => {
+  if (!value || typeof window === 'undefined') {
+    return value ?? undefined;
+  }
+
+  if (/^(https?:|data:)/i.test(value)) {
+    return value;
+  }
+
+  return new URL(value, window.location.origin).toString();
+};
+
 const SEO = ({
   title,
   description,
@@ -184,7 +196,7 @@ const SEO = ({
               return meta;
             },
             element => {
-              element.setAttribute('content', ogUrl);
+              element.setAttribute('content', toAbsoluteMetaUrl(ogUrl) ?? ogUrl);
             },
           ),
         );
@@ -243,7 +255,7 @@ const SEO = ({
               return meta;
             },
             element => {
-              element.setAttribute('content', imageUrl);
+              element.setAttribute('content', toAbsoluteMetaUrl(imageUrl) ?? imageUrl);
             },
           ),
         );
@@ -315,7 +327,7 @@ const SEO = ({
               return meta;
             },
             element => {
-              element.setAttribute('content', twitterImage);
+              element.setAttribute('content', toAbsoluteMetaUrl(twitterImage) ?? twitterImage);
             },
           ),
         );

@@ -13,14 +13,14 @@ import {
 } from 'firebase/firestore/lite';
 import type { BlogPost, Dealer, DealerModel, Listing, Model } from '../types';
 import blogPostsData from '../data/blogPosts';
+import { DEFAULT_OG_IMAGE_PATH, normalizeBlogPostImage } from '../data/blogImages';
 import { getHelpCenterContent } from '../data/helpCenterContent';
 import sqTranslations from '../i18n/locales/sq.json';
 
 dotenv.config();
 
 const SITE_URL = (process.env.VITE_SITE_URL || 'https://makinaelektrike.com').replace(/\/+$/, '');
-const DEFAULT_OG_IMAGE =
-  'https://raw.githubusercontent.com/Kejsan/makinaelektrike-aistudio/refs/heads/main/assets/BYD%20SEAL.jpg';
+const DEFAULT_OG_IMAGE = `${SITE_URL}${DEFAULT_OG_IMAGE_PATH}`;
 const TWITTER_SITE = '@makinaelektrike';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -619,7 +619,9 @@ const getPublicBlogPosts = async (): Promise<BlogPost[]> => {
     const snapshot = await getDocs(collection(firestore, 'blogPosts'));
 
     const posts = snapshot.docs
-      .map(docSnapshot => ({ id: docSnapshot.id, ...(docSnapshot.data() as Omit<BlogPost, 'id'>) }))
+      .map(docSnapshot =>
+        normalizeBlogPostImage({ id: docSnapshot.id, ...(docSnapshot.data() as Omit<BlogPost, 'id'>) }),
+      )
       .filter(entry => entry.published !== false && entry.status !== 'draft');
 
     return posts.length > 0 ? sortBlogPosts(posts) : sortBlogPosts(blogPostsData);
@@ -856,7 +858,7 @@ const renderStandardLayout = (options: {
 
 const buildDocument = (page: PageDefinition) => {
   const canonicalUrl = toAbsoluteUrl(page.canonicalPath);
-  const ogImage = page.image || DEFAULT_OG_IMAGE;
+  const ogImage = toAbsoluteUrl(page.image || DEFAULT_OG_IMAGE_PATH);
   const keywordsTag =
     page.keywords && page.keywords.length
       ? `<meta name="keywords" content="${escapeHtml(page.keywords.join(', '))}" />`
