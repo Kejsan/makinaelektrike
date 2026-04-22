@@ -1,9 +1,10 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import OptimizedImage from '../components/OptimizedImage';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
-import { SITE_LOGO, SITE_LOGO_ALT } from '../constants/media';
+import { ABOUT_PAGE_IMAGE, SITE_LOGO, SITE_LOGO_ALT } from '../constants/media';
 
 const AboutPage: React.FC = () => {
   const { t } = useTranslation();
@@ -108,7 +109,11 @@ const AboutPage: React.FC = () => {
             </section>
           </div>
           <div className="mt-8">
-              <img src="https://picsum.photos/seed/about-us/1024/400" alt="Electric car charging" className="w-full object-cover" />
+              <OptimizedImage
+                src={ABOUT_PAGE_IMAGE}
+                alt="Electric car charging"
+                className="w-full object-cover"
+              />
           </div>
         </div>
         <section className="mt-12 max-w-3xl mx-auto">

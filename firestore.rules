@@ -138,28 +138,7 @@ service cloud.firestore {
     }
 
     match /enquiries/{enquiryId} {
-      allow create: if request.resource.data.keys().hasOnly([
-        'listingId',
-        'dealerId',
-        'name',
-        'email',
-        'phone',
-        'message',
-        'status',
-        'createdAt',
-      ]) &&
-        request.resource.data.dealerId is string &&
-        request.resource.data.listingId is string &&
-        request.resource.data.name is string &&
-        request.resource.data.email is string &&
-        request.resource.data.message is string &&
-        request.resource.data.status == 'new' &&
-        request.resource.data.name.size() > 0 &&
-        request.resource.data.name.size() <= 120 &&
-        request.resource.data.email.size() > 0 &&
-        request.resource.data.email.size() <= 254 &&
-        request.resource.data.message.size() > 0 &&
-        request.resource.data.message.size() <= 5000;
+      allow create: if isAdmin();
 
       allow read: if isAdmin() || isDealerOwnerById(resource.data.dealerId);
     }

@@ -9,6 +9,7 @@ import SEO from '../components/SEO';
 import { BASE_URL } from '../constants/seo';
 import { MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
 import GallerySection from '../components/GallerySection';
+import OptimizedImage from '../components/OptimizedImage';
 
 const SpecItem: React.FC<{ icon: React.ReactNode, label: string, value?: string | number | null }> = ({ icon, label, value }) => (
     <div className="flex flex-col items-center justify-center p-4 bg-white/5 backdrop-blur-md rounded-xl border border-white/10 text-center transition-all duration-300 hover:bg-white/10 hover:border-gray-cyan/50">
@@ -172,9 +173,11 @@ const ModelDetailPage: React.FC = () => {
                             </button>
                         </div>
                         <div className="overflow-hidden mt-6 rounded-xl shadow-2xl">
-                             <img
+                             <OptimizedImage
                                 src={heroImage}
                                 alt={`${model.brand} ${model.model_name}`}
+                                fallbackSrc={MODEL_PLACEHOLDER_IMAGE}
+                                priority
                                 className="w-full h-auto transition-transform duration-100 ease-out"
                                 style={{ transform: `scale(${imageScale})` }}
                              />

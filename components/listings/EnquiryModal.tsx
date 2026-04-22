@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { X, Send, Phone, MessageSquare } from 'lucide-react';
 import { Listing, Dealer } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../contexts/ToastContext';
 import { createEnquiry } from '../../services/enquiries';
+import OptimizedImage from '../OptimizedImage';
+import { DEALERSHIP_PLACEHOLDER_IMAGE } from '../../constants/media';
 
 interface EnquiryModalProps {
     listing: Listing;
@@ -16,7 +18,7 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
     const { t } = useTranslation();
     const { addToast } = useToast();
     const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
+    const initialFormData = useMemo(() => ({
         name: '',
         email: '',
         phone: '',
@@ -25,7 +27,14 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
             make: listing.make,
             model: listing.model
         })
-    });
+    }), [listing.make, listing.model, t]);
+    const [formData, setFormData] = useState(initialFormData);
+
+    useEffect(() => {
+        if (isOpen) {
+            setFormData(initialFormData);
+        }
+    }, [initialFormData, isOpen]);
 
     if (!isOpen) return null;
 
@@ -44,18 +53,25 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
             });
 
             addToast(t('enquiry.success', { defaultValue: 'Message sent successfully!' }), 'success');
+            setFormData(initialFormData);
             onClose();
         } catch (error) {
             console.error('Error sending enquiry:', error);
-            addToast(t('enquiry.error', { defaultValue: 'Failed to send message. Please try again.' }), 'error');
+            addToast(
+                error instanceof Error
+                    ? error.message
+                    : t('enquiry.error', { defaultValue: 'Failed to send message. Please try again.' }),
+                'error'
+            );
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div className="bg-[#0f172a] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl relative">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 p-4 backdrop-blur-sm">
+            <div className="flex min-h-full items-start justify-center py-6 sm:items-center">
+            <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0f172a] shadow-2xl">
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 text-gray-400 hover:text-white transition"
@@ -63,7 +79,7 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                     <X size={24} />
                 </button>
 
-                <div className="p-6">
+                <div className="overflow-y-auto p-6">
                     <h2 className="text-2xl font-bold text-white mb-2">
                         {t('enquiry.title', { defaultValue: 'Contact Seller' })}
                     </h2>
@@ -73,9 +89,10 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
 
                     {dealer && (
                         <div className="flex items-center gap-4 mb-6 p-4 bg-white/5 rounded-xl border border-white/5">
-                            <img
-                                src={dealer.logo_url || '/placeholder-dealer.png'}
+                            <OptimizedImage
+                                src={dealer.logo_url || dealer.image_url || DEALERSHIP_PLACEHOLDER_IMAGE}
                                 alt={dealer.name}
+                                fallbackSrc={DEALERSHIP_PLACEHOLDER_IMAGE}
                                 className="w-12 h-12 rounded-full object-cover bg-white"
                             />
                             <div>
@@ -163,6 +180,7 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                         </button>
                     </form>
                 </div>
+            </div>
             </div>
         </div>
     );

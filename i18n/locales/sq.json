@@ -19,7 +19,9 @@
     "accountMenuTitle": "Veprime të shpejta",
     "dealerDashboard": "Paneli i shitësit",
     "awaitingApproval": "Në pritje të miratimit",
-    "listings": "Makina në Shitje"
+    "listings": "Makina në Shitje",
+    "helpCenter": "Qendra e Ndihmës",
+    "discover": "Zbulo"
   },
   "footer": {
     "description": "Udhëzuesi juaj për automjetet elektrike në Shqipëri. Gjeni shitës, krahasoni modele dhe bashkohuni me revolucionin elektrik.",
@@ -38,12 +40,14 @@
     "rightsReserved": "Të gjitha të drejtat e rezervuara.",
     "socialTitle": "Qëndro i lidhur",
     "moreInfo": "Më shumë informacione ligjore",
-    "legalSummary": "Njoftim i rëndësishëm"
+    "legalSummary": "Njoftim i rëndësishëm",
+    "legalBody": "Informacioni në këtë faqe interneti ofrohet mbi bazën \"siç është, sipas disponueshmërisë\" pa asnjë garanci të çfarëdo lloji. Makina Elektrike nuk mban përgjegjësi për mungesa, pasaktësi apo gabime të tjera në informacionin që publikon. Çdo garanci në lidhje me këtë informacion përjashtohet. Riprodhimi i çdo pjese të kësaj faqeje, i plotë ose i pjesshëm, në çdo formë ose medium, ndalohet pa leje paraprake me shkrim. Markat tregtare dhe logot e prodhuesve, shitësve, softuerëve dhe pajisjeve të përmendura ose promovuara mbeten pronë e zotëruesve të tyre përkatës."
   },
   "common": {
     "unknownCity": "Lokacion i panjohur",
     "loading": "Duke u ngarkuar...",
     "cancel": "Anulo",
+    "close": "Mbyll",
     "anyCity": "Çdo qytet",
     "anyBrand": "Çdo markë",
     "results": "Rezultate",
@@ -57,7 +61,20 @@
     "deleteFailed": "Dështoi fshirja",
     "updatedSuccess": "U përditësua me sukses",
     "createdSuccess": "U krijua me sukses",
-    "saveFailed": "Dështoi ruajtja"
+    "saveFailed": "Dështoi ruajtja",
+    "statusUpdated": "Statusi u përditësua me sukses",
+    "updateFailed": "Përditësimi dështoi",
+    "clearFilters": "Pastro filtrat",
+    "viewDetails": "Shiko detajet",
+    "viewProfile": "Shiko profilin",
+    "backToListings": "Kthehu te listimet",
+    "name": "Emri",
+    "namePlaceholder": "Emri juaj",
+    "email": "Email",
+    "phone": "Telefoni",
+    "message": "Mesazhi",
+    "yes": "Po",
+    "no": "Jo"
   },
   "home": {
     "heroTitle": "Ngisni të ardhmen.",
@@ -798,6 +815,22 @@
         "description": "Na shkruani për këshilla rreth zgjedhjes së një EV apo karikuesi dhe do t'ju udhëzojmë te burimet e duhura."
       }
     ],
+    "ctaTitle": "Keni nevojë për një përgjigje të drejtpërdrejtë?",
+    "ctaDescription": "Përdorni formularin më poshtë për mbështetje, korrigjime, partneritete ose kërkesa nga media.",
+    "ctaButton": "Dërgo mesazh",
+    "form": {
+      "title": "Na dërgoni një mesazh",
+      "subtitle": "Zakonisht përgjigjemi brenda 1-2 ditëve pune.",
+      "namePlaceholder": "Emri i plotë",
+      "emailPlaceholder": "Adresa e emailit",
+      "phonePlaceholder": "+355 69...",
+      "messagePlaceholder": "Si mund t’ju ndihmojmë?",
+      "submit": "Dërgo",
+      "submitLoading": "Po dërgohet...",
+      "success": "Mesazhi juaj u dërgua me sukses.",
+      "error": "Mesazhi nuk u dërgua. Ju lutem provoni përsëri.",
+      "honeypot": "Kompania"
+    },
     "faqTitle": "FAQ për kontaktet",
     "faqSubtitle": "Informacione kryesore për kohën e përgjigjes dhe mbështetjen.",
     "faqItems": [
@@ -814,6 +847,136 @@
         "answer": "Ekipi ynë qendror operon në Tiranë dhe mbështetet nga partnerë në qytetet kryesore."
       }
     ]
+  },
+  "search": {
+    "placeholder": "Kërko te të ruajturat"
+  },
+  "filter": {
+    "newest": "Më të rejat",
+    "alphabetical": "Alfabetike",
+    "price_asc": "Çmimi (i ulët te i larti)",
+    "price_desc": "Çmimi (i larti te i ulëti)",
+    "year_desc": "Viti (më i riu)",
+    "year_asc": "Viti (më i vjetri)"
+  },
+  "listings": {
+    "title": "Makina në shitje",
+    "seoTitle": "Makina elektrike në shitje | Makina Elektrike",
+    "seoDesc": "Shfletoni koleksionin më të mirë të automjeteve elektrike në Shqipëri.",
+    "countSuffix": "automjete në dispozicion",
+    "make": "Marka",
+    "priceRange": "Intervali i çmimit",
+    "year": "Viti",
+    "noResults": "Nuk u gjet asnjë rezultat",
+    "tryAdjusting": "Provoni të ndryshoni filtrat ose kriteret e kërkimit.",
+    "contactSeller": "Kontakto shitësin",
+    "callNow": "Telefono tani",
+    "specifications": "Specifikimet",
+    "description": "Përshkrimi",
+    "soldBy": "Shitet nga",
+    "verifiedDealer": "Shitës i verifikuar",
+    "notFoundTitle": "Listimi nuk u gjet",
+    "fields": {
+      "make": "Marka",
+      "model": "Modeli",
+      "year": "Viti",
+      "mileage": "Kilometrazhi",
+      "fuelType": "Lloji i karburantit",
+      "transmission": "Transmisioni",
+      "drivetrain": "Tërheqja",
+      "bodyType": "Lloji i karrocerisë",
+      "color": "Ngjyra",
+      "battery": "Bateria",
+      "range": "Autonomia"
+    }
+  },
+  "compare": {
+    "title": "Krahaso modelet",
+    "selectPrompt": "Zgjidhni deri në 3 modele për t’i krahasuar krah për krah.",
+    "searchPlaceholder": "Kërko sipas markës ose modelit",
+    "noModelsSelected": "Zgjidhni modele për të nisur krahasimin.",
+    "clear": "Pastro përzgjedhjen",
+    "remove": "Hiq",
+    "notAvailable": "N/A"
+  },
+  "enquiry": {
+    "title": "Kontakto shitësin",
+    "subtitle": "Dërgo një mesazh te shitësi për këtë automjet.",
+    "defaultMessage": "Përshëndetje, jam i interesuar për këtë {{make}} {{model}}. A është ende në dispozicion?",
+    "success": "Mesazhi u dërgua me sukses.",
+    "error": "Dërgimi i mesazhit dështoi. Ju lutem provoni përsëri.",
+    "send": "Dërgo mesazhin"
+  },
+  "registerUserPage": {
+    "metaTitle": "Krijo llogarinë | Makina Elektrike",
+    "metaDescription": "Regjistrohu për të ruajtur shitësit dhe modelet e preferuara të makinave elektrike në Shqipëri.",
+    "metaKeywords": [
+      "regjistrim",
+      "makina elektrike Shqipëri",
+      "të preferuarat",
+      "llogari Makina Elektrike"
+    ],
+    "title": "Krijo llogarinë tënde",
+    "subtitle": "Bashkohu me Makina Elektrike për të ruajtur shitësit dhe modelet e preferuara të automjeteve elektrike.",
+    "benefitsTitle": "Pse të regjistroheni?",
+    "benefits": [
+      "Merrni përditësime të përzgjedhura për modelet e reja elektrike që mbërrijnë në Shqipëri.",
+      "Ruani shitësit e besuar dhe krijoni një listë të shkurtër përpara blerjes.",
+      "Eksportoni të dhënat e ruajtura dhe krahasoni specifikimet kurdo që ju nevojiten."
+    ],
+    "fields": {
+      "firstName": "Emri",
+      "lastName": "Mbiemri",
+      "phone": "Numri i telefonit",
+      "email": "Adresa e emailit",
+      "password": "Fjalëkalimi",
+      "confirmPassword": "Konfirmo fjalëkalimin"
+    },
+    "validation": {
+      "required": "Ju lutem plotësoni të gjitha fushat e kërkuara.",
+      "passwordMismatch": "Fjalëkalimet nuk përputhen."
+    },
+    "submit": "Krijo llogarinë",
+    "submitLoading": "Po krijohet llogaria...",
+    "success": "Regjistrimi u krye me sukses. Mirë se erdhët në Makina Elektrike.",
+    "error": "Regjistrimi dështoi. Ju lutem provoni përsëri."
+  },
+  "registerDealerPage": {
+    "metaTitle": "Regjistro shitësin | Makina Elektrike",
+    "metaDescription": "Apliko për t’u bashkuar me Makina Elektrike si shitës i autorizuar i automjeteve elektrike në Shqipëri.",
+    "metaKeywords": [
+      "regjistrim shitësi",
+      "dealer makina elektrike Shqipëri",
+      "partner Makina Elektrike"
+    ],
+    "title": "Regjistrimi i shitësit",
+    "subtitle": "Dërgoni të dhënat tuaja për t’u bashkuar me Makina Elektrike si shitës i besuar i automjeteve elektrike.",
+    "benefitsTitle": "Përfitimet e bashkimit me Makina Elektrike",
+    "benefits": [
+      "Arrini blerësit e EV në gjithë Shqipërinë me listime të lokalizuara dhe miqësore për SEO.",
+      "Publikoni informacion të detajuar për modelet dhe përditësoni inventarin në kohë reale.",
+      "Përfitoni mbështetje marketingu, analitika dhe njoftime për lead-et nga ekipi ynë."
+    ],
+    "fields": {
+      "companyName": "Emri i kompanisë",
+      "contactName": "Kontakti kryesor",
+      "phone": "Numri i kontaktit",
+      "city": "Qyteti",
+      "website": "Faqja web",
+      "websitePlaceholder": "https://",
+      "email": "Emaili i biznesit",
+      "notes": "Rreth shitësit tuaj",
+      "notesPlaceholder": "Na tregoni për inventarin, specialitetet dhe përvojën tuaj.",
+      "password": "Fjalëkalimi",
+      "confirmPassword": "Konfirmo fjalëkalimin"
+    },
+    "validation": {
+      "required": "Ju lutem plotësoni të gjitha fushat e kërkuara.",
+      "passwordMismatch": "Fjalëkalimet nuk përputhen."
+    },
+    "submit": "Dërgo aplikimin",
+    "submitLoading": "Po dërgohet aplikimi...",
+    "success": "Regjistrimi u mor. Ekipi ynë do të shqyrtojë së shpejti të dhënat e shitësit tuaj."
   },
   "favoritesPage": {
     "title": "Të preferuarat tuaja",
@@ -875,7 +1038,24 @@
     "exportDealersHeading": "Shitës",
     "exportModelsHeading": "Modele",
     "noItemsToExport": "Shtoni shitës ose modele në të preferuarat për t’i eksportuar.",
-    "exportSuccess": "Të preferuarat u eksportuan me sukses."
+    "exportSuccess": "Të preferuarat u eksportuan me sukses.",
+    "collection": "Koleksioni",
+    "share": "Ndaj",
+    "export": "Eksporto",
+    "exitCompare": "Dil nga krahasimi",
+    "startCompare": "Nis krahasimin",
+    "compareTitle": "Krahaso modelet",
+    "compareInstruction": "Zgjidhni deri në 3 modele për t’i krahasuar krah për krah.",
+    "compareNow": "Krahaso tani",
+    "compareModalTitle": "Krahasimi i modeleve",
+    "sideBySide": "Krahasim specifikimesh krah për krah",
+    "spec": "Specifikimi",
+    "year": "Viti",
+    "weight": "Pesha",
+    "cargo": "Bagazhi",
+    "emptyTitle": "Nuk ka {{tab}} të ruajtura",
+    "emptyText": "Shfletoni {{tab}} tona dhe klikoni ikonën e zemrës për t’i ruajtur këtu për qasje të shpejtë më vonë.",
+    "newest": "Më të rejat"
   },
   "auth": {
     "awaitingApprovalTitle": "Në pritje të aprovimit",
@@ -888,7 +1068,17 @@
       "llogari në pritje",
       "onboarding Makina Elektrike"
     ],
-    "awaitingNextSteps": "Mund të përgatitni dokumentet shtesë ose të na shkruani nëse keni nevojë të përditësoni aplikimin ndërsa ne kryejmë verifikimin."
+    "awaitingNextSteps": "Mund të përgatitni dokumentet shtesë ose të na shkruani nëse keni nevojë të përditësoni aplikimin ndërsa ne kryejmë verifikimin.",
+    "errors": {
+      "emailInUse": "Ky email është tashmë i regjistruar. Përdorni një email tjetër ose hyni në llogarinë ekzistuese.",
+      "weakPassword": "Fjalëkalimi është shumë i dobët. Përdorni të paktën 6 karaktere.",
+      "invalidEmail": "Ju lutem vendosni një adresë emaili të vlefshme.",
+      "invalidCredentials": "Emaili ose fjalëkalimi është i pasaktë.",
+      "tooManyRequests": "Ka pasur shumë tentativa të dështuara. Ju lutem provoni përsëri më vonë.",
+      "networkFailed": "Gabim rrjeti. Kontrolloni lidhjen dhe provoni përsëri.",
+      "generic": "Diçka shkoi keq. Ju lutem provoni përsëri.",
+      "profileLoad": "Ngarkimi i profilit të përdoruesit dështoi."
+    }
   },
   "admin": {
     "loginTitle": "Hyrje admin",

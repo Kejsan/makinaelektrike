@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
+import { matchPath, useLocation } from 'react-router-dom';
 import type {
   Dealer,
   DealerDocument,
@@ -35,7 +36,6 @@ import {
   subscribeToBlogPosts,
   subscribeToPublishedBlogPosts,
   subscribeToDealerModels,
-  subscribeToDealerModelsForDealers,
   createDealer as apiCreateDealer,
   updateDealer as apiUpdateDealer,
   deleteDealer as apiDeleteDealer,
@@ -61,7 +61,6 @@ import { useAuth } from './AuthContext';
 import type { UserRole } from '../types';
 import { useToast } from './ToastContext';
 import type { FirestoreError, Unsubscribe } from 'firebase/firestore';
-import blogPostsData from '../data/blogPosts';
 import { FirebaseError } from 'firebase/app';
 import { addOfflineMutation } from '../services/offlineQueue';
 
@@ -85,6 +84,7 @@ type MutationFlag = {
 type EntityMutations = Record<Operation, MutationFlag>;
 
 type MutationState = Record<EntityKey, EntityMutations>;
+type LoadedCollection = keyof DataState['loaded'];
 
 interface DataState {
   dealers: Dealer[];
@@ -173,8 +173,69 @@ type DataAction =
   | { type: 'SET_LISTINGS'; payload: Listing[] }
   | { type: 'SET_ENQUIRIES'; payload: Enquiry[] };
 
-const areCollectionsLoaded = (loaded: DataState['loaded']) =>
-  loaded.dealers && loaded.models && loaded.blogPosts && loaded.dealerModels && loaded.listings && loaded.enquiries;
+const routeMatches = (pathname: string, path: string) =>
+  Boolean(matchPath({ path, end: true }, pathname));
+
+const getRequiredCollections = (pathname: string): LoadedCollection[] => {
+  if (pathname === '/admin/login') {
+    return [];
+  }
+
+  if (pathname === '/') {
+    return ['dealers', 'models', 'blogPosts'];
+  }
+
+  if (pathname === '/dealers') {
+    return ['dealers'];
+  }
+
+  if (routeMatches(pathname, '/dealers/:id')) {
+    return ['dealers', 'models', 'dealerModels'];
+  }
+
+  if (pathname === '/models') {
+    return ['models'];
+  }
+
+  if (routeMatches(pathname, '/models/:id')) {
+    return ['dealers', 'models', 'dealerModels'];
+  }
+
+  if (pathname === '/listings') {
+    return ['listings'];
+  }
+
+  if (routeMatches(pathname, '/listings/:id')) {
+    return ['dealers', 'listings'];
+  }
+
+  if (pathname === '/blog' || routeMatches(pathname, '/blog/:slug')) {
+    return ['blogPosts'];
+  }
+
+  if (pathname === '/favorites') {
+    return ['dealers', 'models', 'listings'];
+  }
+
+  if (pathname === '/sitemap') {
+    return ['dealers', 'models', 'blogPosts'];
+  }
+
+  if (pathname === '/admin') {
+    return ['dealers', 'models', 'blogPosts', 'dealerModels', 'listings'];
+  }
+
+  if (pathname.startsWith('/dealer/')) {
+    return ['dealers', 'models', 'dealerModels', 'listings', 'enquiries'];
+  }
+
+  return [];
+};
+
+const areRequiredCollectionsLoaded = (
+  loaded: DataState['loaded'],
+  requiredCollections: LoadedCollection[],
+) => requiredCollections.every(collection => loaded[collection]);
 
 const mutationReducer = (state: MutationState, action: MutationAction): MutationState => {
   const entityState = state[action.entity];
@@ -212,16 +273,15 @@ const mutationReducer = (state: MutationState, action: MutationAction): Mutation
 const dataReducer = (state: DataState, action: DataAction): DataState => {
   switch (action.type) {
     case 'LOAD_START':
-      return { ...state, loading: true, loadError: null };
+      return { ...state, loadError: null };
     case 'LOAD_ERROR':
-      return { ...state, loading: false, loadError: action.payload };
+      return { ...state, loadError: action.payload };
     case 'SET_DEALERS': {
       const loaded = { ...state.loaded, dealers: true };
       return {
         ...state,
         dealers: action.payload || [],
         loaded,
-        loading: !areCollectionsLoaded(loaded),
       };
     }
     case 'SET_MODELS': {
@@ -230,7 +290,6 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
         ...state,
         models: action.payload || [],
         loaded,
-        loading: !areCollectionsLoaded(loaded),
       };
     }
     case 'SET_BLOG_POSTS': {
@@ -239,7 +298,6 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
         ...state,
         blogPosts: action.payload || [],
         loaded,
-        loading: !areCollectionsLoaded(loaded),
       };
     }
     case 'SET_DEALER_MODELS': {
@@ -248,7 +306,6 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
         ...state,
         dealerModels: action.payload || [],
         loaded,
-        loading: !areCollectionsLoaded(loaded),
       };
     }
     case 'SET_LISTINGS': {
@@ -257,7 +314,6 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
         ...state,
         listings: action.payload || [],
         loaded,
-        loading: !areCollectionsLoaded(loaded),
       };
     }
     case 'SET_ENQUIRIES': {
@@ -266,7 +322,6 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
         ...state,
         enquiries: action.payload || [],
         loaded,
-        loading: !areCollectionsLoaded(loaded),
       };
     }
     default:
@@ -367,14 +422,22 @@ interface DataProviderProps {
 
 const isFirebaseConfigured = Boolean(import.meta.env.VITE_FIREBASE_PROJECT_ID);
 
-const staticBlogPosts = [...blogPostsData].sort(
-  (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-);
+let staticBlogPostsPromise: Promise<BlogPost[]> | null = null;
+
+const loadStaticBlogPosts = async (): Promise<BlogPost[]> => {
+  if (!staticBlogPostsPromise) {
+    staticBlogPostsPromise = import('../data/blogPosts').then(({ default: blogPostsData }) =>
+      [...blogPostsData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    );
+  }
+
+  return staticBlogPostsPromise;
+};
 
 const initialDataState: DataState = {
   dealers: [],
   models: [],
-  blogPosts: isFirebaseConfigured ? [] : staticBlogPosts,
+  blogPosts: [],
   listings: [],
   enquiries: [],
   dealerModels: [],
@@ -383,10 +446,10 @@ const initialDataState: DataState = {
   loaded: {
     dealers: false,
     models: false,
-    blogPosts: !isFirebaseConfigured,
+    blogPosts: false,
     dealerModels: false,
     listings: false,
-    enquiries: true, // Default to true, will be set to false for dealers specifically
+    enquiries: false,
   },
 };
 
@@ -408,9 +471,27 @@ const shouldPersistOffline = (error: unknown): error is FirebaseError =>
 export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const [dataState, dataDispatch] = useReducer(dataReducer, initialDataState);
   const [mutationState, mutationDispatch] = useReducer(mutationReducer, createInitialMutationState());
-  const { role, user } = useAuth();
+  const { role, user, initializing } = useAuth();
   const { addToast } = useToast();
+  const location = useLocation();
   const userUid = user?.uid ?? null;
+  const pathname = location.pathname;
+  const requiredCollections = useMemo(() => getRequiredCollections(pathname), [pathname]);
+  const requiredCollectionSet = useMemo(
+    () => new Set<LoadedCollection>(requiredCollections),
+    [requiredCollections],
+  );
+  const requiresCollection = useCallback(
+    (collection: LoadedCollection) => requiredCollectionSet.has(collection),
+    [requiredCollectionSet],
+  );
+  const loading = useMemo(
+    () => areRequiredCollectionsLoaded(dataState.loaded, requiredCollections) === false,
+    [dataState.loaded, requiredCollections],
+  );
+  const isAdminWorkspaceRoute = pathname === '/admin';
+  const isDealerWorkspaceRoute = pathname.startsWith('/dealer/');
+  const isPrivilegedRoute = isAdminWorkspaceRoute || isDealerWorkspaceRoute;
 
   const handleSubscriptionError = useCallback(
     (resource: string) => (error: FirestoreError) => {
@@ -434,124 +515,132 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     [handleSubscriptionError],
   );
 
+  const loadStaticBlogPostFallback = useCallback(async () => {
+    try {
+      const posts = await loadStaticBlogPosts();
+      dataDispatch({ type: 'SET_BLOG_POSTS', payload: posts });
+    } catch (error) {
+      console.error('Failed to load fallback blog posts', error);
+      const message = 'Failed to load blog posts. Please try again later.';
+      dataDispatch({ type: 'LOAD_ERROR', payload: message });
+      dataDispatch({ type: 'SET_BLOG_POSTS', payload: [] });
+      addToast(message, 'error');
+    }
+  }, [addToast]);
+
   useEffect(() => {
+    if (isPrivilegedRoute && initializing) {
+      return;
+    }
+
     dataDispatch({ type: 'LOAD_START' });
 
     const unsubscribers: Unsubscribe[] = [];
-    let dealerModelsUnsubscribe: Unsubscribe | null = null;
+    const isAdminDataRoute = role === 'admin' && isAdminWorkspaceRoute;
 
-    const cleanupDealerModelsSubscription = () => {
-      if (dealerModelsUnsubscribe) {
-        dealerModelsUnsubscribe();
-        dealerModelsUnsubscribe = null;
-      }
-    };
-
-    const setDealerModels = (mappings: DealerModel[]) => {
-      dataDispatch({ type: 'SET_DEALER_MODELS', payload: mappings });
-    };
-
-    if (role === 'dealer' && userUid) {
+    if (requiresCollection('dealers')) {
       unsubscribers.push(
-        subscribeToApprovedDealers({
-          onData: dealers => dataDispatch({ type: 'SET_DEALERS', payload: dealers }),
-          onError: permissionAwareErrorHandler('dealers', () => dataDispatch({ type: 'SET_DEALERS', payload: [] })),
-        }),
-      );
-
-      unsubscribers.push(
-        subscribeToModels({
-          onData: models => dataDispatch({ type: 'SET_MODELS', payload: models }),
-          onError: permissionAwareErrorHandler('vehicle models', () => dataDispatch({ type: 'SET_MODELS', payload: [] })),
-        }),
-      );
-
-      unsubscribers.push(
-        subscribeToDealerModels({
-          onData: mappings => setDealerModels(mappings),
-          onError: permissionAwareErrorHandler('dealer relationships', () => setDealerModels([])),
-        }),
-      );
-    } else {
-      unsubscribers.push(
-        (role === 'admin'
+        (isAdminDataRoute
           ? subscribeToDealers({
-            onData: dealers => dataDispatch({ type: 'SET_DEALERS', payload: dealers }),
-            onError: handleSubscriptionError('dealers'),
-          })
+              onData: dealers => dataDispatch({ type: 'SET_DEALERS', payload: dealers }),
+              onError: handleSubscriptionError('dealers'),
+            })
           : subscribeToApprovedDealers({
-            onData: dealers => dataDispatch({ type: 'SET_DEALERS', payload: dealers }),
-            onError: permissionAwareErrorHandler('dealers', () => dataDispatch({ type: 'SET_DEALERS', payload: [] })),
-          }))
+              onData: dealers => dataDispatch({ type: 'SET_DEALERS', payload: dealers }),
+              onError: permissionAwareErrorHandler('dealers', () => dataDispatch({ type: 'SET_DEALERS', payload: [] })),
+            })),
       );
+    }
+
+    if (requiresCollection('models')) {
       unsubscribers.push(
         subscribeToModels({
           onData: models => dataDispatch({ type: 'SET_MODELS', payload: models }),
           onError:
-            role === 'admin'
+            isAdminDataRoute
               ? handleSubscriptionError('vehicle models')
               : permissionAwareErrorHandler('vehicle models', () =>
-                dataDispatch({ type: 'SET_MODELS', payload: [] }),
-              ),
+                  dataDispatch({ type: 'SET_MODELS', payload: [] }),
+                ),
         }),
       );
+    }
 
-      if (role === 'admin') {
-        unsubscribers.push(
-          subscribeToDealerModels({
-            onData: mappings => setDealerModels(mappings),
-            onError: handleSubscriptionError('dealer relationships'),
-          }),
-        );
-      } else {
-        setDealerModels([]);
-      }
-
+    if (requiresCollection('dealerModels')) {
       unsubscribers.push(
-        (role === 'admin'
+        subscribeToDealerModels({
+          onData: mappings => dataDispatch({ type: 'SET_DEALER_MODELS', payload: mappings }),
+          onError:
+            isAdminDataRoute
+              ? handleSubscriptionError('dealer relationships')
+              : permissionAwareErrorHandler('dealer relationships', () =>
+                  dataDispatch({ type: 'SET_DEALER_MODELS', payload: [] }),
+                ),
+        }),
+      );
+    }
+
+    if (requiresCollection('listings') && !isDealerWorkspaceRoute) {
+      unsubscribers.push(
+        (isAdminDataRoute
           ? subscribeToListings({
-            onData: listings => dataDispatch({ type: 'SET_LISTINGS', payload: listings }),
-            onError: handleSubscriptionError('listings'),
-          })
+              onData: listings => dataDispatch({ type: 'SET_LISTINGS', payload: listings }),
+              onError: handleSubscriptionError('listings'),
+            })
           : subscribeToApprovedListings({
-            onData: listings => dataDispatch({ type: 'SET_LISTINGS', payload: listings }),
-            onError: permissionAwareErrorHandler('listings', () => dataDispatch({ type: 'SET_LISTINGS', payload: [] })),
-          }))
+              onData: listings => dataDispatch({ type: 'SET_LISTINGS', payload: listings }),
+              onError: permissionAwareErrorHandler('listings', () => dataDispatch({ type: 'SET_LISTINGS', payload: [] })),
+            })),
       );
     }
-    if (isFirebaseConfigured) {
-      unsubscribers.push(
-        (role === 'admin'
-          ? subscribeToBlogPosts({
+
+    if (!requiresCollection('blogPosts')) {
+      return () => {
+        unsubscribers.forEach(unsubscribe => unsubscribe());
+      };
+    }
+
+    if (!isFirebaseConfigured) {
+      void loadStaticBlogPostFallback();
+      return () => {
+        unsubscribers.forEach(unsubscribe => unsubscribe());
+      };
+    }
+
+    unsubscribers.push(
+      (isAdminDataRoute
+        ? subscribeToBlogPosts({
             onData: posts => dataDispatch({ type: 'SET_BLOG_POSTS', payload: posts }),
-            onError: permissionAwareErrorHandler('blog posts', () =>
-              dataDispatch({ type: 'SET_BLOG_POSTS', payload: staticBlogPosts }),
-            ),
+            onError: permissionAwareErrorHandler('blog posts', () => {
+              void loadStaticBlogPostFallback();
+            }),
           })
-          : subscribeToPublishedBlogPosts({
+        : subscribeToPublishedBlogPosts({
             onData: posts => dataDispatch({ type: 'SET_BLOG_POSTS', payload: posts }),
-            onError: permissionAwareErrorHandler('blog posts', () =>
-              dataDispatch({ type: 'SET_BLOG_POSTS', payload: staticBlogPosts }),
-            ),
-          }))
-      );
-    } else {
-      dataDispatch({ type: 'SET_BLOG_POSTS', payload: staticBlogPosts });
-    }
+            onError: permissionAwareErrorHandler('blog posts', () => {
+              void loadStaticBlogPostFallback();
+            }),
+          })),
+    );
 
     return () => {
-      cleanupDealerModelsSubscription();
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
   }, [
     handleSubscriptionError,
+    initializing,
+    isAdminWorkspaceRoute,
+    isDealerWorkspaceRoute,
+    isPrivilegedRoute,
+    loadStaticBlogPostFallback,
     permissionAwareErrorHandler,
+    requiresCollection,
     role,
     userUid,
   ]);
 
   useEffect(() => {
-    if (role !== 'dealer') {
+    if (role !== 'dealer' || !isDealerWorkspaceRoute || !requiresCollection('listings')) {
       return;
     }
 
@@ -583,10 +672,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     return () => {
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
-  }, [dataState.dealers, permissionAwareErrorHandler, role]);
+  }, [dataState.dealers, isDealerWorkspaceRoute, permissionAwareErrorHandler, requiresCollection, role]);
 
   useEffect(() => {
-    if (role !== 'dealer' || !userUid) {
+    if (role !== 'dealer' || !userUid || !requiresCollection('enquiries')) {
       return;
     }
 
@@ -596,42 +685,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     });
 
     return () => unsub();
-  }, [role, userUid, permissionAwareErrorHandler]);
-
-  useEffect(() => {
-    if (role === 'admin' || role === 'dealer') {
-      return;
-    }
-
-    const dealerIds = dataState.dealers.map(dealer => dealer.id);
-
-    if (dealerIds.length === 0) {
-      dataDispatch({ type: 'SET_DEALER_MODELS', payload: [] });
-      return;
-    }
-
-    const uniqueIds = Array.from(new Set(dealerIds));
-    const aggregated = new Map<string, DealerModel[]>();
-
-    const unsubscribers = uniqueIds.map((dealerId: string) =>
-      subscribeToDealerModelsForDealers([dealerId], {
-        onData: mappings => {
-          aggregated.set(dealerId, mappings);
-          const combined = Array.from(aggregated.values()).flat();
-          dataDispatch({ type: 'SET_DEALER_MODELS', payload: combined });
-        },
-        onError: permissionAwareErrorHandler('dealer relationships', () => {
-          aggregated.delete(dealerId);
-          const combined = Array.from(aggregated.values()).flat();
-          dataDispatch({ type: 'SET_DEALER_MODELS', payload: combined });
-        }) as any,
-      }),
-    );
-
-    return () => {
-      unsubscribers.forEach(unsubscribe => unsubscribe());
-    };
-  }, [dataState.dealers, permissionAwareErrorHandler, role]);
+  }, [permissionAwareErrorHandler, requiresCollection, role, userUid]);
 
   const runMutation = useCallback(
     async <T,>({
@@ -1126,7 +1180,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     [runMutation],
   );
 
-  const { dealers, models, blogPosts, dealerModels, listings, enquiries, loading, loadError } = dataState;
+  const { dealers, models, blogPosts, dealerModels, listings, enquiries, loadError } = dataState;
 
   const dealerToModelMap = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -1186,6 +1240,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       modelMutations: mutationState.models,
       blogPostMutations: mutationState.blogPosts,
       listingMutations: mutationState.listings,
+      enquiryMutations: mutationState.enquiries,
       getModelsForDealer,
       getDealersForModel,
       addDealer,
@@ -1221,6 +1276,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       mutationState.models,
       mutationState.blogPosts,
       mutationState.listings,
+      mutationState.enquiries,
       getModelsForDealer,
       getDealersForModel,
       addDealer,

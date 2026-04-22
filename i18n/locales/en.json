@@ -19,7 +19,9 @@
     "accountMenuTitle": "Quick actions",
     "dealerDashboard": "Dealer dashboard",
     "awaitingApproval": "Awaiting approval",
-    "listings": "Cars for Sale"
+    "listings": "Cars for Sale",
+    "helpCenter": "Help Center",
+    "discover": "Discover"
   },
   "footer": {
     "description": "Your guide to electric vehicles in Albania. Find dealerships, compare models, and join the electric revolution.",
@@ -38,12 +40,14 @@
     "rightsReserved": "All rights reserved.",
     "socialTitle": "Stay connected",
     "moreInfo": "More legal information",
-    "legalSummary": "Important notice"
+    "legalSummary": "Important notice",
+    "legalBody": "The information on this website is provided on an \"as is, as available\" basis without warranty of any kind. Makina Elektrike is not responsible for any omissions, inaccuracies, or other errors in the information it publishes. All warranties with respect to this information are disclaimed. Reproduction of any part of this website in whole or in part, in any form or medium, without prior written permission is prohibited. The trademarks and logos of the manufacturers, dealerships, software, and hardware described or promoted are the property of their respective owners."
   },
   "common": {
     "unknownCity": "Unknown location",
     "loading": "Loading...",
     "cancel": "Cancel",
+    "close": "Close",
     "anyCity": "Any city",
     "anyBrand": "Any brand",
     "results": "Results",
@@ -57,7 +61,20 @@
     "deleteFailed": "Delete failed",
     "updatedSuccess": "Updated successfully",
     "createdSuccess": "Created successfully",
-    "saveFailed": "Failed to save"
+    "saveFailed": "Failed to save",
+    "statusUpdated": "Status updated successfully",
+    "updateFailed": "Update failed",
+    "clearFilters": "Clear filters",
+    "viewDetails": "View details",
+    "viewProfile": "View profile",
+    "backToListings": "Back to listings",
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "email": "Email",
+    "phone": "Phone",
+    "message": "Message",
+    "yes": "Yes",
+    "no": "No"
   },
   "home": {
     "heroTitle": "Drive the Future.",
@@ -798,6 +815,22 @@
         "description": "Need help choosing an EV or charger? Send us your questions and we will point you to the right resources."
       }
     ],
+    "ctaTitle": "Need a direct answer?",
+    "ctaDescription": "Use the form below for support, corrections, partnerships, or media requests.",
+    "ctaButton": "Send a message",
+    "form": {
+      "title": "Send us a message",
+      "subtitle": "We usually reply within 1-2 business days.",
+      "namePlaceholder": "Full name",
+      "emailPlaceholder": "Email address",
+      "phonePlaceholder": "+355 69...",
+      "messagePlaceholder": "How can we help?",
+      "submit": "Submit",
+      "submitLoading": "Sending...",
+      "success": "Your message has been sent successfully.",
+      "error": "We could not send your message. Please try again.",
+      "honeypot": "Company"
+    },
     "faqTitle": "Contact FAQ",
     "faqSubtitle": "Key information about response times and support.",
     "faqItems": [
@@ -814,6 +847,136 @@
         "answer": "Our core team operates from Tirana, with partner support across other major Albanian cities."
       }
     ]
+  },
+  "search": {
+    "placeholder": "Search saved items"
+  },
+  "filter": {
+    "newest": "Newest",
+    "alphabetical": "Alphabetical",
+    "price_asc": "Price (Low to High)",
+    "price_desc": "Price (High to Low)",
+    "year_desc": "Year (Newest)",
+    "year_asc": "Year (Oldest)"
+  },
+  "listings": {
+    "title": "Cars for sale",
+    "seoTitle": "Electric cars for sale | Makina Elektrike",
+    "seoDesc": "Browse the best collection of electric vehicles in Albania.",
+    "countSuffix": "vehicles available",
+    "make": "Make",
+    "priceRange": "Price range",
+    "year": "Year",
+    "noResults": "No results found",
+    "tryAdjusting": "Try adjusting your filters or search criteria.",
+    "contactSeller": "Contact seller",
+    "callNow": "Call now",
+    "specifications": "Specifications",
+    "description": "Description",
+    "soldBy": "Sold by",
+    "verifiedDealer": "Verified dealer",
+    "notFoundTitle": "Listing not found",
+    "fields": {
+      "make": "Make",
+      "model": "Model",
+      "year": "Year",
+      "mileage": "Mileage",
+      "fuelType": "Fuel type",
+      "transmission": "Transmission",
+      "drivetrain": "Drivetrain",
+      "bodyType": "Body type",
+      "color": "Color",
+      "battery": "Battery",
+      "range": "Range"
+    }
+  },
+  "compare": {
+    "title": "Compare models",
+    "selectPrompt": "Choose up to 3 models to compare side by side.",
+    "searchPlaceholder": "Search by brand or model",
+    "noModelsSelected": "Select models to start comparing.",
+    "clear": "Clear selection",
+    "remove": "Remove",
+    "notAvailable": "N/A"
+  },
+  "enquiry": {
+    "title": "Contact seller",
+    "subtitle": "Send a message to the dealer about this vehicle.",
+    "defaultMessage": "Hi, I am interested in this {{make}} {{model}}. Is it still available?",
+    "success": "Message sent successfully.",
+    "error": "Failed to send message. Please try again.",
+    "send": "Send message"
+  },
+  "registerUserPage": {
+    "metaTitle": "Create your account | Makina Elektrike",
+    "metaDescription": "Sign up to save your favourite electric dealers and models in Albania.",
+    "metaKeywords": [
+      "register",
+      "electric vehicles Albania",
+      "saved favourites",
+      "Makina Elektrike account"
+    ],
+    "title": "Create your account",
+    "subtitle": "Join Makina Elektrike to save your favourite dealers and electric vehicle models.",
+    "benefitsTitle": "Why register?",
+    "benefits": [
+      "Receive curated updates about new electric models arriving in Albania.",
+      "Bookmark trusted dealerships and manage a shortlist before you buy.",
+      "Export saved data and compare specs whenever you need them."
+    ],
+    "fields": {
+      "firstName": "First name",
+      "lastName": "Last name",
+      "phone": "Phone number",
+      "email": "Email address",
+      "password": "Password",
+      "confirmPassword": "Confirm password"
+    },
+    "validation": {
+      "required": "Please complete all required fields.",
+      "passwordMismatch": "Passwords do not match."
+    },
+    "submit": "Create account",
+    "submitLoading": "Creating account...",
+    "success": "Registration successful. Welcome to Makina Elektrike.",
+    "error": "Failed to register. Please try again."
+  },
+  "registerDealerPage": {
+    "metaTitle": "Register your dealership | Makina Elektrike",
+    "metaDescription": "Apply to join Makina Elektrike as an authorised electric vehicle dealer in Albania.",
+    "metaKeywords": [
+      "dealer registration",
+      "electric vehicle dealership Albania",
+      "Makina Elektrike partner"
+    ],
+    "title": "Dealer registration",
+    "subtitle": "Submit your details to join Makina Elektrike as a trusted electric vehicle dealer.",
+    "benefitsTitle": "Benefits of joining Makina Elektrike",
+    "benefits": [
+      "Reach EV buyers across Albania with localised, SEO-friendly listings.",
+      "Publish detailed model information and update inventory in real time.",
+      "Access marketing support, analytics, and lead notifications from our team."
+    ],
+    "fields": {
+      "companyName": "Company name",
+      "contactName": "Primary contact",
+      "phone": "Contact number",
+      "city": "City",
+      "website": "Website",
+      "websitePlaceholder": "https://",
+      "email": "Business email",
+      "notes": "About your dealership",
+      "notesPlaceholder": "Tell us about your inventory, specialties, and experience.",
+      "password": "Password",
+      "confirmPassword": "Confirm password"
+    },
+    "validation": {
+      "required": "Please complete all required fields.",
+      "passwordMismatch": "Passwords do not match."
+    },
+    "submit": "Submit application",
+    "submitLoading": "Submitting application...",
+    "success": "Registration received. Our team will review your dealership information shortly."
   },
   "favoritesPage": {
     "title": "Your favourites",
@@ -885,7 +1048,11 @@
     "compareInstruction": "Select up to 3 models to compare them side by side.",
     "compareNow": "Compare Now",
     "compareModalTitle": "Model Comparison",
+    "sideBySide": "Side-by-side spec comparison",
     "spec": "Specification",
+    "year": "Year",
+    "weight": "Weight",
+    "cargo": "Cargo",
     "emptyTitle": "No {{tab}} saved",
     "emptyText": "Browse our {{tab}} and click the heart icon to save them here for quick access later.",
     "newest": "Newest"
@@ -901,7 +1068,17 @@
       "pending account",
       "Makina Elektrike onboarding"
     ],
-    "awaitingNextSteps": "You can continue gathering documents or reach out to our team if you need to update your submission while we complete the review."
+    "awaitingNextSteps": "You can continue gathering documents or reach out to our team if you need to update your submission while we complete the review.",
+    "errors": {
+      "emailInUse": "This email address is already registered. Use another email or sign in to your existing account.",
+      "weakPassword": "The password is too weak. Use at least 6 characters.",
+      "invalidEmail": "Please enter a valid email address.",
+      "invalidCredentials": "The email address or password is incorrect.",
+      "tooManyRequests": "Too many failed attempts. Please try again later.",
+      "networkFailed": "Network error. Check your connection and try again.",
+      "generic": "Something went wrong. Please try again.",
+      "profileLoad": "Failed to load your user profile."
+    }
   },
   "admin": {
     "loginTitle": "Admin Login",

@@ -1,18 +1,17 @@
 import React, { useContext, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { DataContext } from '../contexts/DataContext';
-import { Listing } from '../types';
 import SEO from '../components/SEO';
+import OptimizedImage from '../components/OptimizedImage';
 import { useTranslation } from 'react-i18next';
-import { MapPin, Calendar, Gauge, Fuel, ChevronLeft, ChevronRight, Phone, MessageSquare, Share2, ShieldCheck, ArrowLeft, Heart } from 'lucide-react';
+import { MapPin, Gauge, ChevronLeft, ChevronRight, Phone, MessageSquare, ShieldCheck, ArrowLeft } from 'lucide-react';
 import EnquiryModal from '../components/listings/EnquiryModal';
-import { useFavorites } from '../hooks/useFavorites';
+import { DEALERSHIP_PLACEHOLDER_IMAGE, MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
 
 const ListingDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const { listings, dealers, loading } = useContext(DataContext);
     const { t } = useTranslation();
-    const { isFavorite, toggleFavorite } = useFavorites();
 
     // Find listing
     const listing = useMemo(() => listings.find(l => l.id === id), [listings, id]);
@@ -38,9 +37,9 @@ const ListingDetailPage: React.FC = () => {
     if (!listing) {
         return (
             <div className="min-h-screen bg-[#020817] flex flex-col justify-center items-center text-white p-4">
-                <h2 className="text-2xl font-bold mb-4">Listing Not Found</h2>
+                <h2 className="text-2xl font-bold mb-4">{t('listings.notFoundTitle')}</h2>
                 <Link to="/listings" className="text-gray-cyan hover:underline">
-                    Back to Listings
+                    {t('common.backToListings')}
                 </Link>
             </div>
         );
@@ -48,7 +47,7 @@ const ListingDetailPage: React.FC = () => {
 
     const allImages = listing.images && listing.images.length > 0
         ? listing.images
-        : [listing.image_url || '/placeholder-car.jpg']; // Fallback to legacy or placeholder
+        : [listing.image_url || MODEL_PLACEHOLDER_IMAGE]; // Fallback to legacy or placeholder
 
     // Add gallery images if they exist and are not already in listing.images (which should handle it, but just in case of data structure migration)
     if (listing.imageGallery && listing.imageGallery.length > 0) {
@@ -60,6 +59,23 @@ const ListingDetailPage: React.FC = () => {
     // ListingForm saves to `images` array. So `allImages` logic above should be fine.
 
     const displayImages = allImages;
+    const specificationRows = [
+        { label: t('listings.fields.make'), value: listing.make },
+        { label: t('listings.fields.model'), value: listing.model },
+        { label: t('listings.fields.year'), value: listing.year },
+        { label: t('listings.fields.mileage'), value: `${listing.mileage.toLocaleString()} km` },
+        { label: t('listings.fields.fuelType'), value: listing.fuelType },
+        { label: t('listings.fields.transmission'), value: listing.transmission },
+        { label: t('listings.fields.drivetrain'), value: listing.drivetrain },
+        { label: t('listings.fields.bodyType'), value: listing.bodyType },
+        { label: t('listings.fields.color'), value: listing.color },
+        ...(listing.batteryCapacity
+            ? [{ label: t('listings.fields.battery'), value: `${listing.batteryCapacity} kWh` }]
+            : []),
+        ...(listing.range
+            ? [{ label: t('listings.fields.range'), value: `${listing.range} km` }]
+            : []),
+    ];
 
     const nextImage = () => setActiveImageIndex((prev) => (prev + 1) % displayImages.length);
     const prevImage = () => setActiveImageIndex((prev) => (prev - 1 + displayImages.length) % displayImages.length);
@@ -82,9 +98,11 @@ const ListingDetailPage: React.FC = () => {
                     {/* Left Column: Gallery */}
                     <div className="space-y-4">
                         <div className="relative aspect-[16/10] bg-black/40 rounded-3xl overflow-hidden border border-white/10 group">
-                            <img
+                            <OptimizedImage
                                 src={displayImages[activeImageIndex]}
                                 alt={`${listing.make} ${listing.model}`}
+                                fallbackSrc={MODEL_PLACEHOLDER_IMAGE}
+                                priority
                                 className="w-full h-full object-cover"
                             />
 
@@ -119,7 +137,7 @@ const ListingDetailPage: React.FC = () => {
                                         className={`relative w-24 aspect-[16/10] flex-shrink-0 rounded-lg overflow-hidden border-2 transition ${activeImageIndex === idx ? 'border-gray-cyan' : 'border-transparent opacity-60 hover:opacity-100'
                                             }`}
                                     >
-                                        <img src={img} className="w-full h-full object-cover" alt="thumbnail" />
+                                        <OptimizedImage src={img} fallbackSrc={MODEL_PLACEHOLDER_IMAGE} className="w-full h-full object-cover" alt="thumbnail" />
                                     </button>
                                 ))}
                             </div>
@@ -168,46 +186,12 @@ const ListingDetailPage: React.FC = () => {
                                 {t('listings.specifications', { defaultValue: 'Specifications' })}
                             </h3>
                             <div className="grid grid-cols-2 gap-y-4 text-sm">
-                                <div className="text-gray-400">Make</div>
-                                <div className="font-medium text-right">{listing.make}</div>
-
-                                <div className="text-gray-400">Model</div>
-                                <div className="font-medium text-right">{listing.model}</div>
-
-                                <div className="text-gray-400">Year</div>
-                                <div className="font-medium text-right">{listing.year}</div>
-
-                                <div className="text-gray-400">Mileage</div>
-                                <div className="font-medium text-right">{listing.mileage.toLocaleString()} km</div>
-
-                                <div className="text-gray-400">Fuel Type</div>
-                                <div className="font-medium text-right">{listing.fuelType}</div>
-
-                                <div className="text-gray-400">Transmission</div>
-                                <div className="font-medium text-right">{listing.transmission}</div>
-
-                                <div className="text-gray-400">Drivetrain</div>
-                                <div className="font-medium text-right">{listing.drivetrain}</div>
-
-                                <div className="text-gray-400">Body Type</div>
-                                <div className="font-medium text-right">{listing.bodyType}</div>
-
-                                <div className="text-gray-400">Color</div>
-                                <div className="font-medium text-right">{listing.color}</div>
-
-                                {listing.batteryCapacity && (
-                                    <>
-                                        <div className="text-gray-400">Battery</div>
-                                        <div className="font-medium text-right">{listing.batteryCapacity} kWh</div>
-                                    </>
-                                )}
-
-                                {listing.range && (
-                                    <>
-                                        <div className="text-gray-400">Range</div>
-                                        <div className="font-medium text-right">{listing.range} km</div>
-                                    </>
-                                )}
+                                {specificationRows.map(row => (
+                                    <React.Fragment key={row.label}>
+                                        <div className="text-gray-400">{row.label}</div>
+                                        <div className="font-medium text-right">{row.value}</div>
+                                    </React.Fragment>
+                                ))}
                             </div>
                         </div>
 
@@ -224,9 +208,10 @@ const ListingDetailPage: React.FC = () => {
 
                         {dealer && (
                             <div className="bg-black/40 border border-white/10 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-6">
-                                <img
-                                    src={dealer.logo_url || '/placeholder-dealer.png'}
+                                <OptimizedImage
+                                    src={dealer.logo_url || dealer.image_url || DEALERSHIP_PLACEHOLDER_IMAGE}
                                     alt={dealer.name}
+                                    fallbackSrc={DEALERSHIP_PLACEHOLDER_IMAGE}
                                     className="w-20 h-20 rounded-full object-cover bg-white"
                                 />
                                 <div className="text-center sm:text-left">
@@ -238,11 +223,11 @@ const ListingDetailPage: React.FC = () => {
                                     <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-sm text-gray-400">
                                         {dealer.isVerified && (
                                             <div className="flex items-center gap-1 text-green-400">
-                                                <ShieldCheck size={14} /> Verified Dealer
+                                                <ShieldCheck size={14} /> {t('listings.verifiedDealer')}
                                             </div>
                                         )}
                                         <Link to={`/dealers/${dealer.id}`} className="text-gray-cyan hover:underline">
-                                            {t('common.viewProfile', { defaultValue: 'View Profile' })}
+                                            {t('common.viewProfile')}
                                         </Link>
                                     </div>
                                 </div>

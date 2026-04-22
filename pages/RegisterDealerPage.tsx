@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Building2 } from 'lucide-react';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useAuth, mapErrorToMessage } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { auth, firestore } from '../services/firebase';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 
 const RegisterDealerPage: React.FC = () => {
+  const { t } = useTranslation();
   const { registerDealer, loading, user, role, initializing } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
@@ -28,7 +28,7 @@ const RegisterDealerPage: React.FC = () => {
   if (initializing) {
     return (
       <div className="flex items-center justify-center py-24">
-        <span className="text-gray-300">Loading...</span>
+        <span className="text-gray-300">{t('common.loading')}</span>
       </div>
     );
   }
@@ -63,12 +63,12 @@ const RegisterDealerPage: React.FC = () => {
     } = formData;
 
     if (!companyName || !contactName || !phone || !city || !email || !password) {
-      setFormError('Please complete all required fields.');
+      setFormError(t('registerDealerPage.validation.required'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setFormError('Passwords do not match.');
+      setFormError(t('registerDealerPage.validation.passwordMismatch'));
       return;
     }
 
@@ -85,7 +85,7 @@ const RegisterDealerPage: React.FC = () => {
       });
 
       addToast(
-        'Registration received! Our team will review your dealership information shortly.',
+        t('registerDealerPage.success'),
         'success'
       );
       navigate('/awaiting-approval');
@@ -97,8 +97,9 @@ const RegisterDealerPage: React.FC = () => {
     }
   };
 
-  const metaTitle = 'Regjistro dilerin | Makina Elektrike';
-  const metaDescription = 'Apliko për t’u listuar si dealer i autorizuar i makinave elektrike në Shqipëri.';
+  const metaTitle = t('registerDealerPage.metaTitle');
+  const metaDescription = t('registerDealerPage.metaDescription');
+  const benefits = t('registerDealerPage.benefits', { returnObjects: true }) as string[];
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
@@ -112,7 +113,7 @@ const RegisterDealerPage: React.FC = () => {
       <SEO
         title={metaTitle}
         description={metaDescription}
-        keywords={['regjistrim dealer', 'makina elektrike', 'listo dilerin', 'Makina Elektrike']}
+        keywords={t('registerDealerPage.metaKeywords', { returnObjects: true }) as string[]}
         canonical={`${BASE_URL}/register-dealer/`}
         openGraph={{
           title: metaTitle,
@@ -133,18 +134,18 @@ const RegisterDealerPage: React.FC = () => {
         <div className="bg-white/5 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 overflow-hidden p-8 text-white">
           <div className="text-center mb-8">
             <Building2 className="mx-auto text-gray-cyan h-12 w-12" />
-            <h1 className="text-3xl font-extrabold mt-6">Dealer Registration</h1>
+            <h1 className="text-3xl font-extrabold mt-6">{t('registerDealerPage.title')}</h1>
             <p className="mt-2 text-gray-300">
-              Submit your details to join Makina Elektrike as a trusted electric vehicle dealer.
+              {t('registerDealerPage.subtitle')}
             </p>
           </div>
 
           <div className="mb-8 grid gap-3 rounded-xl border border-white/10 bg-white/5 p-6 text-gray-200">
-            <p className="font-semibold text-white">Benefits of joining Makina Elektrike:</p>
+            <p className="font-semibold text-white">{t('registerDealerPage.benefitsTitle')}</p>
             <ul className="list-disc list-inside space-y-2 text-sm text-gray-300">
-              <li>Reach EV buyers across Albania with localized, SEO-friendly listings.</li>
-              <li>Publish detailed model information and update inventory in real time.</li>
-              <li>Access marketing support, analytics and lead notifications from our team.</li>
+              {benefits.map(item => (
+                <li key={item}>{item}</li>
+              ))}
             </ul>
           </div>
 
@@ -158,7 +159,7 @@ const RegisterDealerPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="companyName" className="block text-sm font-medium text-gray-200">
-                  Company Name
+                  {t('registerDealerPage.fields.companyName')}
                 </label>
                 <input
                   id="companyName"
@@ -172,7 +173,7 @@ const RegisterDealerPage: React.FC = () => {
               </div>
               <div>
                 <label htmlFor="contactName" className="block text-sm font-medium text-gray-200">
-                  Primary Contact
+                  {t('registerDealerPage.fields.contactName')}
                 </label>
                 <input
                   id="contactName"
@@ -189,7 +190,7 @@ const RegisterDealerPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-gray-200">
-                  Contact Number
+                  {t('registerDealerPage.fields.phone')}
                 </label>
                 <input
                   id="phone"
@@ -203,7 +204,7 @@ const RegisterDealerPage: React.FC = () => {
               </div>
               <div>
                 <label htmlFor="city" className="block text-sm font-medium text-gray-200">
-                  City
+                  {t('registerDealerPage.fields.city')}
                 </label>
                 <input
                   id="city"
@@ -220,7 +221,7 @@ const RegisterDealerPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="website" className="block text-sm font-medium text-gray-200">
-                  Website
+                  {t('registerDealerPage.fields.website')}
                 </label>
                 <input
                   id="website"
@@ -229,12 +230,12 @@ const RegisterDealerPage: React.FC = () => {
                   value={formData.website}
                   onChange={handleChange}
                   className="mt-1 block w-full rounded-md bg-gray-900/60 border border-gray-700 px-3 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                  placeholder="https://"
+                  placeholder={t('registerDealerPage.fields.websitePlaceholder')}
                 />
               </div>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-200">
-                  Business Email
+                  {t('registerDealerPage.fields.email')}
                 </label>
                 <input
                   id="email"
@@ -250,7 +251,7 @@ const RegisterDealerPage: React.FC = () => {
 
             <div>
               <label htmlFor="notes" className="block text-sm font-medium text-gray-200">
-                About Your Dealership
+                {t('registerDealerPage.fields.notes')}
               </label>
               <textarea
                 id="notes"
@@ -259,14 +260,14 @@ const RegisterDealerPage: React.FC = () => {
                 onChange={handleChange}
                 className="mt-1 block w-full rounded-md bg-gray-900/60 border border-gray-700 px-3 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
                 rows={4}
-                placeholder="Tell us about your inventory, specialties, and experience."
+                placeholder={t('registerDealerPage.fields.notesPlaceholder')}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-200">
-                  Password
+                  {t('registerDealerPage.fields.password')}
                 </label>
                 <input
                   id="password"
@@ -280,7 +281,7 @@ const RegisterDealerPage: React.FC = () => {
               </div>
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-200">
-                  Confirm Password
+                  {t('registerDealerPage.fields.confirmPassword')}
                 </label>
                 <input
                   id="confirmPassword"
@@ -299,7 +300,7 @@ const RegisterDealerPage: React.FC = () => {
               className="w-full flex justify-center items-center rounded-md border border-transparent bg-gray-cyan/80 px-4 py-2 text-base font-medium text-white hover:bg-gray-cyan transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
               disabled={loading}
             >
-              {loading ? 'Submitting application...' : 'Submit Application'}
+              {loading ? t('registerDealerPage.submitLoading') : t('registerDealerPage.submit')}
             </button>
           </form>
         </div>

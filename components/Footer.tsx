@@ -131,6 +131,11 @@ const Footer: React.FC = () => {
                   </Link>
                 </li>
                 <li>
+                  <Link to="/help-center" className="transition-colors hover:text-white">
+                    {t('header.helpCenter', { defaultValue: 'Help Center' })}
+                  </Link>
+                </li>
+                <li>
                   <Link to="/sitemap" className="transition-colors hover:text-white">
                     {t('footer.sitemap')}
                   </Link>
@@ -190,11 +195,7 @@ const Footer: React.FC = () => {
             </span>
           </div>
           <p className="mt-3">
-            The information on this website is provided on an "as is, as available" basis without warranty of any kind. Makina
-            Elektrike is not responsible for any omissions, inaccuracies, or other errors in the information it publishes. All
-            warranties with respect to this information are disclaimed. Reproduction of any part of this website in whole or in
-            part, in any form or medium, without prior written permission is prohibited. The trademarks and logos of the
-            manufacturers, dealerships, software, and hardware described or promoted are the property of their respective owners.
+            {t('footer.legalBody')}
           </p>
         </div>
 

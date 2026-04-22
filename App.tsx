@@ -1,43 +1,48 @@
-import React, { useContext, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useContext, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
-import HomePage from './pages/HomePage';
-import DealersListPage from './pages/DealersListPage';
-import DealerDetailPage from './pages/DealerDetailPage';
-import ModelsListPage from './pages/ModelsListPage';
-import ModelDetailPage from './pages/ModelDetailPage';
-import BlogPage from './pages/BlogPage';
-import BlogPostPage from './pages/BlogPostPage';
-import AboutPage from './pages/AboutPage';
-import ContactPage from './pages/ContactPage';
-import FavoritesPage from './pages/FavoritesPage';
-import ChargingStationsAlbaniaPage from './pages/ChargingStationsAlbaniaPage';
-import RegisterUserPage from './pages/RegisterUserPage';
-import RegisterDealerPage from './pages/RegisterDealerPage';
 import ScrollToTopButton from './components/ScrollToTopButton';
-import AdminPage from './pages/AdminPage';
-import AdminLoginPage from './pages/AdminLoginPage';
-import AwaitingApprovalPage from './pages/AwaitingApprovalPage';
-import DealerDashboardPage from './pages/DealerDashboardPage';
-import DealerListingsPage from './pages/DealerListingsPage';
-import ListingsPage from './pages/ListingsPage';
-import ListingDetailPage from './pages/ListingDetailPage';
-import LoginPage from './pages/LoginPage';
-import SitemapPage from './pages/SitemapPage';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import TermsOfServicePage from './pages/TermsOfServicePage';
-import CookiesPolicyPage from './pages/CookiesPolicyPage';
-import { MigrationTool } from './components/admin/MigrationTool';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataContext, DataProvider } from './contexts/DataContext';
 import { ToastProvider, ToastContainer } from './contexts/ToastContext';
 import ScrollRestoration from './components/ScrollRestoration';
 
+const HomePage = lazy(() => import('./pages/HomePage'));
+const DealersListPage = lazy(() => import('./pages/DealersListPage'));
+const DealerDetailPage = lazy(() => import('./pages/DealerDetailPage'));
+const ModelsListPage = lazy(() => import('./pages/ModelsListPage'));
+const ModelDetailPage = lazy(() => import('./pages/ModelDetailPage'));
+const BlogPage = lazy(() => import('./pages/BlogPage'));
+const BlogPostPage = lazy(() => import('./pages/BlogPostPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const FavoritesPage = lazy(() => import('./pages/FavoritesPage'));
+const ChargingStationsAlbaniaPage = lazy(() => import('./pages/ChargingStationsAlbaniaPage'));
+const RegisterUserPage = lazy(() => import('./pages/RegisterUserPage'));
+const RegisterDealerPage = lazy(() => import('./pages/RegisterDealerPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
+const AwaitingApprovalPage = lazy(() => import('./pages/AwaitingApprovalPage'));
+const DealerDashboardPage = lazy(() => import('./pages/DealerDashboardPage'));
+const DealerListingsPage = lazy(() => import('./pages/DealerListingsPage'));
+const ListingsPage = lazy(() => import('./pages/ListingsPage'));
+const ListingDetailPage = lazy(() => import('./pages/ListingDetailPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const SitemapPage = lazy(() => import('./pages/SitemapPage'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
+const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
+const CookiesPolicyPage = lazy(() => import('./pages/CookiesPolicyPage'));
+const HelpCenterPage = lazy(() => import('./pages/HelpCenterPage'));
+
 const LoadingScreen = () => (
   <div className="flex items-center justify-center py-24">
     <span className="text-gray-300">Loading...</span>
   </div>
+);
+
+const RouteContent: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Suspense fallback={<LoadingScreen />}>{children}</Suspense>
 );
 
 const AdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -108,52 +113,59 @@ const App: React.FC = () => {
               <Header />
               <main className="flex-grow">
                 <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/dealers" element={<DealersListPage />} />
-                  <Route path="/dealers/:id" element={<DealerDetailPage />} />
-                  <Route path="/albania-charging-stations" element={<ChargingStationsAlbaniaPage />} />
-                  <Route path="/models" element={<ModelsListPage />} />
-                  <Route path="/models/:id" element={<ModelDetailPage />} />
-                  <Route path="/listings" element={<ListingsPage />} />
-                  <Route path="/listings/:id" element={<ListingDetailPage />} />
-                  <Route path="/blog" element={<BlogPage />} />
-                  <Route path="/blog/:slug" element={<BlogPostPage />} />
-                  <Route path="/about" element={<AboutPage />} />
-                  <Route path="/contact" element={<ContactPage />} />
-                  <Route path="/favorites" element={<FavoritesPage />} />
-                  <Route path="/register" element={<RegisterUserPage />} />
-                  <Route path="/register-dealer" element={<RegisterDealerPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/sitemap" element={<SitemapPage />} />
-                  <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-                  <Route path="/terms" element={<TermsOfServicePage />} />
-                  <Route path="/cookie-policy" element={<CookiesPolicyPage />} />
+                  <Route path="/" element={<RouteContent><HomePage /></RouteContent>} />
+                  <Route path="/dealers" element={<RouteContent><DealersListPage /></RouteContent>} />
+                  <Route path="/dealers/:id" element={<RouteContent><DealerDetailPage /></RouteContent>} />
+                  <Route path="/albania-charging-stations" element={<RouteContent><ChargingStationsAlbaniaPage /></RouteContent>} />
+                  <Route path="/models" element={<RouteContent><ModelsListPage /></RouteContent>} />
+                  <Route path="/models/:id" element={<RouteContent><ModelDetailPage /></RouteContent>} />
+                  <Route path="/listings" element={<RouteContent><ListingsPage /></RouteContent>} />
+                  <Route path="/listings/:id" element={<RouteContent><ListingDetailPage /></RouteContent>} />
+                  <Route path="/blog" element={<RouteContent><BlogPage /></RouteContent>} />
+                  <Route path="/blog/:slug" element={<RouteContent><BlogPostPage /></RouteContent>} />
+                  <Route path="/about" element={<RouteContent><AboutPage /></RouteContent>} />
+                  <Route path="/help-center" element={<RouteContent><HelpCenterPage /></RouteContent>} />
+                  <Route path="/contact" element={<RouteContent><ContactPage /></RouteContent>} />
+                  <Route path="/favorites" element={<RouteContent><FavoritesPage /></RouteContent>} />
+                  <Route path="/register" element={<RouteContent><RegisterUserPage /></RouteContent>} />
+                  <Route path="/register-dealer" element={<RouteContent><RegisterDealerPage /></RouteContent>} />
+                  <Route path="/login" element={<RouteContent><LoginPage /></RouteContent>} />
+                  <Route path="/sitemap" element={<RouteContent><SitemapPage /></RouteContent>} />
+                  <Route path="/privacy-policy" element={<RouteContent><PrivacyPolicyPage /></RouteContent>} />
+                  <Route path="/terms" element={<RouteContent><TermsOfServicePage /></RouteContent>} />
+                  <Route path="/cookie-policy" element={<RouteContent><CookiesPolicyPage /></RouteContent>} />
                   <Route path="/privacy" element={<Navigate to="/privacy-policy" replace />} />
                   <Route path="/cookies" element={<Navigate to="/cookie-policy" replace />} />
-                  <Route path="/admin/login" element={<AdminLoginPage />} />
-                  <Route path="/awaiting-approval" element={<AwaitingApprovalPage />} />
+                  <Route path="/admin/login" element={<RouteContent><AdminLoginPage /></RouteContent>} />
+                  <Route path="/awaiting-approval" element={<RouteContent><AwaitingApprovalPage /></RouteContent>} />
                   <Route
                     path="/dealer/listings"
                     element={
-                      <DealerRoute>
-                        <DealerListingsPage />
-                      </DealerRoute>
+                      <RouteContent>
+                        <DealerRoute>
+                          <DealerListingsPage />
+                        </DealerRoute>
+                      </RouteContent>
                     }
                   />
                   <Route
                     path="/dealer/dashboard"
                     element={(
-                      <DealerRoute>
-                        <DealerDashboardPage />
-                      </DealerRoute>
+                      <RouteContent>
+                        <DealerRoute>
+                          <DealerDashboardPage />
+                        </DealerRoute>
+                      </RouteContent>
                     )}
                   />
                   <Route
                     path="/admin"
                     element={(
-                      <AdminRoute>
-                        <AdminPage />
-                      </AdminRoute>
+                      <RouteContent>
+                        <AdminRoute>
+                          <AdminPage />
+                        </AdminRoute>
+                      </RouteContent>
                     )}
                   />
                 </Routes>

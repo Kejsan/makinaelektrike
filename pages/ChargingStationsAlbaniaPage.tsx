@@ -721,7 +721,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
       <SEO
         title={seoTitle}
         description={seoDescription}
-        canonical={`${BASE_URL} /albania-charging-stations/`}
+        canonical={`${BASE_URL}/albania-charging-stations/`}
         keywords={[
           'Albania EV charging map',
           'Open Charge Map Albania',
@@ -731,7 +731,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
         openGraph={{
           title: seoTitle,
           description: seoDescription,
-          url: `${BASE_URL} /albania-charging-stations/`,
+          url: `${BASE_URL}/albania-charging-stations/`,
           type: 'website',
           images: [DEFAULT_OG_IMAGE],
         }}

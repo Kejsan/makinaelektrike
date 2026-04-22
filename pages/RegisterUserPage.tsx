@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { auth, firestore } from '../services/firebase';
@@ -9,6 +10,7 @@ import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 
 const RegisterUserPage: React.FC = () => {
+  const { t } = useTranslation();
   const { registerUser, loading, user, role, initializing } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
@@ -25,7 +27,7 @@ const RegisterUserPage: React.FC = () => {
   if (initializing) {
     return (
       <div className="flex items-center justify-center py-24">
-        <span className="text-gray-300">Loading...</span>
+        <span className="text-gray-300">{t('common.loading')}</span>
       </div>
     );
   }
@@ -48,12 +50,12 @@ const RegisterUserPage: React.FC = () => {
     const { firstName, lastName, phone, email, password, confirmPassword } = formData;
 
     if (!firstName || !lastName || !phone || !email || !password) {
-      setFormError('Please complete all required fields.');
+      setFormError(t('registerUserPage.validation.required'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setFormError('Passwords do not match.');
+      setFormError(t('registerUserPage.validation.passwordMismatch'));
       return;
     }
 
@@ -82,16 +84,20 @@ const RegisterUserPage: React.FC = () => {
         );
       }
 
-      addToast('Registration successful! Welcome to Makina Elektrike.', 'success');
+      addToast(t('registerUserPage.success'), 'success');
       navigate('/favorites');
     } catch (error) {
       console.error('Failed to register user', error);
-      addToast('Failed to register. Please try again.', 'error');
+      addToast(
+        error instanceof Error ? error.message : t('registerUserPage.error'),
+        'error',
+      );
     }
   };
 
-  const metaTitle = 'Krijo llogarinë | Makina Elektrike';
-  const metaDescription = 'Regjistrohu për të ruajtur dilerët dhe modelet e preferuara të makinave elektrike në Shqipëri.';
+  const metaTitle = t('registerUserPage.metaTitle');
+  const metaDescription = t('registerUserPage.metaDescription');
+  const benefits = t('registerUserPage.benefits', { returnObjects: true }) as string[];
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
@@ -105,7 +111,7 @@ const RegisterUserPage: React.FC = () => {
       <SEO
         title={metaTitle}
         description={metaDescription}
-        keywords={['regjistrim', 'makina elektrike', 'favoritët e makinave', 'Makina Elektrike account']}
+        keywords={t('registerUserPage.metaKeywords', { returnObjects: true }) as string[]}
         canonical={`${BASE_URL}/register/`}
         openGraph={{
           title: metaTitle,
@@ -126,18 +132,18 @@ const RegisterUserPage: React.FC = () => {
         <div className="bg-white/5 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 overflow-hidden p-8 text-white">
           <div className="text-center mb-8">
             <UserPlus className="mx-auto text-gray-cyan h-12 w-12" />
-            <h1 className="text-3xl font-extrabold mt-6">Create Your Account</h1>
+            <h1 className="text-3xl font-extrabold mt-6">{t('registerUserPage.title')}</h1>
             <p className="mt-2 text-gray-300">
-              Join Makina Elektrike to save your favourite dealers and electric vehicle models.
+              {t('registerUserPage.subtitle')}
             </p>
           </div>
 
           <div className="mb-8 grid gap-4 rounded-xl border border-white/10 bg-white/5 p-6 text-gray-200">
-            <p className="font-semibold text-white">Why register?</p>
+            <p className="font-semibold text-white">{t('registerUserPage.benefitsTitle')}</p>
             <ul className="list-disc list-inside space-y-2 text-sm text-gray-300">
-              <li>Receive curated updates about new electric models arriving in Albania.</li>
-              <li>Bookmark trusted dealerships and manage a shortlist before you buy.</li>
-              <li>Export saved data and compare specs whenever you need them.</li>
+              {benefits.map(item => (
+                <li key={item}>{item}</li>
+              ))}
             </ul>
           </div>
 
@@ -151,7 +157,7 @@ const RegisterUserPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-200">
-                  First Name
+                  {t('registerUserPage.fields.firstName')}
                 </label>
                 <input
                   id="firstName"
@@ -165,7 +171,7 @@ const RegisterUserPage: React.FC = () => {
               </div>
               <div>
                 <label htmlFor="lastName" className="block text-sm font-medium text-gray-200">
-                  Last Name
+                  {t('registerUserPage.fields.lastName')}
                 </label>
                 <input
                   id="lastName"
@@ -181,7 +187,7 @@ const RegisterUserPage: React.FC = () => {
 
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-200">
-                Phone Number
+                {t('registerUserPage.fields.phone')}
               </label>
               <input
                 id="phone"
@@ -196,7 +202,7 @@ const RegisterUserPage: React.FC = () => {
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-200">
-                Email Address
+                {t('registerUserPage.fields.email')}
               </label>
               <input
                 id="email"
@@ -212,7 +218,7 @@ const RegisterUserPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-200">
-                  Password
+                  {t('registerUserPage.fields.password')}
                 </label>
                 <input
                   id="password"
@@ -226,7 +232,7 @@ const RegisterUserPage: React.FC = () => {
               </div>
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-200">
-                  Confirm Password
+                  {t('registerUserPage.fields.confirmPassword')}
                 </label>
                 <input
                   id="confirmPassword"
@@ -245,7 +251,7 @@ const RegisterUserPage: React.FC = () => {
               className="w-full flex justify-center items-center rounded-md border border-transparent bg-gray-cyan/80 px-4 py-2 text-base font-medium text-white hover:bg-gray-cyan transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
               disabled={loading}
             >
-              {loading ? 'Creating account...' : 'Create Account'}
+              {loading ? t('registerUserPage.submitLoading') : t('registerUserPage.submit')}
             </button>
           </form>
         </div>

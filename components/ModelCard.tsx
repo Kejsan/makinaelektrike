@@ -5,6 +5,7 @@ import type { Model } from '../types';
 import { Heart, ArrowRight, Battery, Gauge, ShieldCheck } from 'lucide-react';
 import { useFavorites } from '../hooks/useFavorites';
 import { MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
+import OptimizedImage from './OptimizedImage';
 
 const ModelCard: React.FC<{ model: Model }> = ({ model }) => {
     const { t } = useTranslation();
@@ -31,7 +32,12 @@ const ModelCard: React.FC<{ model: Model }> = ({ model }) => {
             </button>
             <Link to={`/models/${model.id}`} className="flex flex-col h-full">
                 <div className="relative overflow-hidden h-48">
-                    <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src={imageUrl} alt={`${model.brand} ${model.model_name}`} />
+                    <OptimizedImage
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        src={imageUrl}
+                        alt={`${model.brand} ${model.model_name}`}
+                        fallbackSrc={MODEL_PLACEHOLDER_IMAGE}
+                    />
                     {model.body_type && (
                         <div className="absolute top-4 left-4 bg-gray-cyan/80 text-white text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm">{model.body_type}</div>
                     )}

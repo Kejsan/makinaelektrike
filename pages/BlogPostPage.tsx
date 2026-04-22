@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Clock, ArrowLeft, Tag, HelpCircle } from 'lucide-react';
 import { DataContext } from '../contexts/DataContext';
 import type { BlogPostList } from '../types';
+import OptimizedImage from '../components/OptimizedImage';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 
@@ -153,9 +154,10 @@ const BlogPostPage: React.FC = () => {
         structuredData={structuredData}
       />
       <div className="relative h-72 sm:h-96">
-        <img
+        <OptimizedImage
           src={post.imageUrl}
           alt={post.title}
+          priority
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/30" />

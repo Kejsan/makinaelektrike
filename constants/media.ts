@@ -1,6 +1,7 @@
-import LogoImage from '../assets/Makina Elektrike - EVs in Albania.png';
-import DealerPlaceholderImage from '../assets/Dealership Placeholder Image.jpg';
-import ModelPlaceholderImage from '../assets/EV Placeholder.jpg';
+import AboutPageImage from '../assets/EV Battery.webp';
+import LogoImage from '../assets/Makina Elektrike - EVs in Albania.webp';
+import DealerPlaceholderImage from '../assets/Dealership Placeholder Image.webp';
+import ModelPlaceholderImage from '../assets/EV Placeholder.webp';
 
 const SITE_ICON_BASE64_PARTS = [
   'iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAANmUlEQVR4nO3d2ZNcZRnH8ed0Ty9DBiYBkhA2gxG0FIEQQAIYCAljEiYrYJW33nODN1Zxw403',
@@ -51,3 +52,4 @@ export const SITE_ICON = `data:image/png;base64,${SITE_ICON_BASE64_PARTS.join(''
 
 export const DEALERSHIP_PLACEHOLDER_IMAGE = DealerPlaceholderImage;
 export const MODEL_PLACEHOLDER_IMAGE = ModelPlaceholderImage;
+export const ABOUT_PAGE_IMAGE = AboutPageImage;

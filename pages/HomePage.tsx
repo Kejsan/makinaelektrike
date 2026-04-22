@@ -3,11 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { BlogPost } from '../types';
 import { Car, Building, Search, Loader2 } from 'lucide-react';
+import OptimizedImage from '../components/OptimizedImage';
 import DealerCard from '../components/DealerCard';
 import ModelCard from '../components/ModelCard';
 import BlogCard from '../components/BlogCard';
 import { DataContext } from '../contexts/DataContext';
-import heroDashboard from '../assets/BYD SEAL.jpg';
+import heroDashboard from '../assets/BYD SEAL.webp';
+import heroDashboardCompact from '../assets/BYD SEAL-960.webp';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 
@@ -187,11 +189,16 @@ const HomePage: React.FC = () => {
       />
       {/* Hero Section */}
       <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden bg-[#00001a] text-center text-white">
-        <div
-          className="absolute inset-0 bg-cover bg-center scale-110"
-          style={{ backgroundImage: `url(${heroDashboard})` }}
-          aria-hidden="true"
-        />
+        <div className="absolute inset-0 scale-110" aria-hidden="true">
+          <OptimizedImage
+            src={heroDashboard}
+            srcSet={`${heroDashboardCompact} 960w, ${heroDashboard} 1600w`}
+            sizes="100vw"
+            alt=""
+            priority
+            className="h-full w-full object-cover"
+          />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-b from-[#00001a]/70 via-[#000025]/60 to-[#000033]/95" aria-hidden="true" />
         <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center px-4 py-24 sm:px-6 lg:px-8">
           <p className="text-xs font-semibold uppercase tracking-[0.5em] text-gray-300">

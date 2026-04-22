@@ -5,6 +5,7 @@ import type { Dealer } from '../types';
 import { MapPin, Heart, ArrowRight, ShieldAlert, BadgeCheck } from 'lucide-react';
 import { useFavorites } from '../hooks/useFavorites';
 import { DEALERSHIP_PLACEHOLDER_IMAGE } from '../constants/media';
+import OptimizedImage from './OptimizedImage';
 
 interface DealerCardProps {
   dealer?: Dealer | null;
@@ -55,9 +56,10 @@ const DealerCard: React.FC<DealerCardProps> = ({ dealer, isLoading = false }) =>
       </button>
       <Link to={`/dealers/${dealer.id}`} className="group flex h-full flex-col">
         <div className="relative h-48 overflow-hidden">
-          <img
+          <OptimizedImage
             src={imageUrl}
             alt={dealer.name}
+            fallbackSrc={DEALERSHIP_PLACEHOLDER_IMAGE}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
           {dealer.isFeatured && (

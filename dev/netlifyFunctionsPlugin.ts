@@ -8,6 +8,8 @@ type HandlerModule = {
 
 const functionModuleLoaders: Record<string, () => Promise<HandlerModule>> = {
   'api-ninjas-electricvehicle': () => import('../netlify/functions/api-ninjas-electricvehicle'),
+  'contact-submit': () => import('../netlify/functions/contact-submit'),
+  'create-enquiry': () => import('../netlify/functions/create-enquiry'),
   'deepl-translate': () => import('../netlify/functions/deepl-translate'),
   'gemini-enrich-model': () => import('../netlify/functions/gemini-enrich-model'),
   'gemini-chat': () => import('../netlify/functions/gemini-chat'),

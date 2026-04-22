@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { BlogPost } from '../types';
 import { ArrowRight } from 'lucide-react';
+import OptimizedImage from './OptimizedImage';
 
 const formatDate = (value: string) => {
   try {
@@ -18,7 +19,11 @@ const formatDate = (value: string) => {
 const BlogCard: React.FC<{ post: BlogPost }> = ({ post }) => (
   <div className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 shadow-lg overflow-hidden group transition-all duration-300 transform hover:-translate-y-1 hover:shadow-neon-cyan">
     <div className="overflow-hidden">
-      <img className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300" src={post.imageUrl} alt={post.title} />
+      <OptimizedImage
+        className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
+        src={post.imageUrl}
+        alt={post.title}
+      />
     </div>
     <div className="p-6">
       <p className="text-sm text-gray-400">{formatDate(post.date)} &bull; {post.readTime} &bull; nga {post.author}</p>

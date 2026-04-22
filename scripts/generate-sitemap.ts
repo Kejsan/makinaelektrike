@@ -25,6 +25,7 @@ const MAIN_URLS = [
   { loc: '/listings/', changefreq: 'daily', priority: '0.8' },
   { loc: '/albania-charging-stations/', changefreq: 'weekly', priority: '0.8' },
   { loc: '/blog/', changefreq: 'weekly', priority: '0.8' },
+  { loc: '/help-center/', changefreq: 'monthly', priority: '0.7' },
   { loc: '/about/', changefreq: 'monthly', priority: '0.6' },
   { loc: '/contact/', changefreq: 'monthly', priority: '0.6' },
   { loc: '/sitemap/', changefreq: 'monthly', priority: '0.4' },
@@ -257,6 +258,35 @@ const getDynamicBlogPosts = async (): Promise<SitemapUrl[]> => {
     }));
 };
 
+const getDynamicListings = async (): Promise<SitemapUrl[]> => {
+  const firestore = getFirestoreInstance();
+  if (!firestore) {
+    return [];
+  }
+
+  const snapshot = await getDocs(
+    query(collection(firestore, 'listings'), where('status', 'in', ['approved', 'active'])),
+  );
+
+  return snapshot.docs
+    .map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() }))
+    .sort((first, second) => {
+      const firstTime = new Date((first.updatedAt as { toDate?: () => Date } | undefined)?.toDate?.() ?? (first.createdAt as { toDate?: () => Date } | undefined)?.toDate?.() ?? 0).getTime();
+      const secondTime = new Date((second.updatedAt as { toDate?: () => Date } | undefined)?.toDate?.() ?? (second.createdAt as { toDate?: () => Date } | undefined)?.toDate?.() ?? 0).getTime();
+      return secondTime - firstTime;
+    })
+    .map(entry => ({
+      loc: withTrailingSlash(`/listings/${encodeURIComponent(entry.id as string)}`),
+      lastmod:
+        normalizeDate(entry.updatedAt as FirestoreTimestampLike) ??
+        normalizeDate(entry.approvedAt as FirestoreTimestampLike) ??
+        normalizeDate(entry.createdAt as FirestoreTimestampLike) ??
+        today,
+      changefreq: 'daily',
+      priority: '0.7',
+    }));
+};
+
 const getMainUrls = (): SitemapUrl[] =>
   MAIN_URLS.map(entry => ({
     ...entry,
@@ -296,6 +326,7 @@ const buildSitemaps = async () => {
 
   let dealerUrls: SitemapUrl[] = [];
   let modelUrls: SitemapUrl[] = [];
+  let listingUrls: SitemapUrl[] = [];
   let blogUrls: SitemapUrl[] = [...blogPostsData]
     .sort((first, second) => new Date(second.date).getTime() - new Date(first.date).getTime())
     .map(post => ({
@@ -306,26 +337,28 @@ const buildSitemaps = async () => {
     }));
 
   if (hasFirebaseConfig) {
-    [dealerUrls, modelUrls, blogUrls] = await Promise.all([
+    [dealerUrls, modelUrls, listingUrls, blogUrls] = await Promise.all([
       getDynamicDealers(),
       getDynamicModels(),
+      getDynamicListings(),
       getDynamicBlogPosts(),
     ]);
   } else {
-    console.warn('Firebase environment variables are missing. Dynamic dealer and model URLs were skipped.');
+    console.warn('Firebase environment variables are missing. Dynamic dealer, model, and listing URLs were skipped.');
   }
 
   const sections: SitemapSection[] = [
     { key: 'main', urls: mainUrls },
     { key: 'dealers', urls: dealerUrls },
     { key: 'models', urls: modelUrls },
+    { key: 'listings', urls: listingUrls },
     { key: 'blog', urls: blogUrls },
   ].filter(section => section.urls.length > 0);
 
   const generatedFiles = await writeSitemapFiles(sections);
 
   console.log(
-    `Wrote sitemap index and ${generatedFiles.length} sitemap file(s): main=${mainUrls.length}, dealers=${dealerUrls.length}, models=${modelUrls.length}, blog=${blogUrls.length}`,
+    `Wrote sitemap index and ${generatedFiles.length} sitemap file(s): main=${mainUrls.length}, dealers=${dealerUrls.length}, models=${modelUrls.length}, listings=${listingUrls.length}, blog=${blogUrls.length}`,
   );
 };
 

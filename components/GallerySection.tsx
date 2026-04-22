@@ -1,4 +1,5 @@
 import React from 'react';
+import OptimizedImage from './OptimizedImage';
 
 interface GallerySectionProps {
   title: string;
@@ -22,7 +23,7 @@ const GallerySection: React.FC<GallerySectionProps> = ({ title, images = [], des
               key={`${imageUrl}-${index}`}
               className="relative h-48 w-80 flex-shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5"
             >
-              <img
+              <OptimizedImage
                 src={imageUrl}
                 alt={`${title} image ${index + 1}`}
                 className="h-full w-full object-cover"

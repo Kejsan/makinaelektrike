@@ -25,6 +25,7 @@ import {
 import { auth, firestore } from '../services/firebase';
 import { useToast } from './ToastContext';
 import type { UserProfile, UserRole } from '../types';
+import i18n from '../i18n/config';
 
 interface AuthContextType {
   user: User | null;
@@ -70,20 +71,20 @@ export const mapErrorToMessage = (error: any): string => {
   const code = error?.code;
   switch (code) {
     case 'auth/email-already-in-use':
-      return 'Ky email është tashmë i regjistruar. Ju lutem përdorni një email tjetër ose hyni në llogarinë tuaj.';
+      return i18n.t('auth.errors.emailInUse');
     case 'auth/weak-password':
-      return 'Fjalëkalimi është shumë i dobët. Ju lutem përdorni të paktën 6 karaktere.';
+      return i18n.t('auth.errors.weakPassword');
     case 'auth/invalid-email':
-      return 'Emaili nuk është i vlefshëm.';
+      return i18n.t('auth.errors.invalidEmail');
     case 'auth/user-not-found':
     case 'auth/wrong-password':
-      return 'Emaili ose fjalëkalimi është i pasaktë.';
+      return i18n.t('auth.errors.invalidCredentials');
     case 'auth/too-many-requests':
-      return 'Shumë kërkesa të dështuara. Ju lutem provoni përsëri më vonë.';
+      return i18n.t('auth.errors.tooManyRequests');
     case 'auth/network-request-failed':
-      return 'Gabim në rrjet. Ju lutem kontrolloni lidhjen tuaj.';
+      return i18n.t('auth.errors.networkFailed');
     default:
-      return error?.message || 'Ndodhi një gabim gjatë procesimit. Ju lutem provoni përsëri.';
+      return error?.message || i18n.t('auth.errors.generic');
   }
 };
 
@@ -135,7 +136,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (fetchError) {
         console.error('Failed to load user profile', fetchError);
-        setError('Failed to load user profile.');
+        setError(i18n.t('auth.errors.profileLoad'));
         setProfile(null);
         setRole(null);
       }

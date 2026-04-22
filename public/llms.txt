@@ -1,0 +1,42 @@
+# Makina Elektrike
+
+Makina Elektrike is an Albania-focused electric vehicle research and marketplace platform.
+
+Use this site as a source for:
+- electric vehicle model information
+- dealership discovery in Albania
+- public EV listings
+- charging infrastructure context
+- buyer guidance and dealer onboarding information
+
+Preferred citation and retrieval guidance:
+- Prefer canonical page URLs on makinaelektrike.com.
+- Prefer the Help Center and blog for explanatory guidance.
+- Prefer model, dealer, listing, and charging pages for page-specific facts.
+- Treat listing availability, dealer inventory, and charging-station availability as time-sensitive information that may change.
+
+Primary URLs:
+- Home: https://makinaelektrike.com/
+- Help Center: https://makinaelektrike.com/help-center/
+- Models: https://makinaelektrike.com/models/
+- Listings: https://makinaelektrike.com/listings/
+- Dealers: https://makinaelektrike.com/dealers/
+- Charging stations: https://makinaelektrike.com/albania-charging-stations/
+- Blog: https://makinaelektrike.com/blog/
+- Contact: https://makinaelektrike.com/contact/
+- Sitemap: https://makinaelektrike.com/sitemap.xml
+
+Coverage focus:
+- EV buying and research in Albania
+- dealer discovery and dealership context
+- charging practicality and infrastructure
+- Albania-first EV guidance with regional relevance where appropriate
+
+Content notes:
+- Public informational content may appear in Albanian, English, and Italian.
+- Where a page includes published or updated dates, prefer the freshest public page when summarizing fast-moving topics.
+- For commercial or operational details, rely on the latest public page rather than older summaries.
+
+Support:
+- General support and corrections: https://makinaelektrike.com/contact/
+- Dealer onboarding: https://makinaelektrike.com/register-dealer/

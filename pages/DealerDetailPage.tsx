@@ -11,6 +11,7 @@ import SEO from '../components/SEO';
 import { BASE_URL } from '../constants/seo';
 import { DEALERSHIP_PLACEHOLDER_IMAGE } from '../constants/media';
 import GallerySection from '../components/GallerySection';
+import OptimizedImage from '../components/OptimizedImage';
 
 const DealerDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -181,7 +182,13 @@ const DealerDetailPage: React.FC = () => {
                 <div className="bg-white/5 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 overflow-hidden">
                     <div className="lg:grid lg:grid-cols-3">
                         <div className="lg:col-span-2 relative">
-                            <img src={heroImage} alt={dealer.name} className="w-full h-64 lg:h-full object-cover" />
+                            <OptimizedImage
+                                src={heroImage}
+                                alt={dealer.name}
+                                fallbackSrc={DEALERSHIP_PLACEHOLDER_IMAGE}
+                                priority
+                                className="w-full h-64 lg:h-full object-cover"
+                            />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent lg:bg-gradient-to-r"></div>
                         </div>
 

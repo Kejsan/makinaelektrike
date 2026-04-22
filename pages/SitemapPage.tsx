@@ -33,6 +33,7 @@ const SitemapPage: React.FC = () => {
         title: t('sitemap.sections.company.title'),
         items: [
           { to: '/about', label: t('header.about') },
+          { to: '/help-center', label: t('header.helpCenter', { defaultValue: 'Help Center' }) },
           { to: '/contact', label: t('footer.contact') },
           { to: '/sitemap', label: t('footer.sitemap') },
         ],

@@ -121,10 +121,6 @@ const Header: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleDiscoverOutsideClick);
   }, []);
 
-  const isDashboardRoute = location.pathname.startsWith('/admin') || 
-                           location.pathname.startsWith('/dealer/dashboard') || 
-                           location.pathname.startsWith('/dealer/listings');
-                           
   // Hide header for master admins on dashboard routes to prevent layout overlaps
   const isAdminDashboard = role === 'admin' && location.pathname.startsWith('/admin');
 
@@ -159,11 +155,10 @@ const Header: React.FC = () => {
 
   const discoverNav = [
     { to: '/about', label: t('header.about') },
+    { to: '/help-center', label: t('header.helpCenter', { defaultValue: 'Help Center' }) },
     { to: '/blog', label: t('header.blog') },
     { to: '/dealers', label: t('header.dealers') },
   ];
-
-  const actionButtonBase = 'h-10 px-4 text-sm font-semibold';
 
   return (
     <header
@@ -376,6 +371,9 @@ const Header: React.FC = () => {
               </Link>
               <Link to="/blog" className={mobileNavLinkClasses('/blog')}>
                 {t('header.blog')}
+              </Link>
+              <Link to="/help-center" className={mobileNavLinkClasses('/help-center')}>
+                {t('header.helpCenter', { defaultValue: 'Help Center' })}
               </Link>
               <Link to="/dealers" className={mobileNavLinkClasses('/dealers')}>
                 {t('header.dealers')}

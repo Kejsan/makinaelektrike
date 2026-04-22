@@ -1,14 +1,61 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Mail, MapPin } from 'lucide-react';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import { useToast } from '../contexts/ToastContext';
+import { submitContactMessage } from '../services/contact';
 
 const ContactPage: React.FC = () => {
   const { t } = useTranslation();
+  const { addToast } = useToast();
   const supportHighlights = t('contactPage.highlights', { returnObjects: true }) as Array<{ title: string; description: string }>;
   const faqItems = t('contactPage.faqItems', { returnObjects: true }) as Array<{ question: string; answer: string }>;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    message: '',
+    company: '',
+  });
+
+  const handleChange = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = event.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      await submitContactMessage({
+        ...formData,
+        locale: document.documentElement.lang || undefined,
+        pagePath: window.location.pathname,
+      });
+
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        message: '',
+        company: '',
+      });
+      addToast(t('contactPage.form.success'), 'success');
+    } catch (error) {
+      console.error('Failed to submit contact form', error);
+      addToast(
+        error instanceof Error ? error.message : t('contactPage.form.error'),
+        'error',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const structuredData = [
     {
@@ -76,7 +123,7 @@ const ContactPage: React.FC = () => {
           </p>
         </div>
         <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6">
-          {supportHighlights.slice(0, 2).map(highlight => (
+          {supportHighlights.map(highlight => (
             <div key={highlight.title} className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
               <h3 className="text-xl font-semibold text-white">{highlight.title}</h3>
               <p className="mt-3 text-gray-300 leading-relaxed">{highlight.description}</p>
@@ -85,14 +132,14 @@ const ContactPage: React.FC = () => {
         </div>
         <div className="mt-12 bg-gradient-to-r from-gray-cyan/20 to-vivid-red/20 border border-white/10 rounded-xl p-8 text-center space-y-4 relative overflow-hidden">
           <div className="relative z-10">
-            <h2 className="text-3xl font-bold text-white">{t('aboutPage.collaborationCtaTitle')}</h2>
-            <p className="mt-3 text-gray-300 text-lg max-w-2xl mx-auto">{t('aboutPage.collaborationCtaDescription')}</p>
+            <h2 className="text-3xl font-bold text-white">{t('contactPage.ctaTitle')}</h2>
+            <p className="mt-3 text-gray-300 text-lg max-w-2xl mx-auto">{t('contactPage.ctaDescription')}</p>
             <div className="pt-6">
               <button
                 onClick={() => document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' })}
                 className="inline-flex justify-center rounded-md border border-transparent bg-vivid-red px-8 py-3 text-base font-medium text-white shadow-sm transition-all hover:bg-opacity-90 hover:shadow-lg hover:shadow-vivid-red/50 focus:outline-none focus:ring-2 focus:ring-vivid-red focus:ring-offset-2"
               >
-                {t('aboutPage.collaborationCtaButton')}
+                {t('contactPage.ctaButton')}
               </button>
             </div>
           </div>
@@ -134,53 +181,90 @@ const ContactPage: React.FC = () => {
             </div>
 
             <div className="rounded-xl border border-white/10 bg-white/5 p-6">
-              <h2 className="text-2xl font-bold text-white">Send us a message</h2>
-              <p className="mt-2 text-gray-300">We usually reply within 1–2 business days.</p>
-              <form action="#" method="POST" className="mt-6 space-y-4">
+              <h2 className="text-2xl font-bold text-white">{t('contactPage.form.title')}</h2>
+              <p className="mt-2 text-gray-300">{t('contactPage.form.subtitle')}</p>
+              <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+                <div className="hidden" aria-hidden="true">
+                  <label htmlFor="company">{t('contactPage.form.honeypot')}</label>
+                  <input
+                    id="company"
+                    name="company"
+                    type="text"
+                    value={formData.company}
+                    onChange={handleChange}
+                    tabIndex={-1}
+                    autoComplete="off"
+                  />
+                </div>
                 <div>
                   <label htmlFor="name" className="sr-only">
-                    Name
+                    {t('common.name')}
                   </label>
                   <input
                     type="text"
                     name="name"
                     id="name"
                     autoComplete="name"
+                    required
+                    value={formData.name}
+                    onChange={handleChange}
                     className="block w-full rounded-md border-gray-600 bg-white/10 px-4 py-3 text-white placeholder-gray-400 shadow-sm focus:border-gray-cyan focus:ring-gray-cyan"
-                    placeholder="Full name"
+                    placeholder={t('contactPage.form.namePlaceholder')}
                   />
                 </div>
                 <div>
                   <label htmlFor="email" className="sr-only">
-                    Email
+                    {t('common.email')}
                   </label>
                   <input
                     type="email"
                     name="email"
                     id="email"
                     autoComplete="email"
+                    required
+                    value={formData.email}
+                    onChange={handleChange}
                     className="block w-full rounded-md border-gray-600 bg-white/10 px-4 py-3 text-white placeholder-gray-400 shadow-sm focus:border-gray-cyan focus:ring-gray-cyan"
-                    placeholder="Email address"
+                    placeholder={t('contactPage.form.emailPlaceholder')}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="phone" className="sr-only">
+                    {t('common.phone')}
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    id="phone"
+                    autoComplete="tel"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="block w-full rounded-md border-gray-600 bg-white/10 px-4 py-3 text-white placeholder-gray-400 shadow-sm focus:border-gray-cyan focus:ring-gray-cyan"
+                    placeholder={t('contactPage.form.phonePlaceholder')}
                   />
                 </div>
                 <div>
                   <label htmlFor="message" className="sr-only">
-                    Message
+                    {t('common.message')}
                   </label>
                   <textarea
                     id="message"
                     name="message"
                     rows={4}
+                    required
+                    value={formData.message}
+                    onChange={handleChange}
                     className="block w-full rounded-md border-gray-600 bg-white/10 px-4 py-3 text-white placeholder-gray-400 shadow-sm focus:border-gray-cyan focus:ring-gray-cyan"
-                    placeholder="Your message"
+                    placeholder={t('contactPage.form.messagePlaceholder')}
                   />
                 </div>
                 <div className="pt-2">
                   <button
                     type="submit"
+                    disabled={isSubmitting}
                     className="inline-flex justify-center rounded-md border border-transparent bg-vivid-red px-6 py-3 text-base font-medium text-white shadow-sm transition-all hover:bg-opacity-90 hover:shadow-lg hover:shadow-vivid-red/50 focus:outline-none focus:ring-2 focus:ring-vivid-red focus:ring-offset-2"
                   >
-                    Submit
+                    {isSubmitting ? t('contactPage.form.submitLoading') : t('contactPage.form.submit')}
                   </button>
                 </div>
               </form>

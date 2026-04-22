@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Listing } from '../../types';
 import { MapPin, Calendar, Gauge, Fuel, Heart } from 'lucide-react';
 import { useFavorites } from '../../hooks/useFavorites';
+import OptimizedImage from '../OptimizedImage';
+import { MODEL_PLACEHOLDER_IMAGE } from '../../constants/media';
 
 interface ListingCardProps {
     listing: Listing;
@@ -13,7 +15,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
     const { t } = useTranslation();
     const { isFavorite, toggleFavorite } = useFavorites();
     const favorited = isFavorite(listing.id);
-    const mainImage = listing.images && listing.images.length > 0 ? listing.images[0] : '/placeholder-car.jpg';
+    const mainImage = listing.images && listing.images.length > 0 ? listing.images[0] : listing.image_url || MODEL_PLACEHOLDER_IMAGE;
 
     return (
         <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-gray-cyan/50 transition duration-300 group flex flex-col h-full relative">
@@ -29,13 +31,11 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
                 <Heart size={18} className={`${favorited ? 'fill-vivid-red text-vivid-red' : 'fill-transparent'}`} />
             </button>
             <Link to={`/listings/${listing.id}`} className="relative aspect-[16/10] overflow-hidden block">
-                <img
+                <OptimizedImage
                     src={mainImage}
                     alt={`${listing.make} ${listing.model}`}
+                    fallbackSrc={MODEL_PLACEHOLDER_IMAGE}
                     className="w-full h-full object-cover transition duration-500 group-hover:scale-110"
-                    onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=2070&auto=format&fit=crop';
-                    }}
                 />
                 <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
                     <span className="text-gray-cyan font-bold font-mono">

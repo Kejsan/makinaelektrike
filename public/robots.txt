@@ -1,6 +1,6 @@
 # =========================
 # MakinaElektrike robots.txt
-# Updated: 2026-03-30
+# Updated: 2026-04-22
 # =========================
 
 Sitemap: https://makinaelektrike.com/sitemap.xml
@@ -34,7 +34,6 @@ Disallow: /*?*page=
 Disallow: /*?*q=
 Disallow: /*?*lang=
 Allow: /*$
-Crawl-delay: 5
 
 # Major search engines (explicit allow)
 User-agent: Googlebot
@@ -51,11 +50,17 @@ User-agent: Applebot
 Disallow:
 
 # AI / research crawlers (allowed)
+User-agent: OAI-SearchBot
+Disallow:
+User-agent: ChatGPT-User
+Disallow:
 User-agent: GPTBot
 Disallow:
 User-agent: CCBot
 Disallow:
 User-agent: ClaudeBot
+Disallow:
+User-agent: Claude-User
 Disallow:
 User-agent: Google-Extended
 Disallow:

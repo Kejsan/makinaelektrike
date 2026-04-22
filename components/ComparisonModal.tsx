@@ -49,7 +49,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, allM
     );
     
     const comparisonSpecs = useMemo(() => [
-        { key: 'brand', label: t('modelDetails.brand') },
+        { key: 'brand', label: t('modelsPage.brand') },
         { key: 'model_name', label: t('modelsPage.sortOptions.model_asc').replace(' (A-Z)','') },
         { key: 'body_type', label: t('modelsPage.bodyType') },
         { key: 'battery_capacity', label: t('modelDetails.battery'), unit: ' kWh' },
@@ -77,7 +77,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, allM
                         <h2 className="text-2xl font-bold text-white">{t('compare.title')}</h2>
                         <p className="text-sm text-gray-400">{t('compare.selectPrompt')}</p>
                     </div>
-                    <button onClick={onClose} className={modalCloseButtonClass} aria-label="Close">
+                    <button onClick={onClose} className={modalCloseButtonClass} aria-label={t('common.close')}>
                         <X size={24} />
                     </button>
                 </div>
@@ -168,7 +168,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, allM
                                                 {selectedModels.map(model => (
                                                     <td key={`${model.id}-${spec.key}`} className="p-3 text-center text-white border-l border-white/10">
                                                         {model[spec.key as keyof Model] ? 
-                                                            `${model[spec.key as keyof Model]}${spec.unit || ''}` : 'N/A'
+                                                            `${model[spec.key as keyof Model]}${spec.unit || ''}` : t('compare.notAvailable')
                                                         }
                                                     </td>
                                                 ))}

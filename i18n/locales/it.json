@@ -18,7 +18,10 @@
     "account": "Account",
     "accountMenuTitle": "Azioni rapide",
     "dealerDashboard": "Dashboard concessionario",
-    "awaitingApproval": "In attesa di approvazione"
+    "awaitingApproval": "In attesa di approvazione",
+    "listings": "Auto in vendita",
+    "helpCenter": "Centro assistenza",
+    "discover": "Scopri"
   },
   "footer": {
     "description": "La tua guida ai veicoli elettrici in Albania. Trova concessionari, confronta modelli e unisciti alla rivoluzione elettrica.",
@@ -37,16 +40,41 @@
     "rightsReserved": "Tutti i diritti riservati.",
     "socialTitle": "Rimani connesso",
     "moreInfo": "Altre informazioni legali",
-    "legalSummary": "Avviso importante"
+    "legalSummary": "Avviso importante",
+    "legalBody": "Le informazioni presenti su questo sito sono fornite nello stato in cui si trovano e secondo disponibilita, senza garanzie di alcun tipo. Makina Elektrike non e responsabile per omissioni, inesattezze o altri errori nelle informazioni pubblicate. Ogni garanzia relativa a tali informazioni e esclusa. La riproduzione totale o parziale di qualsiasi parte di questo sito, in qualunque forma o supporto, e vietata senza previa autorizzazione scritta. Marchi e loghi di produttori, concessionari, software e hardware citati o promossi restano di proprieta dei rispettivi titolari."
   },
   "common": {
     "unknownCity": "Località sconosciuta",
     "loading": "Caricamento...",
     "cancel": "Annulla",
+    "close": "Chiudi",
     "anyCity": "Qualsiasi città",
     "anyBrand": "Qualsiasi marca",
     "results": "Risultati",
-    "filters": "Filtri"
+    "filters": "Filtri",
+    "edit": "Modifica",
+    "delete": "Elimina",
+    "saving": "Salvataggio...",
+    "save": "Salva",
+    "confirmDelete": "Sei sicuro di voler eliminare questo annuncio?",
+    "deletedSuccess": "Eliminato con successo",
+    "deleteFailed": "Eliminazione non riuscita",
+    "updatedSuccess": "Aggiornato con successo",
+    "createdSuccess": "Creato con successo",
+    "saveFailed": "Salvataggio non riuscito",
+    "statusUpdated": "Stato aggiornato con successo",
+    "updateFailed": "Aggiornamento non riuscito",
+    "clearFilters": "Azzera filtri",
+    "viewDetails": "Vedi dettagli",
+    "viewProfile": "Vedi profilo",
+    "backToListings": "Torna agli annunci",
+    "name": "Nome",
+    "namePlaceholder": "Il tuo nome",
+    "email": "Email",
+    "phone": "Telefono",
+    "message": "Messaggio",
+    "yes": "Sì",
+    "no": "No"
   },
   "home": {
     "heroTitle": "Guida il futuro.",
@@ -461,6 +489,22 @@
         "description": "Hai bisogno di aiuto per scegliere un EV o un caricatore? Inviaci la tua domanda e ti indirizzeremo verso le risorse giuste."
       }
     ],
+    "ctaTitle": "Ti serve una risposta diretta?",
+    "ctaDescription": "Usa il modulo qui sotto per supporto, correzioni, partnership o richieste stampa.",
+    "ctaButton": "Invia un messaggio",
+    "form": {
+      "title": "Mandaci un messaggio",
+      "subtitle": "Di solito rispondiamo entro 1-2 giorni lavorativi.",
+      "namePlaceholder": "Nome e cognome",
+      "emailPlaceholder": "Indirizzo email",
+      "phonePlaceholder": "+355 69...",
+      "messagePlaceholder": "Come possiamo aiutarti?",
+      "submit": "Invia",
+      "submitLoading": "Invio in corso...",
+      "success": "Il tuo messaggio è stato inviato con successo.",
+      "error": "Non siamo riusciti a inviare il messaggio. Riprova.",
+      "honeypot": "Azienda"
+    },
     "faqTitle": "FAQ contatti",
     "faqSubtitle": "Informazioni su tempi di risposta e supporto.",
     "faqItems": [
@@ -477,6 +521,136 @@
         "answer": "Il team principale opera a Tirana con il supporto di partner nelle principali città albanesi."
       }
     ]
+  },
+  "search": {
+    "placeholder": "Cerca tra gli elementi salvati"
+  },
+  "filter": {
+    "newest": "Più recenti",
+    "alphabetical": "Alfabetico",
+    "price_asc": "Prezzo (crescente)",
+    "price_desc": "Prezzo (decrescente)",
+    "year_desc": "Anno (più recente)",
+    "year_asc": "Anno (più vecchio)"
+  },
+  "listings": {
+    "title": "Auto in vendita",
+    "seoTitle": "Auto elettriche in vendita | Makina Elektrike",
+    "seoDesc": "Consulta la migliore selezione di veicoli elettrici in Albania.",
+    "countSuffix": "veicoli disponibili",
+    "make": "Marca",
+    "priceRange": "Fascia di prezzo",
+    "year": "Anno",
+    "noResults": "Nessun risultato trovato",
+    "tryAdjusting": "Prova a modificare i filtri o i criteri di ricerca.",
+    "contactSeller": "Contatta il venditore",
+    "callNow": "Chiama ora",
+    "specifications": "Specifiche",
+    "description": "Descrizione",
+    "soldBy": "Venduto da",
+    "verifiedDealer": "Concessionario verificato",
+    "notFoundTitle": "Annuncio non trovato",
+    "fields": {
+      "make": "Marca",
+      "model": "Modello",
+      "year": "Anno",
+      "mileage": "Chilometraggio",
+      "fuelType": "Alimentazione",
+      "transmission": "Trasmissione",
+      "drivetrain": "Trazione",
+      "bodyType": "Carrozzeria",
+      "color": "Colore",
+      "battery": "Batteria",
+      "range": "Autonomia"
+    }
+  },
+  "compare": {
+    "title": "Confronta modelli",
+    "selectPrompt": "Scegli fino a 3 modelli da confrontare fianco a fianco.",
+    "searchPlaceholder": "Cerca per marca o modello",
+    "noModelsSelected": "Seleziona dei modelli per iniziare il confronto.",
+    "clear": "Azzera selezione",
+    "remove": "Rimuovi",
+    "notAvailable": "N/D"
+  },
+  "enquiry": {
+    "title": "Contatta il venditore",
+    "subtitle": "Invia un messaggio al concessionario riguardo a questo veicolo.",
+    "defaultMessage": "Ciao, sono interessato a questa {{make}} {{model}}. È ancora disponibile?",
+    "success": "Messaggio inviato con successo.",
+    "error": "Invio del messaggio non riuscito. Riprova.",
+    "send": "Invia messaggio"
+  },
+  "registerUserPage": {
+    "metaTitle": "Crea il tuo account | Makina Elektrike",
+    "metaDescription": "Registrati per salvare i tuoi concessionari e modelli elettrici preferiti in Albania.",
+    "metaKeywords": [
+      "registrazione",
+      "auto elettriche Albania",
+      "preferiti salvati",
+      "account Makina Elektrike"
+    ],
+    "title": "Crea il tuo account",
+    "subtitle": "Unisciti a Makina Elektrike per salvare i concessionari e i modelli di veicoli elettrici che preferisci.",
+    "benefitsTitle": "Perché registrarti?",
+    "benefits": [
+      "Ricevi aggiornamenti selezionati sui nuovi modelli elettrici in arrivo in Albania.",
+      "Salva i concessionari affidabili e costruisci una short-list prima dell'acquisto.",
+      "Esporta i dati salvati e confronta le specifiche quando ne hai bisogno."
+    ],
+    "fields": {
+      "firstName": "Nome",
+      "lastName": "Cognome",
+      "phone": "Numero di telefono",
+      "email": "Indirizzo email",
+      "password": "Password",
+      "confirmPassword": "Conferma password"
+    },
+    "validation": {
+      "required": "Compila tutti i campi obbligatori.",
+      "passwordMismatch": "Le password non corrispondono."
+    },
+    "submit": "Crea account",
+    "submitLoading": "Creazione account...",
+    "success": "Registrazione completata con successo. Benvenuto su Makina Elektrike.",
+    "error": "Registrazione non riuscita. Riprova."
+  },
+  "registerDealerPage": {
+    "metaTitle": "Registra il concessionario | Makina Elektrike",
+    "metaDescription": "Candidati per entrare in Makina Elektrike come concessionario autorizzato di veicoli elettrici in Albania.",
+    "metaKeywords": [
+      "registrazione concessionario",
+      "dealer auto elettriche Albania",
+      "partner Makina Elektrike"
+    ],
+    "title": "Registrazione concessionario",
+    "subtitle": "Invia i tuoi dati per entrare in Makina Elektrike come concessionario affidabile di veicoli elettrici.",
+    "benefitsTitle": "Vantaggi di entrare in Makina Elektrike",
+    "benefits": [
+      "Raggiungi gli acquirenti EV in tutta l'Albania con annunci localizzati e ottimizzati per la ricerca.",
+      "Pubblica informazioni dettagliate sui modelli e aggiorna l'inventario in tempo reale.",
+      "Accedi a supporto marketing, analisi e notifiche lead dal nostro team."
+    ],
+    "fields": {
+      "companyName": "Nome azienda",
+      "contactName": "Contatto principale",
+      "phone": "Numero di contatto",
+      "city": "Città",
+      "website": "Sito web",
+      "websitePlaceholder": "https://",
+      "email": "Email aziendale",
+      "notes": "Informazioni sul concessionario",
+      "notesPlaceholder": "Raccontaci il tuo inventario, le specializzazioni e l'esperienza.",
+      "password": "Password",
+      "confirmPassword": "Conferma password"
+    },
+    "validation": {
+      "required": "Compila tutti i campi obbligatori.",
+      "passwordMismatch": "Le password non corrispondono."
+    },
+    "submit": "Invia candidatura",
+    "submitLoading": "Invio candidatura...",
+    "success": "Registrazione ricevuta. Il nostro team esaminerà a breve le informazioni del concessionario."
   },
   "favoritesPage": {
     "title": "I tuoi preferiti",
@@ -538,7 +712,24 @@
     "exportDealersHeading": "Concessionari",
     "exportModelsHeading": "Modelli",
     "noItemsToExport": "Aggiungi concessionari o modelli ai preferiti per esportarli.",
-    "exportSuccess": "Preferiti esportati con successo."
+    "exportSuccess": "Preferiti esportati con successo.",
+    "collection": "Raccolta",
+    "share": "Condividi",
+    "export": "Esporta",
+    "exitCompare": "Esci dal confronto",
+    "startCompare": "Avvia confronto",
+    "compareTitle": "Confronta modelli",
+    "compareInstruction": "Seleziona fino a 3 modelli da confrontare fianco a fianco.",
+    "compareNow": "Confronta ora",
+    "compareModalTitle": "Confronto modelli",
+    "sideBySide": "Confronto specifiche fianco a fianco",
+    "spec": "Specifica",
+    "year": "Anno",
+    "weight": "Peso",
+    "cargo": "Bagagliaio",
+    "emptyTitle": "Nessun {{tab}} salvato",
+    "emptyText": "Sfoglia i nostri {{tab}} e fai clic sull'icona del cuore per salvarli qui e ritrovarli più tardi.",
+    "newest": "Più recenti"
   },
   "sitemap": {
     "title": "Mappa del sito",
@@ -868,7 +1059,17 @@
       "account in attesa",
       "onboarding Makina Elektrike"
     ],
-    "awaitingNextSteps": "Puoi prepararci eventuali documenti aggiuntivi o contattarci se desideri aggiornare i dati durante la verifica."
+    "awaitingNextSteps": "Puoi prepararci eventuali documenti aggiuntivi o contattarci se desideri aggiornare i dati durante la verifica.",
+    "errors": {
+      "emailInUse": "Questo indirizzo email è già registrato. Usa un altro indirizzo o accedi al tuo account esistente.",
+      "weakPassword": "La password è troppo debole. Usa almeno 6 caratteri.",
+      "invalidEmail": "Inserisci un indirizzo email valido.",
+      "invalidCredentials": "L'indirizzo email o la password non sono corretti.",
+      "tooManyRequests": "Troppi tentativi non riusciti. Riprova più tardi.",
+      "networkFailed": "Errore di rete. Controlla la connessione e riprova.",
+      "generic": "Si è verificato un errore. Riprova.",
+      "profileLoad": "Impossibile caricare il profilo utente."
+    }
   },
   "admin": {
     "loginTitle": "Accesso admin",
