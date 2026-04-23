@@ -6,7 +6,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { SITE_LOGO, SITE_LOGO_ALT } from '../constants/media';
 import Link from './LocalizedLink';
 import useLocalizedNavigate from '../hooks/useLocalizedNavigate';
-import { buildLocalizedPath, isLocalizablePath, normalizeAppLocale } from '../utils/localizedRouting';
+import {
+  buildLocalizedPath,
+  isLocalizablePath,
+  normalizeAppLocale,
+  stripLocalePrefix,
+} from '../utils/localizedRouting';
 
 const LanguageSwitcher: React.FC = () => {
   const { i18n, t } = useTranslation();
@@ -140,11 +145,13 @@ const Header: React.FC = () => {
     return null;
   }
 
+  const currentPathname = stripLocalePrefix(location.pathname).pathname;
+
   const isActivePath = (path: string) => {
     if (path === '/') {
-      return location.pathname === '/';
+      return currentPathname === '/';
     }
-    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+    return currentPathname === path || currentPathname.startsWith(`${path}/`);
   };
 
   const navLinkClasses = (path: string) =>

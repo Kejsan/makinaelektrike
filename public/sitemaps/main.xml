@@ -1,93 +1,393 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://makinaelektrike.com/</loc>
-    <lastmod>2026-04-22</lastmod>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/en</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/it</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/" />
+    <lastmod>2026-04-23</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://makinaelektrike.com/dealers/</loc>
-    <lastmod>2026-04-22</lastmod>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/dealers/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/dealers/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/dealers/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/dealers/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/en/dealers/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/dealers/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/dealers/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/dealers/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/dealers/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/it/dealers/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/dealers/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/dealers/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/dealers/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/dealers/" />
+    <lastmod>2026-04-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://makinaelektrike.com/models/</loc>
-    <lastmod>2026-04-22</lastmod>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/models/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/models/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/models/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/models/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/en/models/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/models/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/models/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/models/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/models/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/it/models/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/models/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/models/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/models/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/models/" />
+    <lastmod>2026-04-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://makinaelektrike.com/listings/</loc>
-    <lastmod>2026-04-22</lastmod>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/listings/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/listings/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/listings/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/listings/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/en/listings/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/listings/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/listings/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/listings/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/listings/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/it/listings/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/listings/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/listings/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/listings/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/listings/" />
+    <lastmod>2026-04-23</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://makinaelektrike.com/albania-charging-stations/</loc>
-    <lastmod>2026-04-22</lastmod>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/albania-charging-stations/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/albania-charging-stations/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/albania-charging-stations/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/albania-charging-stations/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/en/albania-charging-stations/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/albania-charging-stations/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/albania-charging-stations/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/albania-charging-stations/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/albania-charging-stations/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/it/albania-charging-stations/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/albania-charging-stations/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/albania-charging-stations/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/albania-charging-stations/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/albania-charging-stations/" />
+    <lastmod>2026-04-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://makinaelektrike.com/blog/</loc>
-    <lastmod>2026-04-22</lastmod>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/blog/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/blog/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/blog/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/blog/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/en/blog/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/blog/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/blog/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/blog/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/blog/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/it/blog/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/blog/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/blog/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/blog/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/blog/" />
+    <lastmod>2026-04-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://makinaelektrike.com/help-center/</loc>
-    <lastmod>2026-04-22</lastmod>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/help-center/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/help-center/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/help-center/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/help-center/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/en/help-center/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/help-center/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/help-center/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/help-center/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/help-center/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/it/help-center/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/help-center/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/help-center/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/help-center/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/help-center/" />
+    <lastmod>2026-04-23</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://makinaelektrike.com/about/</loc>
-    <lastmod>2026-04-22</lastmod>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/about/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/about/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/about/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/about/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/en/about/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/about/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/about/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/about/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/about/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/it/about/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/about/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/about/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/about/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/about/" />
+    <lastmod>2026-04-23</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://makinaelektrike.com/contact/</loc>
-    <lastmod>2026-04-22</lastmod>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/contact/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/contact/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/contact/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/contact/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/en/contact/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/contact/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/contact/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/contact/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/contact/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/it/contact/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/contact/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/contact/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/contact/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/contact/" />
+    <lastmod>2026-04-23</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://makinaelektrike.com/sitemap/</loc>
-    <lastmod>2026-04-22</lastmod>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/sitemap/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/sitemap/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/sitemap/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/sitemap/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/en/sitemap/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/sitemap/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/sitemap/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/sitemap/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/sitemap/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/it/sitemap/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/sitemap/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/sitemap/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/sitemap/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/sitemap/" />
+    <lastmod>2026-04-23</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
     <loc>https://makinaelektrike.com/privacy-policy/</loc>
-    <lastmod>2026-04-22</lastmod>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/privacy-policy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/privacy-policy/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/privacy-policy/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/privacy-policy/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/en/privacy-policy/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/privacy-policy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/privacy-policy/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/privacy-policy/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/privacy-policy/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/it/privacy-policy/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/privacy-policy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/privacy-policy/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/privacy-policy/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/privacy-policy/" />
+    <lastmod>2026-04-23</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://makinaelektrike.com/terms/</loc>
-    <lastmod>2026-04-22</lastmod>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/terms/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/terms/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/terms/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/terms/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/en/terms/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/terms/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/terms/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/terms/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/terms/" />
+    <lastmod>2026-04-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://makinaelektrike.com/it/terms/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/terms/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/terms/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/terms/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/terms/" />
+    <lastmod>2026-04-23</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://makinaelektrike.com/cookie-policy/</loc>
-    <lastmod>2026-04-22</lastmod>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/cookie-policy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/cookie-policy/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/cookie-policy/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/cookie-policy/" />
+    <lastmod>2026-04-23</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://makinaelektrike.com/register/</loc>
-    <lastmod>2026-04-22</lastmod>
+    <loc>https://makinaelektrike.com/en/cookie-policy/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/cookie-policy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/cookie-policy/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/cookie-policy/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/cookie-policy/" />
+    <lastmod>2026-04-23</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.4</priority>
+    <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://makinaelektrike.com/register-dealer/</loc>
-    <lastmod>2026-04-22</lastmod>
+    <loc>https://makinaelektrike.com/it/cookie-policy/</loc>
+    <xhtml:link rel="alternate" hreflang="sq-AL" href="https://makinaelektrike.com/cookie-policy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://makinaelektrike.com/en/cookie-policy/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://makinaelektrike.com/it/cookie-policy/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://makinaelektrike.com/cookie-policy/" />
+    <lastmod>2026-04-23</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.4</priority>
+    <priority>0.3</priority>
   </url>
 </urlset>

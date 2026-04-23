@@ -1,14 +1,20 @@
 
-import React, { useContext } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import BlogCard from '../components/BlogCard';
 import { DataContext } from '../contexts/DataContext';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import { getLocalizedBlogPost } from '../utils/localizedBlogPost';
 
 const BlogPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const { blogPosts, loading } = useContext(DataContext);
+  const activeLanguage = i18n.resolvedLanguage || i18n.language;
+  const localizedBlogPosts = useMemo(
+    () => blogPosts.map(post => getLocalizedBlogPost(post, activeLanguage)),
+    [blogPosts, activeLanguage],
+  );
   const insights = t('blogPage.insights', { returnObjects: true }) as Array<{ title: string; description: string }>;
   const faqItems = t('blogPage.faqItems', { returnObjects: true }) as Array<{ question: string; answer: string }>;
 
@@ -24,7 +30,7 @@ const BlogPage: React.FC = () => {
       '@context': 'https://schema.org',
       '@type': 'ItemList',
       name: t('blogPage.metaTitle'),
-      itemListElement: blogPosts.map((post, index) => ({
+      itemListElement: localizedBlogPosts.map((post, index) => ({
         '@type': 'ListItem',
         position: index + 1,
         name: post.title,
@@ -81,7 +87,7 @@ const BlogPage: React.FC = () => {
           <p className="mt-4 text-gray-300 max-w-3xl mx-auto leading-relaxed">{t('blogPage.introSubtitle')}</p>
         </div>
         <div className="mt-12 max-w-lg mx-auto grid gap-8 lg:grid-cols-3 lg:max-w-none">
-          {blogPosts.map(post => (
+          {localizedBlogPosts.map(post => (
             <BlogCard key={post.id} post={post} />
           ))}
         </div>

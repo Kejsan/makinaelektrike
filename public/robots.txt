@@ -19,6 +19,23 @@ Disallow: /api/
 Disallow: /private/
 Disallow: /_internal/
 Disallow: /studio/
+Disallow: /dealer/
+Disallow: /login
+Disallow: /register
+Disallow: /register-dealer
+Disallow: /favorites
+Disallow: /awaiting-approval
+Disallow: /__prerendered/
+Disallow: /en/login
+Disallow: /en/register
+Disallow: /en/register-dealer
+Disallow: /en/favorites
+Disallow: /en/awaiting-approval
+Disallow: /it/login
+Disallow: /it/register
+Disallow: /it/register-dealer
+Disallow: /it/favorites
+Disallow: /it/awaiting-approval
 Disallow: /404
 Disallow: /500
 # do NOT block JS/CSS folders used for rendering

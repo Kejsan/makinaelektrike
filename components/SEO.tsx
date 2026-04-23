@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import {
+  type AppLocale,
   DEFAULT_LOCALE,
   SUPPORTED_LOCALES,
   buildAbsoluteLocalizedUrl,
@@ -40,6 +41,8 @@ export interface SEOProps {
   description: string;
   keywords?: string[];
   canonical?: string;
+  canonicalLocale?: AppLocale;
+  alternateLocales?: AppLocale[];
   image?: string;
   robots?: string;
   openGraph?: OpenGraphConfig;
@@ -93,6 +96,43 @@ const toAbsoluteMetaUrl = (value?: string | null) => {
   return new URL(value, window.location.origin).toString();
 };
 
+const resolveLocalizedAbsoluteUrl = (
+  value: string,
+  locale: AppLocale,
+) => {
+  if (!value || /^(data:|mailto:|tel:|#)/i.test(value)) {
+    return value;
+  }
+
+  if (/^https?:/i.test(value)) {
+    try {
+      const parsed = new URL(value);
+      const localizedPath = isLocalizablePath(parsed.pathname)
+        ? buildLocalizedPath(`${parsed.pathname}${parsed.search}${parsed.hash}`, locale)
+        : `${parsed.pathname}${parsed.search}${parsed.hash}`;
+
+      return `${parsed.origin}${localizedPath}`;
+    } catch {
+      return value;
+    }
+  }
+
+  const origin =
+    typeof window !== 'undefined'
+      ? window.location.origin
+      : undefined;
+
+  if (!origin) {
+    return value;
+  }
+
+  const localizedValue = isLocalizablePath(value)
+    ? buildLocalizedPath(value, locale)
+    : value;
+
+  return new URL(localizedValue, origin).toString();
+};
+
 const toCanonicalBasePath = (value?: string | null) => {
   if (!value) {
     if (typeof window === 'undefined') {
@@ -113,7 +153,7 @@ const toCanonicalBasePath = (value?: string | null) => {
   return stripLocalePrefix(value).pathname;
 };
 
-const getCanonicalOrigin = (value?: string | null) => {
+const getUrlOrigin = (value?: string | null) => {
   if (value && /^https?:/i.test(value)) {
     try {
       return new URL(value).origin;
@@ -125,14 +165,14 @@ const getCanonicalOrigin = (value?: string | null) => {
   return typeof window !== 'undefined' ? window.location.origin : undefined;
 };
 
-const getDefaultOpenGraphLocale = () => {
-  if (typeof document === 'undefined') {
-    return 'sq_AL';
-  }
+const getDefaultOpenGraphLocale = (language?: string) => {
+  const normalizedLanguage =
+    (language ||
+      (typeof document !== 'undefined' ? document.documentElement.lang : DEFAULT_LOCALE))
+      .toLowerCase()
+      .split('-')[0];
 
-  const language = document.documentElement.lang.toLowerCase().split('-')[0];
-
-  switch (language) {
+  switch (normalizedLanguage) {
     case 'en':
       return 'en_US';
     case 'it':
@@ -148,6 +188,8 @@ const SEO = ({
   description,
   keywords,
   canonical,
+  canonicalLocale,
+  alternateLocales = [...SUPPORTED_LOCALES],
   image,
   robots = 'index, follow',
   openGraph,
@@ -160,17 +202,19 @@ const SEO = ({
     document.title = title;
 
     const cleanups: Array<() => void> = [];
+    const canonicalSource =
+      canonical ??
+      (typeof window !== 'undefined'
+        ? `${window.location.pathname}${window.location.search}${window.location.hash}`
+        : '/');
     const currentLocale =
       typeof window !== 'undefined'
         ? normalizeAppLocale(stripLocalePrefix(window.location.pathname).locale)
         : DEFAULT_LOCALE;
-    const canonicalBasePath = toCanonicalBasePath(canonical);
-    const resolvedCanonical =
-      canonicalBasePath && isLocalizablePath(canonicalBasePath)
-        ? buildLocalizedPath(canonicalBasePath, currentLocale)
-        : canonical;
-    const canonicalHref = toAbsoluteMetaUrl(resolvedCanonical ?? canonical);
-    const canonicalOrigin = getCanonicalOrigin(canonical);
+    const metadataLocale = canonicalLocale ?? currentLocale;
+    const canonicalBasePath = toCanonicalBasePath(canonicalSource);
+    const canonicalHref = resolveLocalizedAbsoluteUrl(canonicalSource, metadataLocale);
+    const canonicalOrigin = getUrlOrigin(canonicalSource);
     const shouldAddAlternateLinks =
       !robots.toLowerCase().includes('noindex') &&
       Boolean(canonicalOrigin) &&
@@ -228,11 +272,14 @@ const SEO = ({
       const {
         title: ogTitle = title,
         description: ogDescription = description,
-        url: ogUrl = canonicalHref ?? canonical,
         type = 'website',
-        locale = getDefaultOpenGraphLocale(),
+        locale = getDefaultOpenGraphLocale(currentLocale),
         siteName = 'Makina Elektrike',
       } = openGraph || {};
+      const ogUrl = resolveLocalizedAbsoluteUrl(
+        openGraph?.url ?? canonicalSource,
+        metadataLocale,
+      );
 
       cleanups.push(
         setMetaTag(
@@ -272,7 +319,7 @@ const SEO = ({
               return meta;
             },
             element => {
-              element.setAttribute('content', toAbsoluteMetaUrl(ogUrl) ?? ogUrl);
+              element.setAttribute('content', ogUrl);
             },
           ),
         );
@@ -506,7 +553,7 @@ const SEO = ({
     let alternateLinksCleanup: (() => void) | undefined;
     if (shouldAddAlternateLinks && canonicalOrigin) {
       const generatedAlternateLinks = [
-        ...SUPPORTED_LOCALES.map(locale => {
+        ...alternateLocales.map(locale => {
           const link = document.createElement('link');
           link.setAttribute('rel', 'alternate');
           link.setAttribute('hreflang', toHreflang(locale));
@@ -560,6 +607,8 @@ const SEO = ({
     description,
     keywords?.join(',') ?? '',
     canonical,
+    canonicalLocale,
+    alternateLocales.join(','),
     robots,
     JSON.stringify(openGraph ?? {}),
     JSON.stringify(twitter ?? {}),

@@ -9,6 +9,7 @@
     "build": "vite build",
     "postbuild": "tsx scripts/prerender-public-pages.ts",
     "preview": "vite preview",
+    "seo:validate": "tsx scripts/validate-seo-output.ts",
     "test": "vitest run",
     "seed:stations": "tsx scripts/seedChargingStations.ts",
     "backfill:dealer-ids": "tsx scripts/backfillDealerListingIds.ts"

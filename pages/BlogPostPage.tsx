@@ -8,6 +8,12 @@ import OptimizedImage from '../components/OptimizedImage';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import Link from '../components/LocalizedLink';
+import {
+  getBlogAlternateLocales,
+  getBlogContentLocale,
+  getLocalizedBlogPost,
+} from '../utils/localizedBlogPost';
+import { DEFAULT_LOCALE, normalizeAppLocale } from '../utils/localizedRouting';
 
 const formatDate = (value: string, language: string) => {
   try {
@@ -54,8 +60,17 @@ const BlogPostPage: React.FC = () => {
     () => blogPosts.find(entry => entry.slug === slug),
     [blogPosts, slug],
   );
+  const activeLanguage = i18n.resolvedLanguage || i18n.language;
+  const activeLocale = normalizeAppLocale(activeLanguage);
+  const localizedPost = useMemo(
+    () => (post ? getLocalizedBlogPost(post, activeLanguage) : null),
+    [post, activeLanguage],
+  );
+  const blogContentLocale = post ? getBlogContentLocale(post, activeLanguage) : DEFAULT_LOCALE;
+  const isLocalizedFallback = Boolean(post) && activeLocale !== blogContentLocale;
+  const alternateLocales = post ? getBlogAlternateLocales(post) : undefined;
 
-  if (!post) {
+  if (!localizedPost) {
     const missingCanonical = slug ? `${BASE_URL}/blog/${slug}/` : `${BASE_URL}/blog/`;
 
     return (
@@ -93,8 +108,9 @@ const BlogPostPage: React.FC = () => {
     );
   }
 
-  const canonical = `${BASE_URL}/blog/${post.slug}`;
-  const faqEntities = post.faqs?.map(faq => ({
+  const canonical = localizedPost.canonicalUrl || `${BASE_URL}/blog/${localizedPost.slug}`;
+  const robots = isLocalizedFallback ? 'noindex, follow' : localizedPost.metaRobots;
+  const faqEntities = localizedPost.faqs?.map(faq => ({
     '@type': 'Question',
     name: faq.question,
     acceptedAnswer: {
@@ -107,13 +123,13 @@ const BlogPostPage: React.FC = () => {
     {
       '@context': 'https://schema.org',
       '@type': 'BlogPosting',
-      headline: post.title,
-      description: post.metaDescription,
-      image: [post.imageUrl],
-      datePublished: post.date,
+      headline: localizedPost.title,
+      description: localizedPost.metaDescription,
+      image: [localizedPost.imageUrl],
+      datePublished: localizedPost.date,
       author: {
         '@type': 'Person',
-        name: post.author,
+        name: localizedPost.author,
       },
       publisher: {
         '@type': 'Organization',
@@ -121,8 +137,8 @@ const BlogPostPage: React.FC = () => {
         url: BASE_URL,
       },
       mainEntityOfPage: canonical,
-      keywords: post.tags.join(', '),
-      articleSection: post.tags,
+      keywords: localizedPost.tags.join(', '),
+      articleSection: localizedPost.tags,
     },
   ];
 
@@ -137,29 +153,32 @@ const BlogPostPage: React.FC = () => {
   return (
     <article className="py-12">
       <SEO
-        title={post.metaTitle}
-        description={post.metaDescription}
-        keywords={post.tags}
+        title={localizedPost.metaTitle}
+        description={localizedPost.metaDescription}
+        keywords={localizedPost.tags}
         canonical={canonical}
+        canonicalLocale={isLocalizedFallback ? DEFAULT_LOCALE : blogContentLocale}
+        alternateLocales={alternateLocales}
+        robots={robots}
         openGraph={{
-          title: post.metaTitle,
-          description: post.metaDescription,
+          title: localizedPost.metaTitle,
+          description: localizedPost.metaDescription,
           url: canonical,
           type: 'article',
-          images: [post.imageUrl],
+          images: [localizedPost.imageUrl],
         }}
         twitter={{
-          title: post.metaTitle,
-          description: post.metaDescription,
-          image: post.imageUrl,
+          title: localizedPost.metaTitle,
+          description: localizedPost.metaDescription,
+          image: localizedPost.imageUrl,
           site: '@makinaelektrike',
         }}
         structuredData={structuredData}
       />
       <div className="relative h-72 sm:h-96">
         <OptimizedImage
-          src={post.imageUrl}
-          alt={post.title}
+          src={localizedPost.imageUrl}
+          alt={localizedPost.title}
           priority
           className="absolute inset-0 h-full w-full object-cover"
         />
@@ -170,16 +189,16 @@ const BlogPostPage: React.FC = () => {
             {t('blogPage.backToAllPosts')}
           </Link>
           <div className="flex flex-wrap items-center gap-3 text-gray-200 text-sm">
-            <span>{formatDate(post.date, i18n.resolvedLanguage || i18n.language)}</span>
-            <span className="flex items-center gap-1"><Clock size={16} /> {post.readTime}</span>
-            <span>{t('blogPage.authorPrefix')} {post.author}</span>
+            <span>{formatDate(localizedPost.date, activeLanguage)}</span>
+            <span className="flex items-center gap-1"><Clock size={16} /> {localizedPost.readTime}</span>
+            <span>{t('blogPage.authorPrefix')} {localizedPost.author}</span>
           </div>
           <h1 className="mt-4 text-3xl sm:text-5xl font-extrabold text-white drop-shadow-lg">
-            {post.title}
+            {localizedPost.title}
           </h1>
-          {post.tags.length > 0 && (
+          {localizedPost.tags.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
-              {post.tags.map(tag => (
+              {localizedPost.tags.map(tag => (
                 <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
                   <Tag size={14} /> #{tag}
                 </span>
@@ -190,7 +209,7 @@ const BlogPostPage: React.FC = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 space-y-12">
-        {post.sections.map(section => (
+        {localizedPost.sections.map(section => (
           <section key={section.id} className="bg-white/5 border border-white/10 rounded-2xl p-8 shadow-lg">
             <h2 className="text-2xl font-bold text-white mb-4">{section.heading}</h2>
             <div className="space-y-4 text-gray-200 leading-relaxed">
@@ -207,13 +226,13 @@ const BlogPostPage: React.FC = () => {
           </section>
         ))}
 
-        {post.faqs && post.faqs.length > 0 && (
+        {localizedPost.faqs && localizedPost.faqs.length > 0 && (
           <section className="bg-white/5 border border-white/10 rounded-2xl p-8 shadow-lg">
             <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
               <HelpCircle size={24} /> {t('blogPage.faqTitle')}
             </h2>
             <div className="space-y-6">
-              {post.faqs.map(faq => (
+              {localizedPost.faqs.map(faq => (
                 <div key={faq.question} className="border-b border-white/10 pb-4 last:border-none last:pb-0">
                   <h3 className="text-lg font-semibold text-white">{faq.question}</h3>
                   <p className="mt-2 text-gray-200 leading-relaxed">{faq.answer}</p>
@@ -223,13 +242,13 @@ const BlogPostPage: React.FC = () => {
           </section>
         )}
 
-        {post.cta && (
+        {localizedPost.cta && (
           <div className="text-center">
             <Link
-              to={post.cta.url}
+              to={localizedPost.cta.url}
               className="inline-flex items-center gap-2 rounded-lg bg-gray-cyan px-6 py-3 text-lg font-semibold text-white transition hover:bg-gray-cyan/90"
             >
-              {post.cta.text}
+              {localizedPost.cta.text}
             </Link>
           </div>
         )}

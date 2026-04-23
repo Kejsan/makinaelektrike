@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useContext, useMemo } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ScrollToTopButton from './components/ScrollToTopButton';
@@ -9,7 +9,11 @@ import { ToastProvider, ToastContainer } from './contexts/ToastContext';
 import ScrollRestoration from './components/ScrollRestoration';
 import LocalePathSync from './components/LocalePathSync';
 import LocalizedNavigate from './components/LocalizedNavigate';
-import { ALTERNATE_LOCALES, buildLocalizedRoutePath } from './utils/localizedRouting';
+import {
+  ALTERNATE_LOCALES,
+  buildLocalizedRoutePath,
+  stripLocalePrefix,
+} from './utils/localizedRouting';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
 const DealersListPage = lazy(() => import('./pages/DealersListPage'));
@@ -74,6 +78,13 @@ const LoadingScreen = () => (
 const RouteContent: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Suspense fallback={<LoadingScreen />}>{children}</Suspense>
 );
+
+const LegacyDefaultLocaleRedirect: React.FC = () => {
+  const location = useLocation();
+  const normalizedPath = stripLocalePrefix(location.pathname).pathname;
+
+  return <Navigate to={`${normalizedPath}${location.search}${location.hash}`} replace />;
+};
 
 const AdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { user, role, loading, initializing } = useAuth();
@@ -144,6 +155,8 @@ const App: React.FC = () => {
               <Header />
               <main className="flex-grow">
                 <Routes>
+                  <Route path="/sq" element={<LegacyDefaultLocaleRedirect />} />
+                  <Route path="/sq/*" element={<LegacyDefaultLocaleRedirect />} />
                   {PUBLIC_ROUTE_LOCALES.map(locale =>
                     PUBLIC_ROUTE_DEFINITIONS.map(route => (
                       <Route

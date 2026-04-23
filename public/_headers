@@ -15,3 +15,57 @@
 
 /llms.txt
   Content-Type: text/plain; charset=utf-8
+
+/__prerendered/*
+  X-Robots-Tag: noindex, nofollow
+
+/admin/*
+  X-Robots-Tag: noindex, nofollow
+
+/dealer/*
+  X-Robots-Tag: noindex, nofollow
+
+/awaiting-approval
+  X-Robots-Tag: noindex, nofollow
+
+/favorites
+  X-Robots-Tag: noindex, nofollow
+
+/login
+  X-Robots-Tag: noindex, nofollow
+
+/register
+  X-Robots-Tag: noindex, nofollow
+
+/register-dealer
+  X-Robots-Tag: noindex, nofollow
+
+/en/awaiting-approval
+  X-Robots-Tag: noindex, nofollow
+
+/en/favorites
+  X-Robots-Tag: noindex, nofollow
+
+/en/login
+  X-Robots-Tag: noindex, nofollow
+
+/en/register
+  X-Robots-Tag: noindex, nofollow
+
+/en/register-dealer
+  X-Robots-Tag: noindex, nofollow
+
+/it/awaiting-approval
+  X-Robots-Tag: noindex, nofollow
+
+/it/favorites
+  X-Robots-Tag: noindex, nofollow
+
+/it/login
+  X-Robots-Tag: noindex, nofollow
+
+/it/register
+  X-Robots-Tag: noindex, nofollow
+
+/it/register-dealer
+  X-Robots-Tag: noindex, nofollow

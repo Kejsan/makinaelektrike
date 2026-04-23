@@ -13,12 +13,15 @@ import {
 } from 'firebase/firestore/lite';
 import blogPostsData from '../data/blogPosts';
 import {
+  type AppLocale,
   DEFAULT_LOCALE,
   SUPPORTED_LOCALES,
   buildAbsoluteLocalizedUrl,
   buildLocalizedPath,
   toHreflang,
 } from '../utils/localizedRouting';
+import { getBlogAlternateLocales } from '../utils/localizedBlogPost';
+import type { BlogPost } from '../types';
 
 dotenv.config();
 
@@ -52,6 +55,7 @@ type SitemapUrl = {
   changefreq?: string;
   priority?: string;
   alternates?: SitemapAlternate[];
+  alternateLocales?: AppLocale[];
 };
 
 type SitemapSection = {
@@ -246,6 +250,7 @@ const getDynamicBlogPosts = async (): Promise<SitemapUrl[]> => {
         lastmod: normalizeDate(post.date) ?? today,
         changefreq: 'monthly',
         priority: '0.6',
+        alternateLocales: getBlogAlternateLocales(post),
       }));
   }
 
@@ -259,17 +264,22 @@ const getDynamicBlogPosts = async (): Promise<SitemapUrl[]> => {
       const secondTime = new Date((second.date as string | undefined) ?? '').getTime();
       return secondTime - firstTime;
     })
-    .map(entry => ({
-      loc: `/blog/${encodeURIComponent(entry.slug as string)}`,
-      lastmod:
-        normalizeDate(entry.publishedAt as FirestoreTimestampLike) ??
-        normalizeDate(entry.updatedAt as FirestoreTimestampLike) ??
-        normalizeDate(entry.date as FirestoreTimestampLike) ??
-        normalizeDate(entry.createdAt as FirestoreTimestampLike) ??
-        today,
-      changefreq: 'monthly',
-      priority: '0.6',
-    }));
+    .map(entry => {
+      const post = entry as unknown as BlogPost;
+
+      return {
+        loc: `/blog/${encodeURIComponent(entry.slug as string)}`,
+        lastmod:
+          normalizeDate(entry.publishedAt as FirestoreTimestampLike) ??
+          normalizeDate(entry.updatedAt as FirestoreTimestampLike) ??
+          normalizeDate(entry.date as FirestoreTimestampLike) ??
+          normalizeDate(entry.createdAt as FirestoreTimestampLike) ??
+          today,
+        changefreq: 'monthly',
+        priority: '0.6',
+        alternateLocales: getBlogAlternateLocales(post),
+      };
+    });
 };
 
 const getDynamicListings = async (): Promise<SitemapUrl[]> => {
@@ -307,9 +317,12 @@ const getMainUrls = (): SitemapUrl[] =>
     lastmod: today,
   }));
 
-function buildAlternateSet(loc: string): SitemapAlternate[] {
+function buildAlternateSet(
+  loc: string,
+  locales: readonly AppLocale[] = SUPPORTED_LOCALES,
+): SitemapAlternate[] {
   return [
-    ...SUPPORTED_LOCALES.map(locale => ({
+    ...locales.map(locale => ({
       hreflang: toHreflang(locale),
       href: buildAbsoluteLocalizedUrl(SITE, loc, locale),
     })),
@@ -321,10 +334,12 @@ function buildAlternateSet(loc: string): SitemapAlternate[] {
 }
 
 function expandLocalizedUrls(entry: SitemapUrl): SitemapUrl[] {
-  return SUPPORTED_LOCALES.map(locale => ({
+  const locales = entry.alternateLocales ?? [...SUPPORTED_LOCALES];
+
+  return locales.map(locale => ({
     ...entry,
     loc: buildLocalizedPath(entry.loc, locale),
-    alternates: buildAlternateSet(entry.loc),
+    alternates: buildAlternateSet(entry.loc, locales),
   }));
 }
 
@@ -369,6 +384,7 @@ const buildSitemaps = async () => {
       lastmod: normalizeDate(post.date) ?? today,
       changefreq: 'monthly',
       priority: '0.6',
+      alternateLocales: getBlogAlternateLocales(post),
     }));
 
   if (hasFirebaseConfig) {

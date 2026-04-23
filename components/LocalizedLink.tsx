@@ -1,14 +1,14 @@
 import React from 'react';
 import {
   Link as RouterLink,
+  useLocation,
   type LinkProps,
 } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { buildLocalizedTo, normalizeAppLocale } from '../utils/localizedRouting';
+import { buildLocalizedTo, normalizeAppLocale, stripLocalePrefix } from '../utils/localizedRouting';
 
 const LocalizedLink = React.forwardRef<HTMLAnchorElement, LinkProps>((props, ref) => {
-  const { i18n } = useTranslation();
-  const locale = normalizeAppLocale(i18n.resolvedLanguage || i18n.language);
+  const location = useLocation();
+  const locale = normalizeAppLocale(stripLocalePrefix(location.pathname).locale);
 
   return <RouterLink ref={ref} {...props} to={buildLocalizedTo(props.to, locale)} />;
 });

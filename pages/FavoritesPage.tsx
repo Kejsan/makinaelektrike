@@ -80,7 +80,7 @@ const FavoritesPage: React.FC = () => {
 
     const handleShareList = async () => {
         try {
-            const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/favorites` : `${BASE_URL}/favorites`;
+            const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : `${BASE_URL}/favorites`;
             const shareText = t('favoritesPage.shareMessage', { count: totalCount });
 
             if (typeof navigator !== 'undefined' && navigator.share) {

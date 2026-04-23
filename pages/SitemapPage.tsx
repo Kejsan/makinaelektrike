@@ -4,10 +4,16 @@ import SEO from '../components/SEO';
 import { DataContext } from '../contexts/DataContext';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import Link from '../components/LocalizedLink';
+import { getLocalizedBlogPost } from '../utils/localizedBlogPost';
 
 const SitemapPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const { dealers, models, blogPosts } = useContext(DataContext);
+  const activeLanguage = i18n.resolvedLanguage || i18n.language;
+  const localizedBlogPosts = useMemo(
+    () => blogPosts.map(post => getLocalizedBlogPost(post, activeLanguage)),
+    [blogPosts, activeLanguage],
+  );
 
   const navigationSections = useMemo(
     () => [
@@ -163,7 +169,7 @@ const SitemapPage: React.FC = () => {
             <h2 className="text-xl font-semibold text-white">{t('sitemap.dynamic.blog')}</h2>
             <p className="mt-2 text-sm text-gray-300">{t('sitemap.dynamic.blogDescription')}</p>
             <ul className="mt-4 space-y-3">
-              {blogPosts.slice(0, 6).map(post => (
+              {localizedBlogPosts.slice(0, 6).map(post => (
                 <li key={post.slug}>
                   <Link to={`/blog/${post.slug}`} className="text-gray-300 hover:text-white transition-colors">
                     {post.title}
@@ -171,7 +177,7 @@ const SitemapPage: React.FC = () => {
                 </li>
               ))}
             </ul>
-            {blogPosts.length > 6 && (
+            {localizedBlogPosts.length > 6 && (
               <Link to="/blog" className="mt-4 inline-block text-sm font-semibold text-gray-cyan hover:text-white">
                 {t('sitemap.dynamic.viewAllPosts')}
               </Link>
