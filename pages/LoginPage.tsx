@@ -163,7 +163,9 @@ const LoginPage: React.FC = () => {
                 </label>
                 <input
                   id="email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={event => setEmail(event.target.value)}
                   className="mt-1 block w-full rounded-md border border-gray-700 bg-gray-900/60 px-3 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
@@ -176,7 +178,9 @@ const LoginPage: React.FC = () => {
                 </label>
                 <input
                   id="password"
+                  name="password"
                   type="password"
+                  autoComplete="current-password"
                   value={password}
                   onChange={event => setPassword(event.target.value)}
                   className="mt-1 block w-full rounded-md border border-gray-700 bg-gray-900/60 px-3 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
@@ -227,14 +231,12 @@ const LoginPage: React.FC = () => {
 
             <div className="mt-10 border-t border-white/10 pt-6 text-sm text-gray-400">
               <span>{t('loginPage.adminPrompt')}</span>{' '}
-              <a
-                href="https://makinaelektrike.com/admin/login"
-                target="_blank"
-                rel="noreferrer"
+              <Link
+                to="/admin/login"
                 className="font-semibold text-gray-cyan hover:text-white"
               >
                 {t('loginPage.adminLinkLabel')}
-              </a>
+              </Link>
             </div>
           </aside>
         </div>

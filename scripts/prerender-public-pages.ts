@@ -73,19 +73,19 @@ type PublicSiteData = {
   dealerModels: DealerModel[];
 };
 
-type TranslationDictionary = typeof sqTranslations;
+type IntlLocale = (typeof localeIntlMap)[keyof typeof localeIntlMap];
 
-const translationsByLocale: Record<AppLocale, TranslationDictionary> = {
+const translationsByLocale: Record<AppLocale, unknown> = {
   sq: sqTranslations,
   en: enTranslations,
   it: itTranslations,
 };
 
-const localeIntlMap: Record<AppLocale, 'sq-AL' | 'en-GB' | 'it-IT'> = {
+const localeIntlMap = {
   sq: 'sq-AL',
   en: 'en-GB',
   it: 'it-IT',
-};
+} as const satisfies Record<AppLocale, string>;
 
 const prerenderCopy: Record<
   AppLocale,
@@ -822,7 +822,7 @@ const normalizeDate = (value: FirestoreTimestampLike): Date | null => {
   return null;
 };
 
-const formatDate = (value: FirestoreTimestampLike, locale: 'sq-AL' | 'en-GB') => {
+const formatDate = (value: FirestoreTimestampLike, locale: IntlLocale) => {
   const parsed = normalizeDate(value);
   if (!parsed) {
     return '';
@@ -835,7 +835,7 @@ const formatDate = (value: FirestoreTimestampLike, locale: 'sq-AL' | 'en-GB') =>
   }).format(parsed);
 };
 
-const formatNumber = (value: number | undefined, locale: 'sq-AL' | 'en-GB') => {
+const formatNumber = (value: number | undefined, locale: IntlLocale) => {
   if (typeof value !== 'number' || Number.isNaN(value)) {
     return '';
   }
@@ -843,7 +843,7 @@ const formatNumber = (value: number | undefined, locale: 'sq-AL' | 'en-GB') => {
   return new Intl.NumberFormat(locale).format(value);
 };
 
-const formatCurrency = (value: number | undefined, currency: string | undefined, locale: 'sq-AL' | 'en-GB') => {
+const formatCurrency = (value: number | undefined, currency: string | undefined, locale: IntlLocale) => {
   if (typeof value !== 'number' || Number.isNaN(value)) {
     return '';
   }

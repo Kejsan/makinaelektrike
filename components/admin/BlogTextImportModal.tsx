@@ -48,11 +48,15 @@ A: Përgjigjja e dytë.
 `;
 
 // Helper to parse the uploaded text chunk
-const parseBlogChunk = (chunk: string, ownerUid: string | null): Partial<Omit<BlogPost, 'id'>> => {
+const parseBlogChunk = (
+  chunk: string,
+  ownerUid: string | null,
+  messages: { missingSectionsDivider: string },
+): Partial<Omit<BlogPost, 'id'>> => {
   const blog: any = { published: true, sections: [], faqs: [] };
   
   const sectionsSplit = chunk.split('--- SECTIONS ---');
-  if (sectionsSplit.length < 2) throw new Error("Missing '--- SECTIONS ---' divider.");
+  if (sectionsSplit.length < 2) throw new Error(messages.missingSectionsDivider);
   
   const headerPart = sectionsSplit[0].trim();
   const restPart = sectionsSplit[1].trim();
@@ -156,6 +160,15 @@ const BlogTextImportModal: React.FC<BlogTextImportModalProps> = ({ onClose }) =>
   const [summary, setSummary] = useState<{ processed: number; succeeded: number; failed: number } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const instructions = t('admin.blogTextImport.instructions', {
+    returnObjects: true,
+    defaultValue: [
+      'Download the template to see the exact required text format.',
+      'Write your blog posts in the `.txt` file following the structure.',
+      'For multiple blog posts, separate them with `=== BLOG ===` and `=== END BLOG ===` markers.',
+      'Upload the completed `.txt` file below. You can refine translations later by editing each post individually.',
+    ],
+  }) as string[];
 
   const downloadTemplate = () => {
     const element = document.createElement("a");
@@ -178,7 +191,11 @@ const BlogTextImportModal: React.FC<BlogTextImportModalProps> = ({ onClose }) =>
     const blogChunks = text.split('=== BLOG ===').filter(chunk => chunk.trim().length > 0);
     
     if (blogChunks.length === 0) {
-      setFileError("No blocks starting with '=== BLOG ===' found.");
+      setFileError(
+        t('admin.blogTextImport.noBlocksFound', {
+          defaultValue: "No blocks starting with '=== BLOG ===' were found.",
+        }),
+      );
       return;
     }
 
@@ -195,9 +212,17 @@ const BlogTextImportModal: React.FC<BlogTextImportModalProps> = ({ onClose }) =>
       if (!chunk) continue;
 
       try {
-        const payload = parseBlogChunk(chunk, user?.uid || null);
+        const payload = parseBlogChunk(chunk, user?.uid || null, {
+          missingSectionsDivider: t('admin.blogTextImport.missingSectionsDivider', {
+            defaultValue: "Missing '--- SECTIONS ---' divider.",
+          }),
+        });
         if (!payload.title || !payload.slug) {
-          throw new Error("Missing Title or Slug in the header.");
+          throw new Error(
+            t('admin.blogTextImport.missingTitleOrSlug', {
+              defaultValue: 'Missing Title or Slug in the header.',
+            }),
+          );
         }
 
         await addBlogPost(payload as any);
@@ -211,10 +236,22 @@ const BlogTextImportModal: React.FC<BlogTextImportModalProps> = ({ onClose }) =>
     setSummary({ processed: succeeded + failed, succeeded, failed });
     
     if (errors.length > 0) {
-      addToast(`Import completed with ${failed} errors. Check console for details.`, 'warning');
+      addToast(
+        t('admin.blogTextImport.partialSuccess', {
+          count: failed,
+          defaultValue: 'Import completed with {{count}} errors. Check the console for details.',
+        }),
+        'warning',
+      );
       console.error("Bulk Blog Import Errors:", errors);
     } else if (succeeded > 0) {
-      addToast(`Successfully imported ${succeeded} blogs!`, 'success');
+      addToast(
+        t('admin.blogTextImport.success', {
+          count: succeeded,
+          defaultValue: 'Successfully imported {{count}} blog posts.',
+        }),
+        'success',
+      );
     }
 
     setImporting(false);
@@ -224,12 +261,13 @@ const BlogTextImportModal: React.FC<BlogTextImportModalProps> = ({ onClose }) =>
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
-        <h3 className="mb-2 font-bold text-blue-200">How to use Text Bulk Import</h3>
+        <h3 className="mb-2 font-bold text-blue-200">
+          {t('admin.blogTextImport.title', { defaultValue: 'How to use text bulk import' })}
+        </h3>
         <ol className="list-inside list-decimal space-y-1 text-sm text-blue-300">
-          <li><strong>Download Template</strong> to see the exact required text format.</li>
-          <li>Write your blogs in the <code>.txt</code> file following the structure.</li>
-          <li>For multiple blogs, separate them using <code>=== BLOG ===</code> and <code>=== END BLOG ===</code> markers.</li>
-          <li><strong>Upload</strong> the completed <code>.txt</code> file below. Auto-translation can be done later by editing them one by one, or extending logic in the future.</li>
+          {instructions.map(item => (
+            <li key={item}>{item}</li>
+          ))}
         </ol>
         
         <button
@@ -237,7 +275,7 @@ const BlogTextImportModal: React.FC<BlogTextImportModalProps> = ({ onClose }) =>
           className="mt-4 flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
         >
           <Download size={16} />
-          Download Template.txt
+          {t('admin.blogTextImport.downloadTemplate', { defaultValue: 'Download Template.txt' })}
         </button>
       </div>
 
@@ -254,7 +292,9 @@ const BlogTextImportModal: React.FC<BlogTextImportModalProps> = ({ onClose }) =>
         {importing ? (
           <div className="flex flex-col items-center justify-center space-y-3">
             <Loader2 className="h-8 w-8 animate-spin text-gray-cyan" />
-            <p className="text-sm text-gray-400">Importing blogs... Please wait.</p>
+            <p className="text-sm text-gray-400">
+              {t('admin.blogTextImport.importing', { defaultValue: 'Importing blog posts... Please wait.' })}
+            </p>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center space-y-3">
@@ -262,13 +302,15 @@ const BlogTextImportModal: React.FC<BlogTextImportModalProps> = ({ onClose }) =>
               <FileText size={24} />
             </div>
             <div>
-              <p className="text-sm font-medium text-white mb-2">Upload your completed `.txt` file</p>
+              <p className="text-sm font-medium text-white mb-2">
+                {t('admin.blogTextImport.uploadPrompt', { defaultValue: 'Upload your completed `.txt` file' })}
+              </p>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="inline-flex items-center gap-2 rounded-lg bg-gray-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-gray-500"
               >
-                <Upload size={14} /> Select File
+                <Upload size={14} /> {t('admin.blogTextImport.selectFile', { defaultValue: 'Select file' })}
               </button>
             </div>
           </div>
@@ -284,19 +326,27 @@ const BlogTextImportModal: React.FC<BlogTextImportModalProps> = ({ onClose }) =>
 
       {summary && (
         <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <h4 className="mb-3 font-semibold text-white">Import Summary</h4>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <h4 className="mb-3 font-semibold text-white">
+            {t('admin.blogTextImport.summaryTitle', { defaultValue: 'Import summary' })}
+          </h4>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-lg bg-black/20 p-3 text-center">
               <p className="text-2xl font-bold text-white">{summary.processed}</p>
-              <p className="text-xs text-gray-400">Total Found</p>
+              <p className="text-xs text-gray-400">
+                {t('admin.blogTextImport.totalFound', { defaultValue: 'Total found' })}
+              </p>
             </div>
             <div className="rounded-lg bg-green-500/10 p-3 text-center border border-green-500/20">
               <p className="text-2xl font-bold text-green-400">{summary.succeeded}</p>
-              <p className="text-xs text-green-500/80">Imported</p>
+              <p className="text-xs text-green-500/80">
+                {t('admin.blogTextImport.imported', { defaultValue: 'Imported' })}
+              </p>
             </div>
             <div className="rounded-lg bg-red-500/10 p-3 text-center border border-red-500/20">
               <p className="text-2xl font-bold text-red-400">{summary.failed}</p>
-              <p className="text-xs text-red-500/80">Failed</p>
+              <p className="text-xs text-red-500/80">
+                {t('admin.blogTextImport.failed', { defaultValue: 'Failed' })}
+              </p>
             </div>
           </div>
         </div>
@@ -308,7 +358,7 @@ const BlogTextImportModal: React.FC<BlogTextImportModalProps> = ({ onClose }) =>
           disabled={importing}
           className="rounded-lg border border-white/10 bg-white/5 px-6 py-2 text-sm font-semibold text-gray-200 transition hover:bg-white/10"
         >
-          {summary ? 'Close' : 'Cancel'}
+          {summary ? t('common.close') : t('common.cancel')}
         </button>
       </div>
     </div>

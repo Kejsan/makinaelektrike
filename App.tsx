@@ -159,26 +159,29 @@ const App: React.FC = () => {
                   <Route path="/sq/*" element={<LegacyDefaultLocaleRedirect />} />
                   {PUBLIC_ROUTE_LOCALES.map(locale =>
                     PUBLIC_ROUTE_DEFINITIONS.map(route => (
-                      <Route
-                        key={`${locale ?? 'sq'}:${route.path}`}
-                        path={buildLocalizedRoutePath(route.path, locale)}
-                        element={<RouteContent>{route.element}</RouteContent>}
-                      />
+                      <React.Fragment key={`${locale ?? 'sq'}:${route.path}`}>
+                        <Route
+                          path={buildLocalizedRoutePath(route.path, locale)}
+                          element={<RouteContent>{route.element}</RouteContent>}
+                        />
+                      </React.Fragment>
                     ))
                   )}
                   {PUBLIC_ROUTE_LOCALES.map(locale => (
-                    <Route
-                      key={`${locale ?? 'sq'}:/privacy`}
-                      path={buildLocalizedRoutePath('/privacy', locale)}
-                      element={<LocalizedNavigate to="/privacy-policy" replace />}
-                    />
+                    <React.Fragment key={`${locale ?? 'sq'}:/privacy`}>
+                      <Route
+                        path={buildLocalizedRoutePath('/privacy', locale)}
+                        element={<LocalizedNavigate to="/privacy-policy" replace />}
+                      />
+                    </React.Fragment>
                   ))}
                   {PUBLIC_ROUTE_LOCALES.map(locale => (
-                    <Route
-                      key={`${locale ?? 'sq'}:/cookies`}
-                      path={buildLocalizedRoutePath('/cookies', locale)}
-                      element={<LocalizedNavigate to="/cookie-policy" replace />}
-                    />
+                    <React.Fragment key={`${locale ?? 'sq'}:/cookies`}>
+                      <Route
+                        path={buildLocalizedRoutePath('/cookies', locale)}
+                        element={<LocalizedNavigate to="/cookie-policy" replace />}
+                      />
+                    </React.Fragment>
                   ))}
                   <Route path="/admin/login" element={<RouteContent><AdminLoginPage /></RouteContent>} />
                   <Route

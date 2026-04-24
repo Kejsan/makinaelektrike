@@ -73,26 +73,30 @@ interface ModalProps {
   children: React.ReactNode;
 }
 
-const AdminModal: React.FC<ModalProps> = ({ title, onClose, children }) => (
-  createPortal(
+const AdminModal: React.FC<ModalProps> = ({ title, onClose, children }) => {
+  const { t } = useTranslation();
+
+  return createPortal(
     <div className={modalOverlayClass}>
-      <div className={`${modalContainerClass} max-w-3xl overflow-hidden bg-gray-900/95`}>
-        <div className={`${modalHeaderClass} border-b border-white/10 px-6 py-4`}>
+      <div
+        className={`${modalContainerClass} max-w-3xl overflow-hidden bg-gray-900/95 flex max-h-[calc(100dvh-2rem)] flex-col sm:max-h-[calc(100dvh-3rem)]`}
+      >
+        <div className={`${modalHeaderClass} shrink-0 border-b border-white/10 px-6 py-4`}>
           <h2 className="text-lg font-semibold">{title}</h2>
-          <button onClick={onClose} className={modalCloseButtonClass} aria-label="Close">
+          <button onClick={onClose} className={modalCloseButtonClass} aria-label={t('common.close')}>
             <X size={18} />
           </button>
         </div>
-        <div className="max-h-[75vh] overflow-y-auto px-6 py-5">{children}</div>
+        <div className="min-h-0 overflow-y-auto px-6 py-5">{children}</div>
       </div>
     </div>,
     document.body
-  )
-);
+  );
+};
 
 type FormState<T> = { mode: 'create' | 'edit'; entity?: T } | null;
 
-type TabKey = 'dealers' | 'models' | 'listings' | 'blog' | 'stations';
+type TabKey = 'dealers' | 'models' | 'listings' | 'blog' | 'stations' | 'migration';
 type DealerFilterKey = 'active' | 'inactive' | 'pending' | 'deleted';
 
 const formatDate = (value: Dealer['createdAt']) => {
@@ -206,12 +210,37 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  const confirmBulkDelete = () =>
+    window.confirm(
+      t('admin.bulkDeleteSelectedConfirm', {
+        defaultValue: 'Are you sure you want to delete the selected items?',
+      }),
+    );
+
+  const showBulkActionToast = (status: 'processing' | 'success' | 'failed') => {
+    const variant = status === 'processing' ? 'info' : status === 'success' ? 'success' : 'error';
+    const key =
+      status === 'processing'
+        ? 'admin.bulkActionInProgress'
+        : status === 'success'
+          ? 'admin.bulkActionSuccess'
+          : 'admin.bulkActionFailed';
+
+    const defaultValue =
+      status === 'processing'
+        ? 'Bulk update in progress...'
+        : status === 'success'
+          ? 'Bulk update completed successfully.'
+          : 'Bulk update failed.';
+
+    addToast(t(key, { defaultValue }), variant);
+  };
+
   const handleBulkDealerAction = async (action: 'approve' | 'deactivate' | 'delete' | 'reactivate') => {
     if (!isAdmin || selectedIds.length === 0) return;
-    const confirmMsg = action === 'delete' ? 'Are you sure you want to delete selected dealers?' : null;
-    if (confirmMsg && !window.confirm(confirmMsg)) return;
+    if (action === 'delete' && !confirmBulkDelete()) return;
 
-    addToast(`Processing bulk ${action}...`, 'info');
+    showBulkActionToast('processing');
     try {
       await Promise.all(selectedIds.map(id => {
         if (action === 'approve') return approveDealer(id);
@@ -220,25 +249,24 @@ const AdminPage: React.FC = () => {
         if (action === 'reactivate') return reactivateDealer(id);
         return Promise.resolve();
       }));
-      addToast(`Bulk ${action} completed successfully`, 'success');
+      showBulkActionToast('success');
       setSelectedIds([]);
     } catch (error) {
       console.error(`Bulk ${action} failed:`, error);
-      addToast(`Bulk ${action} failed`, 'error');
+      showBulkActionToast('failed');
     }
   };
 
   const handleBulkModelAction = async (action: 'delete' | 'toggleFeatured' | 'toggleVisibility') => {
     if (!isAdmin || selectedIds.length === 0) return;
-    const confirmMsg = action === 'delete' ? 'Are you sure you want to delete selected models?' : null;
-    if (confirmMsg && !window.confirm(confirmMsg)) return;
+    if (action === 'delete' && !confirmBulkDelete()) return;
 
     // Use current filter to determine explicit action if it's toggleVisibility
     const explicitAction = action === 'toggleVisibility' 
       ? (modelFilter === 'hidden' ? 'show' : 'hide') 
       : action;
 
-    addToast(`Processing bulk ${explicitAction}...`, 'info');
+    showBulkActionToast('processing');
     try {
       await Promise.all(selectedIds.map(id => {
         if (action === 'delete') return deleteModel(id);
@@ -255,20 +283,19 @@ const AdminPage: React.FC = () => {
         }
         return Promise.resolve();
       }));
-      addToast(`Bulk ${explicitAction} completed successfully`, 'success');
+      showBulkActionToast('success');
       setSelectedIds([]);
     } catch (error) {
       console.error(`Bulk ${explicitAction} failed:`, error);
-      addToast(`Bulk ${explicitAction} failed`, 'error');
+      showBulkActionToast('failed');
     }
   };
 
   const handleBulkListingAction = async (action: 'approve' | 'reject' | 'hide' | 'delete') => {
     if (!isAdmin || selectedIds.length === 0) return;
-    const confirmMsg = action === 'delete' ? 'Are you sure you want to delete selected listings?' : null;
-    if (confirmMsg && !window.confirm(confirmMsg)) return;
+    if (action === 'delete' && !confirmBulkDelete()) return;
 
-    addToast(`Processing bulk ${action}...`, 'info');
+    showBulkActionToast('processing');
     try {
       await Promise.all(selectedIds.map(id => {
         if (action === 'delete') return deleteListing(id);
@@ -277,20 +304,19 @@ const AdminPage: React.FC = () => {
         if (action === 'hide') return updateListing(id, { status: 'inactive' });
         return Promise.resolve();
       }));
-      addToast(`Bulk ${action} completed successfully`, 'success');
+      showBulkActionToast('success');
       setSelectedIds([]);
     } catch (error) {
       console.error(`Bulk ${action} failed:`, error);
-      addToast(`Bulk ${action} failed`, 'error');
+      showBulkActionToast('failed');
     }
   };
 
   const handleBulkBlogAction = async (action: 'publish' | 'draft' | 'delete') => {
     if (!isAdmin || selectedIds.length === 0) return;
-    const confirmMsg = action === 'delete' ? 'Are you sure you want to delete selected posts?' : null;
-    if (confirmMsg && !window.confirm(confirmMsg)) return;
+    if (action === 'delete' && !confirmBulkDelete()) return;
 
-    addToast(`Processing bulk ${action}...`, 'info');
+    showBulkActionToast('processing');
     try {
       await Promise.all(selectedIds.map(id => {
         if (action === 'delete') return deleteBlogPost(id);
@@ -299,24 +325,23 @@ const AdminPage: React.FC = () => {
         }
         return Promise.resolve();
       }));
-      addToast(`Bulk ${action} completed successfully`, 'success');
+      showBulkActionToast('success');
       setSelectedIds([]);
     } catch (error) {
       console.error(`Bulk ${action} failed:`, error);
-      addToast(`Bulk ${action} failed`, 'error');
+      showBulkActionToast('failed');
     }
   };
 
   const handleBulkStationAction = async (action: 'delete' | 'toggleActive') => {
     if (!isAdmin || selectedIds.length === 0) return;
-    const confirmMsg = action === 'delete' ? 'Are you sure you want to delete selected stations?' : null;
-    if (confirmMsg && !window.confirm(confirmMsg)) return;
+    if (action === 'delete' && !confirmBulkDelete()) return;
 
     const explicitAction = action === 'toggleActive' 
       ? (stationFilter === 'inactive' ? 'show' : 'hide') 
       : action;
 
-    addToast(`Processing bulk ${explicitAction}...`, 'info');
+    showBulkActionToast('processing');
     try {
       await Promise.all(selectedIds.map(async (id) => {
         const station = stations.find(s => s.id === id);
@@ -340,11 +365,11 @@ const AdminPage: React.FC = () => {
       // Refresh stations after bulk action
       const data = await fetchChargingStations();
       setStations(data);
-      addToast(`Bulk ${explicitAction} completed successfully`, 'success');
+      showBulkActionToast('success');
       setSelectedIds([]);
     } catch (error) {
       console.error(`Bulk ${explicitAction} failed:`, error);
-      addToast(`Bulk ${explicitAction} failed`, 'error');
+      showBulkActionToast('failed');
     }
   };
 
@@ -364,10 +389,10 @@ const AdminPage: React.FC = () => {
     () => [
       { id: 'dealers' as TabKey, label: t('admin.manageDealers') },
       { id: 'models' as TabKey, label: t('admin.manageModels') },
-      { id: 'listings' as TabKey, label: 'Listings' },
+      { id: 'listings' as TabKey, label: t('admin.listingsTab', { defaultValue: 'Listings' }) },
       { id: 'blog' as TabKey, label: t('admin.manageBlog') },
-      { id: 'stations' as TabKey, label: 'Charging Stations' },
-      { id: 'migration' as TabKey, label: 'Data Migration' },
+      { id: 'stations' as TabKey, label: t('admin.manageStations', { defaultValue: 'Charging stations' }) },
+      { id: 'migration' as TabKey, label: t('admin.migrationTab', { defaultValue: 'Data migration' }) },
     ],
     [t]
   );

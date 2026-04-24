@@ -1,5 +1,5 @@
 export const modalOverlayClass =
-  'fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-4 py-6 backdrop-blur-sm';
+  'fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/70 px-4 py-4 backdrop-blur-sm sm:items-center sm:py-6';
 
 export const modalContainerClass =
   'relative w-full rounded-2xl border border-white/10 bg-slate-900/95 text-white shadow-2xl';

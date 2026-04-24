@@ -146,6 +146,40 @@ const FavoritesPage: React.FC = () => {
         models.filter(m => selectedForCompare.includes(m.id)),
     [models, selectedForCompare]);
 
+    const tabOptions = useMemo(
+        () => [
+            { id: 'models' as const, label: t('favoritesPage.models'), count: favoriteModels.length },
+            { id: 'listings' as const, label: t('favoritesPage.listings'), count: favoriteListings.length },
+            { id: 'dealers' as const, label: t('favoritesPage.dealers'), count: favoriteDealers.length },
+        ],
+        [favoriteDealers.length, favoriteListings.length, favoriteModels.length, t],
+    );
+
+    const emptyState = useMemo(() => {
+        switch (activeTab) {
+            case 'models':
+                return {
+                    title: t('favoritesPage.noModels'),
+                    text: t('favoritesPage.emptyTextModels'),
+                };
+            case 'listings':
+                return {
+                    title: t('favoritesPage.noListings'),
+                    text: t('favoritesPage.emptyTextListings'),
+                };
+            case 'dealers':
+                return {
+                    title: t('favoritesPage.noDealers'),
+                    text: t('favoritesPage.emptyTextDealers'),
+                };
+            default:
+                return {
+                    title: t('favoritesPage.noModels'),
+                    text: t('favoritesPage.emptyTextModels'),
+                };
+        }
+    }, [activeTab, t]);
+
     return (
         <div className="min-h-screen pb-20 bg-[#0A0A0A]">
             <SEO
@@ -165,7 +199,7 @@ const FavoritesPage: React.FC = () => {
                                 <Heart size={14} className="fill-current animate-pulse" />
                                 {t('favoritesPage.collection')}
                             </div>
-                            <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter mb-4">
+                            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-white tracking-tighter mb-4">
                                 {t('favoritesPage.title')}
                                 <span className="text-red-500">.</span>
                             </h1>
@@ -174,17 +208,17 @@ const FavoritesPage: React.FC = () => {
                             </p>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
                             <button
                                 onClick={handleShareList}
-                                className="group inline-flex items-center gap-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3.5 text-sm font-black text-white transition-all hover:scale-105 active:scale-95 hover:shadow-neon-cyan/20"
+                                className="group inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3.5 text-sm font-black text-white transition-all hover:scale-[1.01] active:scale-95 hover:shadow-neon-cyan/20 sm:w-auto"
                             >
                                 <Share2 size={20} className="text-gray-cyan group-hover:rotate-12 transition-transform" />
                                 {t('favoritesPage.share')}
                             </button>
                             <button
                                 onClick={handleExportList}
-                                className="group inline-flex items-center gap-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3.5 text-sm font-black text-white transition-all hover:scale-105 active:scale-95 hover:shadow-neon-cyan/20"
+                                className="group inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3.5 text-sm font-black text-white transition-all hover:scale-[1.01] active:scale-95 hover:shadow-neon-cyan/20 sm:w-auto"
                             >
                                 <Download size={20} className="text-gray-cyan group-hover:bounce transition-all" />
                                 {t('favoritesPage.export')}
@@ -193,22 +227,18 @@ const FavoritesPage: React.FC = () => {
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex mt-16 overflow-x-auto no-scrollbar gap-2 p-1.5 bg-white/5 border border-white/10 rounded-2xl max-w-fit backdrop-blur-md">
-                        {[
-                            { id: 'models', label: t('favoritesPage.models'), count: favoriteModels.length },
-                            { id: 'listings', label: t('listings.title'), count: favoriteListings.length },
-                            { id: 'dealers', label: t('favoritesPage.dealers'), count: favoriteDealers.length }
-                        ].map(tab => (
+                    <div className="mt-12 grid gap-2 rounded-2xl bg-white/5 border border-white/10 p-1.5 backdrop-blur-md sm:mt-16 sm:max-w-fit sm:grid-cols-3">
+                        {tabOptions.map(tab => (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveTab(tab.id as any)}
-                                className={`flex items-center gap-3 px-8 py-3.5 text-sm font-black transition-all rounded-xl ${
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left text-sm font-black transition-all rounded-xl sm:min-w-[210px] ${
                                     activeTab === tab.id 
                                         ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' 
                                         : 'text-gray-400 hover:text-white hover:bg-white/5'
                                 }`}
                             >
-                                {tab.label}
+                                <span className="pr-2">{tab.label}</span>
                                 <span className={`flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-lg text-[10px] font-black ${
                                     activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-white/10 text-gray-500'
                                 }`}>
@@ -222,7 +252,7 @@ const FavoritesPage: React.FC = () => {
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
                 {/* Search & Filters */}
-                <div className="flex flex-col lg:flex-row justify-between items-center gap-8 mb-12 bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-xl shadow-2xl relative overflow-hidden group">
+                <div className="flex flex-col lg:flex-row justify-between items-stretch gap-6 mb-12 bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-xl shadow-2xl relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="relative w-full lg:max-w-xl">
                         <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-red-500 transition-colors" size={20} />
@@ -235,7 +265,7 @@ const FavoritesPage: React.FC = () => {
                         />
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto justify-end relative z-10">
+                    <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto lg:justify-end relative z-10">
                         <div className="flex items-center gap-1 bg-black/60 border border-white/10 rounded-2xl p-1.5 shadow-inner">
                             <button
                                 onClick={() => setViewMode('grid')}
@@ -251,11 +281,11 @@ const FavoritesPage: React.FC = () => {
                             </button>
                         </div>
 
-                        <div className="relative group/select">
+                        <div className="relative group/select w-full sm:w-auto">
                             <select
                                 value={sortBy}
                                 onChange={(e) => setSortBy(e.target.value)}
-                                className="appearance-none bg-black/60 border border-white/10 rounded-2xl py-4 px-6 pr-12 text-white text-sm font-black focus:outline-none focus:ring-2 focus:ring-red-500/30 cursor-pointer shadow-inner hover:bg-black/80 transition-all"
+                                className="w-full appearance-none bg-black/60 border border-white/10 rounded-2xl py-4 px-6 pr-12 text-white text-sm font-black focus:outline-none focus:ring-2 focus:ring-red-500/30 cursor-pointer shadow-inner hover:bg-black/80 transition-all sm:min-w-[220px]"
                             >
                                 <option value="newest">{t('filter.newest')}</option>
                                 <option value="alphabetical">{t('filter.alphabetical')}</option>
@@ -279,7 +309,7 @@ const FavoritesPage: React.FC = () => {
                                     setCompareMode(!compareMode);
                                     if (compareMode) setSelectedForCompare([]);
                                 }}
-                                className={`inline-flex items-center gap-3 rounded-2xl px-8 py-4 text-sm font-black transition-all ${
+                                className={`inline-flex w-full items-center justify-center gap-3 rounded-2xl px-8 py-4 text-sm font-black transition-all sm:w-auto ${
                                     compareMode 
                                         ? 'bg-red-500 text-white shadow-[0_0_30px_rgba(239,68,68,0.4)] scale-105' 
                                         : 'bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:scale-105'
@@ -391,10 +421,10 @@ const FavoritesPage: React.FC = () => {
                                 <Heart className="text-gray-800" size={56} strokeWidth={1}/>
                             </div>
                             <h3 className="text-3xl font-black text-white mb-4 tracking-tight">
-                                {t('favoritesPage.emptyTitle', { tab: activeTab })}
+                                {emptyState.title}
                             </h3>
                             <p className="text-gray-400 max-w-sm mx-auto text-lg leading-relaxed">
-                                {t('favoritesPage.emptyText', { tab: activeTab })}
+                                {emptyState.text}
                             </p>
                         </div>
                     </div>

@@ -28,11 +28,16 @@ import {
 } from 'lucide-react';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import {
+  formatChargingStationsListHeading,
+  getChargingStationsPageContent,
+} from '../data/chargingStationsPageContent';
 import { StationProperties, fetchStations } from '../services/ocm';
 import type { StationFeatureCollection } from '../services/ocm';
 import { fetchChargingStations, mergeStationsWithOCM } from '../services/chargingStations';
 import { useToast } from '../contexts/ToastContext';
 import Link from '../components/LocalizedLink';
+import { normalizeAppLocale } from '../utils/localizedRouting';
 
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIconRetina,
@@ -119,8 +124,8 @@ const getStationLatLng = (feature: StationFeature) => {
   };
 };
 
-const formatDateTime = (date: Date) => {
-  return new Intl.DateTimeFormat('en-GB', {
+const formatDateTime = (date: Date, locale: string) => {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date);
@@ -139,9 +144,11 @@ const customStationIcon = L.icon({
 });
 
 const ChargingStationsAlbaniaPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { addToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
+  const locale = normalizeAppLocale(i18n.language);
+  const content = useMemo(() => getChargingStationsPageContent(locale), [locale]);
 
   const latParam = Number.parseFloat(searchParams.get('lat') ?? '');
   const lngParam = Number.parseFloat(searchParams.get('lng') ?? '');
@@ -263,14 +270,14 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
           return;
         }
         console.error(err);
-        setError(err instanceof Error ? err.message : 'Failed to load charging locations');
+        setError(err instanceof Error ? err.message : content.loadError);
       } finally {
         if (!controller.signal.aborted) {
           setLoadingStations(false);
         }
       }
     },
-    [],
+    [content.loadError],
   );
 
   useEffect(() => {
@@ -452,10 +459,10 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
       shareUrl.search = params.toString();
       navigator.clipboard
         .writeText(shareUrl.toString())
-        .then(() => addToast('Shareable link copied to clipboard', 'success'))
-        .catch(() => addToast('Unable to copy link', 'error'));
+        .then(() => addToast(content.toasts.shareLinkCopied, 'success'))
+        .catch(() => addToast(content.toasts.shareLinkCopyFailed, 'error'));
     },
-    [addToast, autoUpdate, searchTerm],
+    [addToast, autoUpdate, content.toasts.shareLinkCopied, content.toasts.shareLinkCopyFailed, searchTerm],
   );
 
   useEffect(() => {
@@ -477,7 +484,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
 
       const markerOptions: L.MarkerOptions = {
         riseOnHover: true,
-        title: feature.properties.title ?? 'Charging station',
+        title: feature.properties.title ?? content.stationFallbackTitle,
       };
 
       if (isCustom) {
@@ -490,8 +497,8 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
         const address = formatAddress(feature.properties);
         navigator.clipboard
           .writeText(address)
-          .then(() => addToast('Address copied to clipboard', 'success'))
-          .catch(() => addToast('Unable to copy address', 'error'));
+          .then(() => addToast(content.toasts.addressCopied, 'success'))
+          .catch(() => addToast(content.toasts.addressCopyFailed, 'error'));
       };
 
       const handleShare = () => {
@@ -510,7 +517,14 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
       clusterGroup.addLayer(marker);
       markersRef.current.set(feature.properties.id, marker);
     });
-  }, [addToast, shareStation, visibleStations]);
+  }, [
+    addToast,
+    content.stationFallbackTitle,
+    content.toasts.addressCopied,
+    content.toasts.addressCopyFailed,
+    shareStation,
+    visibleStations,
+  ]);
 
   useEffect(() => {
     if (!selectedStation) {
@@ -548,7 +562,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
 
   const handleLocate = () => {
     if (!navigator.geolocation) {
-      addToast('Geolocation is not supported by your browser.', 'error');
+      addToast(content.toasts.geolocationUnsupported, 'error');
       return;
     }
 
@@ -579,15 +593,15 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
       error => {
         // If the user denied permission, don't silently fall back.
         if (error?.code === 1) {
-          addToast('Location permission denied. Please allow location access and try again.', 'error');
+          addToast(content.toasts.geolocationDenied, 'error');
           return;
         }
 
         void (async () => {
-          addToast('Network location unavailable. Using approximate IP location...', 'info');
+          addToast(content.toasts.approximateLocation, 'info');
           const ipLoc = await fetchIpApproxLocation();
           if (!ipLoc) {
-            addToast('Unable to retrieve your location.', 'error');
+            addToast(content.toasts.geolocationUnavailable, 'error');
             return;
           }
 
@@ -629,56 +643,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
     }
   }, [autoUpdate, mapState, searchParams, searchTerm, selectedStation, setSearchParams]);
 
-  const faqItems = useMemo(
-    () => [
-      {
-        question: 'How accurate is the data on this map?',
-        answer:
-          'All charging locations come directly from Open Charge Map contributors. Each listing includes the last verified timestamp so you can gauge freshness.',
-      },
-      {
-        question: 'Which connector types are common in Albania?',
-        answer:
-          'Type 2 AC connectors and CCS2 DC fast chargers are the most widespread. CHAdeMO appears occasionally, but CCS2 is the go-to option for rapid charging across the country.',
-      },
-      {
-        question: 'Can I find fast charging stations only?',
-        answer:
-          'Yes. Look for stations whose power rating shows 50 kW or higher and CCS2 connectors in the details — those are the high-power DC chargers ideal for quick top-ups.',
-      },
-      {
-        question: 'What does “status” mean on each location?',
-        answer:
-          'Status reflects the operational flag reported to Open Charge Map. “Operational” sites are generally active, while other statuses highlight maintenance or planned units.',
-      },
-      {
-        question: 'How do I get directions to a charger?',
-        answer:
-          'Open any station card or map popup and tap the Directions button. It will launch Google Maps with the coordinates pre-filled for easy navigation.',
-      },
-      {
-        question: 'Why does the map refresh when I move it?',
-        answer:
-          'Auto-update keeps results aligned with the area currently visible. You can disable it to explore freely and then press “Search this area” when ready.',
-      },
-      {
-        question: 'How can I report an issue or leave a comment?',
-        answer:
-          'Each listing links back to Open Charge Map where you can submit updates, photos, and comments to help the EV community in Albania.',
-      },
-      {
-        question: 'Will this work on mobile devices?',
-        answer:
-          'Absolutely. The layout adapts to small screens, supports touch interactions, and keeps controls large enough for on-the-go route planning.',
-      },
-      {
-        question: 'Do I need an account to use the map?',
-        answer:
-          'No account is required. You can search, navigate through results, and copy share links instantly without signing in.',
-      },
-    ],
-    [],
-  );
+  const faqItems = content.faqItems;
 
   const structuredData = useMemo(() => ({
     '@context': 'https://schema.org',
@@ -693,27 +658,28 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
     })),
   }), [faqItems]);
 
-  const seoTitle = 'Charging Stations in Albania – Interactive EV Map | Makina Elektrike';
-  const seoDescription =
-    'Find EV charging stations across Albania. Search the interactive map, explore station details, and plan your route with live Open Charge Map data.';
+  const seoTitle = content.seoTitle;
+  const seoDescription = content.seoDescription;
 
   const breadcrumbItems = [
     { label: t('header.home'), to: '/' },
-    { label: 'Charging Stations in Albania', to: '/albania-charging-stations' },
+    { label: content.breadcrumbLabel, to: '/albania-charging-stations' },
   ];
 
   const getListHeading = () => {
     if (!visibleStations.length) {
-      return 'No stations to show yet';
+      return content.noStationsHeading;
     }
     const startIndex = (currentPage - 1) * itemsPerPage + 1;
     const endIndex = Math.min(currentPage * itemsPerPage, visibleStations.length);
     const searchQuery = searchTerm.trim();
 
-    if (searchQuery) {
-      return `Showing ${startIndex}-${endIndex} of ${visibleStations.length} results for "${searchQuery}"`;
-    }
-    return `Showing ${startIndex}-${endIndex} of ${visibleStations.length} stations`;
+    return formatChargingStationsListHeading(locale, {
+      start: startIndex,
+      end: endIndex,
+      count: visibleStations.length,
+      query: searchQuery || undefined,
+    });
   };
 
   const listHeading = getListHeading();
@@ -724,12 +690,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
         title={seoTitle}
         description={seoDescription}
         canonical={`${BASE_URL}/albania-charging-stations/`}
-        keywords={[
-          'Albania EV charging map',
-          'Open Charge Map Albania',
-          'EV charging stations Tirana',
-          'Makina Elektrike charging',
-        ]}
+        keywords={content.seoKeywords}
         openGraph={{
           title: seoTitle,
           description: seoDescription,
@@ -765,9 +726,9 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
         </nav>
 
         <header className="space-y-4">
-          <h1 className="text-4xl font-extrabold text-white">Charging Stations in Albania</h1>
+          <h1 className="text-4xl font-extrabold text-white">{content.title}</h1>
           <p className="text-lg text-gray-300 max-w-3xl">
-            Explore every public charging location in Albania with live data from Open Charge Map. Use the interactive map to search, export station details, and plan confident electric journeys.
+            {content.description}
           </p>
         </header>
 
@@ -781,14 +742,14 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
             </div>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <label className="flex w-full flex-col gap-2 lg:max-w-md">
-                <span className="text-sm font-medium text-gray-300">Search</span>
+                <span className="text-sm font-medium text-gray-300">{content.searchLabel}</span>
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
                   <input
                     type="search"
                     value={searchTerm}
                     onChange={handleSearchInput}
-                    placeholder="Search by name, address, or operator"
+                    placeholder={content.searchPlaceholder}
                     className="w-full rounded-lg border border-white/10 bg-gray-950/70 py-2 pl-10 pr-3 text-sm text-white placeholder:text-gray-500 focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
                   />
                 </div>
@@ -801,7 +762,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                   className="inline-flex items-center gap-2 rounded-lg border border-gray-cyan/60 bg-gray-cyan/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-cyan/30 focus:outline-none focus:ring-2 focus:ring-gray-cyan"
                 >
                   <LocateFixed className="h-4 w-4" aria-hidden="true" />
-                  Locate me
+                  {content.locateMe}
                 </button>
               </div>
             </div>
@@ -809,15 +770,15 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-gray-950/60 px-4 py-3">
                 <div>
-                  <p className="text-sm font-semibold text-white">Auto-update on map move</p>
-                  <p className="text-xs text-gray-400">Fetch stations automatically whenever you pan or zoom.</p>
+                  <p className="text-sm font-semibold text-white">{content.autoUpdateTitle}</p>
+                  <p className="text-xs text-gray-400">{content.autoUpdateDescription}</p>
                 </div>
                 {autoUpdate ? (
                   <button
                     type="button"
                     role="switch"
                     aria-checked="true"
-                    title="Auto-update on map move"
+                    title={content.autoUpdateTitle}
                     onClick={handleToggleAutoUpdate}
                     className="relative h-7 w-14 rounded-full bg-gray-cyan transition"
                   >
@@ -828,7 +789,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                     type="button"
                     role="switch"
                     aria-checked="false"
-                    title="Auto-update on map move"
+                    title={content.autoUpdateTitle}
                     onClick={handleToggleAutoUpdate}
                     className="relative h-7 w-14 rounded-full bg-gray-700 transition"
                   >
@@ -844,20 +805,20 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                   className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-cyan/60 bg-gray-cyan/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-cyan/30 focus:outline-none focus:ring-2 focus:ring-gray-cyan"
                 >
                   <RefreshCw className="h-4 w-4" aria-hidden="true" />
-                  Search this area
+                  {content.searchArea}
                 </button>
               )}
 
               {pendingSearch && !autoUpdate && (
                 <p className="text-xs text-gray-400 sm:text-right">
-                  Move detected. Press “Search this area” to refresh results here.
+                  {content.searchAreaHint}
                 </p>
               )}
             </div>
           </div>
 
           <div className="relative h-[400px] rounded-2xl border border-white/10 bg-gray-950/50 shadow-xl sm:h-[460px] lg:h-[510px]">
-            <div ref={mapContainerRef} className="h-full w-full rounded-2xl" aria-label="Charging stations map" />
+            <div ref={mapContainerRef} className="h-full w-full rounded-2xl" aria-label={content.title} />
 
             {/* Map Detail Panel */}
             {selectedStation && (
@@ -878,17 +839,17 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                   {/* Panel Header */}
                   <div className="flex items-center justify-between border-b border-white/10 p-4 shrink-0">
                     <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-bold text-white leading-tight">Station Info</h2>
+                      <h2 className="text-xl font-bold text-white leading-tight">{content.stationInfo}</h2>
                       {selectedStation.properties.isCustomStation && (
                         <span className="rounded-full bg-purple-500/20 border border-purple-400/30 px-2 py-0.5 text-[10px] font-bold text-purple-200 uppercase tracking-wider">
-                          Custom
+                          {content.customBadge}
                         </span>
                       )}
                     </div>
                     <button
                       onClick={() => setPanelOpen(false)}
                       className="rounded-full bg-white/5 p-2 text-gray-400 transition hover:bg-white/10 hover:text-white"
-                      aria-label="Close details"
+                      aria-label={content.closeDetails}
                     >
                       <X className="h-5 w-5" />
                     </button>
@@ -898,7 +859,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                   <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
                     <div>
                       <h3 className="text-lg font-semibold text-white leading-snug">
-                        {selectedStation.properties.title || 'Charging station'}
+                        {selectedStation.properties.title || content.stationFallbackTitle}
                       </h3>
                       <p className="mt-1 text-sm text-gray-400">
                         {formatAddress(selectedStation.properties)}
@@ -907,43 +868,43 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">Operator</span>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">{content.operatorLabel}</span>
                         <p className="text-sm text-gray-200 truncate">
-                          {selectedStation.properties.operatorInfo?.title || (selectedStation.properties as any).OperatorInfo?.Title || 'Unknown'}
+                          {selectedStation.properties.operatorInfo?.title || (selectedStation.properties as any).OperatorInfo?.Title || content.unknownLabel}
                         </p>
                       </div>
                       <div className="space-y-1">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">Status</span>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">{content.statusLabel}</span>
                         <p className="text-sm text-gray-200 truncate">
-                          {selectedStation.properties.statusType?.title || (selectedStation.properties as any).StatusType?.Title || 'Unknown'}
+                          {selectedStation.properties.statusType?.title || (selectedStation.properties as any).StatusType?.Title || content.unknownLabel}
                         </p>
                       </div>
                       <div className="space-y-1">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">Usage</span>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">{content.usageLabel}</span>
                         <p className="text-sm text-gray-200 truncate">
-                          {selectedStation.properties.usageType?.title || (selectedStation.properties as any).UsageType?.Title || 'Unknown'}
+                          {selectedStation.properties.usageType?.title || (selectedStation.properties as any).UsageType?.Title || content.unknownLabel}
                         </p>
                       </div>
                       <div className="space-y-1">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">Cost</span>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">{content.costLabel}</span>
                         <p className="text-sm text-gray-200">
-                          {selectedStation.properties.usageCost || 'Not provided'}
+                          {selectedStation.properties.usageCost || content.notProvided}
                         </p>
                       </div>
                     </div>
 
                     {/* Connections Section */}
                     <div className="space-y-3">
-                      <h4 className="text-xs font-bold text-white uppercase tracking-widest opacity-60">Connectors</h4>
+                      <h4 className="text-xs font-bold text-white uppercase tracking-widest opacity-60">{content.connectorsTitle}</h4>
                       <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
                         {(selectedStation.properties.connections || (selectedStation.properties as any).Connections || []).map((conn: any, idx: number) => (
                           <div key={idx} className="flex items-center justify-between border-b border-white/10 last:border-0 p-3 bg-gray-900/40">
                             <div className="min-w-0 flex-1 pr-2">
                               <p className="text-sm font-semibold text-white truncate">
-                                {conn.connectionType?.title || conn.ConnectionType?.Title || 'Unknown'}
+                                {conn.connectionType?.title || conn.ConnectionType?.Title || content.unknownLabel}
                               </p>
                               <p className="text-[11px] text-gray-400">
-                                {conn.level?.title || conn.Level?.Title || 'Standard'} charging
+                                {`${conn.level?.title || conn.Level?.Title || content.standardChargingLabel} ${content.chargingSuffix}`}
                               </p>
                             </div>
                             <div className="text-right shrink-0">
@@ -951,7 +912,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                                 {conn.powerKW || conn.PowerKW ? `${conn.powerKW || conn.PowerKW} kW` : '—'}
                               </p>
                               <p className="text-[10px] text-gray-500">
-                                {conn.quantity || conn.Quantity || 1} available
+                                {`${conn.quantity || conn.Quantity || 1} ${content.availableLabel}`}
                               </p>
                             </div>
                           </div>
@@ -968,14 +929,14 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                         className="flex items-center justify-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-bold text-black transition hover:bg-gray-cyan-light active:scale-95"
                       >
                         <MapPin className="h-4 w-4" />
-                        Go
+                        {content.goLabel}
                       </a>
                       <button
                         onClick={() => shareStation(selectedStation)}
                         className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10 active:scale-95"
                       >
                         <Share2 className="h-4 w-4" />
-                        Share
+                        {content.shareLabel}
                       </button>
                     </div>
 
@@ -984,16 +945,17 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                         const address = formatAddress(selectedStation.properties);
                         navigator.clipboard
                           .writeText(address)
-                          .then(() => addToast('Address copied', 'success'));
+                          .then(() => addToast(content.toasts.addressCopied, 'success'))
+                          .catch(() => addToast(content.toasts.addressCopyFailed, 'error'));
                       }}
                       className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10 active:scale-95"
                     >
                       <Copy className="h-4 w-4" />
-                      Copy Address
+                      {content.copyAddressLabel}
                     </button>
 
                     <p className="text-[10px] text-gray-500 text-center pb-2 opacity-50">
-                      ID: {selectedStation.properties.id} • Data via OCM
+                      {`ID: ${selectedStation.properties.id} • ${content.dataViaOCMLabel}`}
                     </p>
                   </div>
                 </div>
@@ -1002,11 +964,11 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
             {loadingStations && (
               <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-gray-950/60 backdrop-blur">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-cyan" aria-hidden="true" />
-                <span className="ml-3 text-sm text-white">Loading stations...</span>
+                <span className="ml-3 text-sm text-white">{content.loadingStations}</span>
               </div>
             )}
             <div className="absolute bottom-3 right-4 rounded bg-black/70 px-3 py-1 text-xs text-gray-300">
-              Data ©{' '}
+              {content.dataSourceLabel}{' '}
               <a
                 href="https://openchargemap.org"
                 className="underline"
@@ -1028,7 +990,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
               </div>
               {lastUpdated && (
                 <p className="text-xs text-gray-400">
-                  Last updated {formatDateTime(lastUpdated)}
+                  {`${content.lastUpdatedLabel} ${formatDateTime(lastUpdated, content.intlLocale)}`}
                 </p>
               )}
             </div>
@@ -1042,7 +1004,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                   className="mt-3 inline-flex items-center gap-2 rounded-lg border border-red-300/60 px-3 py-1 text-xs font-semibold text-red-100 transition hover:bg-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-300"
                 >
                   <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-                  Retry
+                  {content.retryLabel}
                 </button>
               </div>
             )}
@@ -1065,20 +1027,20 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-lg font-semibold text-white">{station.properties.title ?? 'Charging station'}</h3>
+                          <h3 className="text-lg font-semibold text-white">{station.properties.title ?? content.stationFallbackTitle}</h3>
                           {isCustomStation && (
                             <span className="inline-flex items-center rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 px-2.5 py-0.5 text-xs font-semibold text-purple-200">
-                              Custom
+                              {content.customBadge}
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-300">{formatAddress(station.properties) || 'Address unavailable'}</p>
+                        <p className="text-sm text-gray-300">{formatAddress(station.properties) || content.addressUnavailable}</p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           <p className="text-xs text-gray-400">
-                            Operator: <span className="text-gray-200">{station.properties.operatorInfo?.title ?? (station.properties as any).OperatorInfo?.Title ?? 'Unknown'}</span>
+                            {`${content.operatorLabel}: `}<span className="text-gray-200">{station.properties.operatorInfo?.title ?? (station.properties as any).OperatorInfo?.Title ?? content.unknownLabel}</span>
                           </p>
                           <p className="text-xs text-gray-400">
-                            Status: <span className="text-gray-200">{station.properties.statusType?.title ?? (station.properties as any).StatusType?.Title ?? 'Unknown'}</span>
+                            {`${content.statusLabel}: `}<span className="text-gray-200">{station.properties.statusType?.title ?? (station.properties as any).StatusType?.Title ?? content.unknownLabel}</span>
                           </p>
                         </div>
                         <div className="mt-1 flex flex-wrap gap-3">
@@ -1094,7 +1056,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                           )}
                           {isCustomStation && (
                             <div className="flex items-center gap-1.5 rounded-md bg-purple-500/10 px-2 py-0.5 text-[11px] font-medium text-purple-300 border border-purple-500/20">
-                              🔌 {station.properties.connections?.[0]?.connectionType?.title || 'Connectors'}
+                              🔌 {station.properties.connections?.[0]?.connectionType?.title || content.connectorsTitle}
                             </div>
                           )}
                         </div>
@@ -1114,7 +1076,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                           className="inline-flex items-center gap-2 rounded-lg border border-gray-cyan/60 bg-gray-cyan/20 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gray-cyan/30 focus:outline-none focus:ring-2 focus:ring-gray-cyan"
                         >
                           <MapPin className="h-4 w-4" aria-hidden="true" />
-                          Focus on map
+                          {content.focusOnMapLabel}
                         </button>
                         <button
                           type="button"
@@ -1122,7 +1084,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                           className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gray-cyan"
                         >
                           <Share2 className="h-4 w-4" aria-hidden="true" />
-                          Share
+                          {content.shareLabel}
                         </button>
                       </div>
                     </div>
@@ -1135,7 +1097,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                         className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gray-cyan"
                       >
                         <MapPin className="h-4 w-4" aria-hidden="true" />
-                        Directions
+                        {content.directionsLabel}
                       </a >
                       <button
                         type="button"
@@ -1143,13 +1105,13 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                           const address = formatAddress(station.properties);
                           navigator.clipboard
                             .writeText(address)
-                            .then(() => addToast('Address copied to clipboard', 'success'))
-                            .catch(() => addToast('Unable to copy address', 'error'));
+                            .then(() => addToast(content.toasts.addressCopied, 'success'))
+                            .catch(() => addToast(content.toasts.addressCopyFailed, 'error'));
                         }}
                         className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gray-cyan"
                       >
                         <Copy className="h-4 w-4" aria-hidden="true" />
-                        Copy address
+                        {content.copyAddressLabel}
                       </button>
                     </div >
 
@@ -1159,10 +1121,10 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                           <table className="min-w-full divide-y divide-white/10 text-left text-xs text-gray-200">
                             <thead className="bg-white/5 text-[11px] uppercase tracking-wide text-gray-400">
                               <tr>
-                                <th className="px-3 py-2">Connection</th>
-                                <th className="px-3 py-2">Level</th>
-                                <th className="px-3 py-2">Power</th>
-                                <th className="px-3 py-2">Quantity</th>
+                                <th className="px-3 py-2">{content.connectionHeaders.connection}</th>
+                                <th className="px-3 py-2">{content.connectionHeaders.level}</th>
+                                <th className="px-3 py-2">{content.connectionHeaders.power}</th>
+                                <th className="px-3 py-2">{content.connectionHeaders.quantity}</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-white/10">
@@ -1170,9 +1132,9 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                                 <tr key={connection.id ?? `${connection.connectionType?.id}-${connection.level?.id}`}
                                   className="bg-gray-950/60 hover:bg-gray-950/80">
                                   <td className="px-3 py-2">
-                                    {connection.connectionType?.title ?? 'Unknown'}
+                                    {connection.connectionType?.title ?? content.unknownLabel}
                                   </td>
-                                  <td className="px-3 py-2">{connection.level?.title ?? 'Unknown'}</td>
+                                  <td className="px-3 py-2">{connection.level?.title ?? content.unknownLabel}</td>
                                   <td className="px-3 py-2">{connection.powerKW ? `${connection.powerKW} kW` : '—'}</td>
                                   <td className="px-3 py-2">{connection.quantity ?? '—'}</td>
                                 </tr>
@@ -1181,7 +1143,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                           </table>
                         </div>
                       ) : (
-                        <p className="mt-3 text-xs text-gray-400">Connection details not provided.</p>
+                        <p className="mt-3 text-xs text-gray-400">{content.connectionDetailsMissing}</p>
                       )
                     }
 
@@ -1197,7 +1159,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
               {
                 !loadingStations && !visibleStations.length && !error && (
                   <div className="rounded-lg border border-white/10 bg-gray-950/60 px-4 py-6 text-center text-sm text-gray-300">
-                    Try searching a different area of Albania or zooming out to see more locations.
+                    {content.noVisibleStations}
                   </div>
                 )
               }
@@ -1211,10 +1173,10 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                   disabled={currentPage === 1}
                   className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gray-cyan disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/10"
                 >
-                  Previous
+                  {content.paginationPrevious}
                 </button>
                 <span className="text-sm text-gray-300">
-                  Page {currentPage} of {totalPages}
+                  {`${content.paginationPage} ${currentPage} ${content.paginationOf} ${totalPages}`}
                 </span>
                 <button
                   type="button"
@@ -1222,7 +1184,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                   disabled={currentPage === totalPages}
                   className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-gray-cyan disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/10"
                 >
-                  Next
+                  {content.paginationNext}
                 </button>
               </div>
             )}
@@ -1230,35 +1192,27 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
         </section >
 
         <section className="space-y-6 rounded-2xl border border-white/10 bg-white/5 p-8 shadow-xl">
-          <h2 className="text-3xl font-bold text-white">How to Use the Map</h2>
+          <h2 className="text-3xl font-bold text-white">{content.howToUseTitle}</h2>
           <ol className="space-y-3 text-gray-300">
-            <li>
-              <strong className="text-white">Search or browse:</strong> Use the search bar or simply pan around the country to reveal clusters of chargers. Results are paginated for easier navigation.
-            </li>
-            <li>
-              <strong className="text-white">Move the map:</strong> Zoom in to inspect specific neighbourhoods. Auto-update keeps results fresh, or switch it off and press “Search this area”.
-            </li>
-            <li>
-              <strong className="text-white">Open station details:</strong> Tap any marker or list item to view connection types, power levels, usage costs, and photos.
-            </li>
-            <li>
-              <strong className="text-white">Plan your trip:</strong> Use the Directions and Share buttons to navigate to and save the stations you want to visit.
-            </li>
+            {content.howToUseSteps.map(step => (
+              <li key={step.label}>
+                <strong className="text-white">{`${step.label}:`}</strong> {step.body}
+              </li>
+            ))}
           </ol>
         </section>
 
         <section className="space-y-6 rounded-2xl border border-white/10 bg-white/5 p-8 shadow-xl">
-          <h2 className="text-3xl font-bold text-white">Where You’ll Find Chargers in Albania</h2>
-          <p className="text-gray-300">
-            Fast-growing coverage stretches from Tirana and Durrës to key corridors toward Shkodër, Korçë, and the southern coast. Rapid DC hubs support major highways, while AC wallboxes keep city centres and hospitality venues connected. Expect Type 2 plugs for everyday top-ups and CCS2 rapid chargers on long-distance routes.
-          </p>
-          <p className="text-gray-300">
-            New sites appear regularly thanks to private operators, retail destinations, and municipal initiatives. Keep an eye on status indicators in each listing to confirm availability before you depart.
-          </p>
+          <h2 className="text-3xl font-bold text-white">{content.coverageTitle}</h2>
+          {content.coverageParagraphs.map(paragraph => (
+            <p key={paragraph} className="text-gray-300">
+              {paragraph}
+            </p>
+          ))}
         </section>
 
         <section className="space-y-6 rounded-2xl border border-white/10 bg-white/5 p-8 shadow-xl">
-          <h2 className="text-3xl font-bold text-white">Frequently Asked Questions</h2>
+          <h2 className="text-3xl font-bold text-white">{content.faqTitle}</h2>
           <div className="space-y-4">
             {faqItems.map(item => (
               <details key={item.question} className="group rounded-xl border border-white/10 bg-gray-950/60 p-4">

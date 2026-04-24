@@ -6,6 +6,11 @@ import { useToast } from '../../contexts/ToastContext';
 import { createEnquiry } from '../../services/enquiries';
 import OptimizedImage from '../OptimizedImage';
 import { DEALERSHIP_PLACEHOLDER_IMAGE } from '../../constants/media';
+import {
+    modalCloseButtonClass,
+    modalContainerClass,
+    modalOverlayClass,
+} from '../../constants/modalStyles';
 
 interface EnquiryModalProps {
     listing: Listing;
@@ -68,12 +73,13 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
     };
 
     return (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 p-4 backdrop-blur-sm">
-            <div className="flex min-h-full items-start justify-center py-6 sm:items-center">
-            <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0f172a] shadow-2xl">
+        <div className={modalOverlayClass} role="dialog" aria-modal="true">
+            <div className="flex min-h-full items-start justify-center py-4 sm:items-center sm:py-6">
+            <div className={`${modalContainerClass} relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden bg-[#0f172a] shadow-2xl sm:max-h-[calc(100dvh-3rem)]`}>
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-gray-400 hover:text-white transition"
+                    className={`${modalCloseButtonClass} absolute right-4 top-4 z-10`}
+                    aria-label={t('common.close')}
                 >
                     <X size={24} />
                 </button>
@@ -114,6 +120,8 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                             </label>
                             <input
                                 type="text"
+                                name="name"
+                                autoComplete="name"
                                 required
                                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-gray-cyan outline-none transition"
                                 value={formData.name}
@@ -129,6 +137,8 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                                 </label>
                                 <input
                                     type="email"
+                                    name="email"
+                                    autoComplete="email"
                                     required
                                     className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-gray-cyan outline-none transition"
                                     value={formData.email}
@@ -142,6 +152,8 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                                 </label>
                                 <input
                                     type="tel"
+                                    name="phone"
+                                    autoComplete="tel"
                                     className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-gray-cyan outline-none transition"
                                     value={formData.phone}
                                     onChange={e => setFormData({ ...formData, phone: e.target.value })}
@@ -155,6 +167,7 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                                 {t('common.message')}
                             </label>
                             <textarea
+                                name="message"
                                 required
                                 rows={4}
                                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-gray-cyan outline-none transition resize-none"

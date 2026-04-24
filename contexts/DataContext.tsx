@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { matchPath, useLocation } from 'react-router-dom';
 import type {
   Dealer,
@@ -473,6 +474,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const [mutationState, mutationDispatch] = useReducer(mutationReducer, createInitialMutationState());
   const { role, user, initializing } = useAuth();
   const { addToast } = useToast();
+  const { t } = useTranslation();
   const location = useLocation();
   const userUid = user?.uid ?? null;
   const pathname = location.pathname;
@@ -675,17 +677,39 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   }, [dataState.dealers, isDealerWorkspaceRoute, permissionAwareErrorHandler, requiresCollection, role]);
 
   useEffect(() => {
-    if (role !== 'dealer' || !userUid || !requiresCollection('enquiries')) {
+    if (role !== 'dealer' || !isDealerWorkspaceRoute || !requiresCollection('enquiries')) {
       return;
     }
 
-    const unsub = subscribeToDealerEnquiries(userUid, {
-      onData: (enquiries: Enquiry[]) => dataDispatch({ type: 'SET_ENQUIRIES', payload: enquiries }),
-      onError: permissionAwareErrorHandler('enquiries', () => dataDispatch({ type: 'SET_ENQUIRIES', payload: [] })),
-    });
+    const dealerIds = dataState.dealers.map(dealer => dealer.id).filter(Boolean);
 
-    return () => unsub();
-  }, [permissionAwareErrorHandler, requiresCollection, role, userUid]);
+    if (dealerIds.length === 0) {
+      dataDispatch({ type: 'SET_ENQUIRIES', payload: [] });
+      return;
+    }
+
+    const uniqueIds = Array.from(new Set(dealerIds));
+    const aggregatedEnquiries = new Map<string, Enquiry[]>();
+
+    const unsubscribers = uniqueIds.map((dealerId: string) =>
+      subscribeToDealerEnquiries(dealerId, {
+        onData: (enquiries: Enquiry[]) => {
+          aggregatedEnquiries.set(dealerId, enquiries);
+          const combined = Array.from(aggregatedEnquiries.values()).flat();
+          dataDispatch({ type: 'SET_ENQUIRIES', payload: combined });
+        },
+        onError: permissionAwareErrorHandler('enquiries', () => {
+          aggregatedEnquiries.delete(dealerId);
+          const combined = Array.from(aggregatedEnquiries.values()).flat();
+          dataDispatch({ type: 'SET_ENQUIRIES', payload: combined });
+        }),
+      }),
+    );
+
+    return () => {
+      unsubscribers.forEach(unsubscribe => unsubscribe());
+    };
+  }, [dataState.dealers, isDealerWorkspaceRoute, permissionAwareErrorHandler, requiresCollection, role]);
 
   const runMutation = useCallback(
     async <T,>({
@@ -698,7 +722,9 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       payloadForExport,
     }: MutationRequest<T>) => {
       if (!role || !allowedRoles.includes(role)) {
-        const permissionMessage = 'You do not have permission to perform this action.';
+        const permissionMessage = t('dataMutations.permissionDenied', {
+          defaultValue: 'You do not have permission to perform this action.',
+        });
         mutationDispatch({ type: 'error', entity, operation, error: permissionMessage });
         addToast(permissionMessage, 'error');
         throw new Error(permissionMessage);
@@ -913,12 +939,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'dealers',
         operation: 'create',
         action: () => apiCreateDealer(payload),
-        successMessage: 'Dealer created successfully.',
-        errorMessage: 'Failed to create dealer.',
+        successMessage: t('dataMutations.dealerCreated', { defaultValue: 'Dealer created successfully.' }),
+        errorMessage: t('dataMutations.dealerCreateFailed', { defaultValue: 'Failed to create dealer.' }),
         payloadForExport: payload,
       });
     },
-    [enhanceDealerInput, runMutation],
+    [enhanceDealerInput, runMutation, t],
   );
 
   const updateDealer = useCallback(
@@ -927,11 +953,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'dealers',
         operation: 'update',
         action: () => apiUpdateDealer(id, enhanceDealerUpdate(updates)),
-        successMessage: 'Dealer updated successfully.',
-        errorMessage: 'Failed to update dealer.',
+        successMessage: t('dataMutations.dealerUpdated', { defaultValue: 'Dealer updated successfully.' }),
+        errorMessage: t('dataMutations.dealerUpdateFailed', { defaultValue: 'Failed to update dealer.' }),
         allowedRoles: ['admin', 'dealer'],
       }),
-    [enhanceDealerUpdate, runMutation],
+    [enhanceDealerUpdate, runMutation, t],
   );
 
   const deleteDealer = useCallback(
@@ -940,11 +966,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'dealers',
         operation: 'delete',
         action: () => softDeleteDealerRecord(id),
-        successMessage: 'Dealer deleted successfully.',
-        errorMessage: 'Failed to delete dealer.',
+        successMessage: t('dataMutations.dealerDeleted', { defaultValue: 'Dealer deleted successfully.' }),
+        errorMessage: t('dataMutations.dealerDeleteFailed', { defaultValue: 'Failed to delete dealer.' }),
         allowedRoles: ['admin'],
       }),
-    [runMutation],
+    [runMutation, t],
   );
 
   const approveDealer = useCallback(
@@ -953,11 +979,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'dealers',
         operation: 'update',
         action: () => apiApproveDealerStatus(id),
-        successMessage: 'Dealer approved successfully.',
-        errorMessage: 'Failed to approve dealer.',
+        successMessage: t('dataMutations.dealerApproved', { defaultValue: 'Dealer approved successfully.' }),
+        errorMessage: t('dataMutations.dealerApproveFailed', { defaultValue: 'Failed to approve dealer.' }),
         allowedRoles: ['admin'],
       }),
-    [runMutation],
+    [runMutation, t],
   );
 
   const rejectDealer = useCallback(
@@ -966,11 +992,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'dealers',
         operation: 'update',
         action: () => apiRejectDealerStatus(id),
-        successMessage: 'Dealer rejected successfully.',
-        errorMessage: 'Failed to reject dealer.',
+        successMessage: t('dataMutations.dealerRejected', { defaultValue: 'Dealer rejected successfully.' }),
+        errorMessage: t('dataMutations.dealerRejectFailed', { defaultValue: 'Failed to reject dealer.' }),
         allowedRoles: ['admin'],
       }),
-    [runMutation],
+    [runMutation, t],
   );
 
   const deactivateDealer = useCallback(
@@ -979,11 +1005,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'dealers',
         operation: 'update',
         action: () => apiDeactivateDealerStatus(id),
-        successMessage: 'Dealer deactivated successfully.',
-        errorMessage: 'Failed to deactivate dealer.',
+        successMessage: t('dataMutations.dealerDeactivated', { defaultValue: 'Dealer deactivated successfully.' }),
+        errorMessage: t('dataMutations.dealerDeactivateFailed', { defaultValue: 'Failed to deactivate dealer.' }),
         allowedRoles: ['admin'],
       }),
-    [runMutation],
+    [runMutation, t],
   );
 
   const reactivateDealer = useCallback(
@@ -992,11 +1018,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'dealers',
         operation: 'update',
         action: () => apiReactivateDealerStatus(id),
-        successMessage: 'Dealer reactivated successfully.',
-        errorMessage: 'Failed to reactivate dealer.',
+        successMessage: t('dataMutations.dealerReactivated', { defaultValue: 'Dealer reactivated successfully.' }),
+        errorMessage: t('dataMutations.dealerReactivateFailed', { defaultValue: 'Failed to reactivate dealer.' }),
         allowedRoles: ['admin'],
       }),
-    [runMutation],
+    [runMutation, t],
   );
 
   const addModel = useCallback(
@@ -1006,13 +1032,13 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'models',
         operation: 'create',
         action: () => apiCreateModel(payload),
-        successMessage: 'Model created successfully.',
-        errorMessage: 'Failed to create model.',
+        successMessage: t('dataMutations.modelCreated', { defaultValue: 'Model created successfully.' }),
+        errorMessage: t('dataMutations.modelCreateFailed', { defaultValue: 'Failed to create model.' }),
         allowedRoles: ['admin', 'dealer'],
         payloadForExport: payload,
       });
     },
-    [enhanceModelInput, runMutation],
+    [enhanceModelInput, runMutation, t],
   );
 
   const updateModel = useCallback(
@@ -1021,11 +1047,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'models',
         operation: 'update',
         action: () => apiUpdateModel(id, enhanceModelUpdate(updates)),
-        successMessage: 'Model updated successfully.',
-        errorMessage: 'Failed to update model.',
+        successMessage: t('dataMutations.modelUpdated', { defaultValue: 'Model updated successfully.' }),
+        errorMessage: t('dataMutations.modelUpdateFailed', { defaultValue: 'Failed to update model.' }),
         allowedRoles: ['admin', 'dealer'],
       }),
-    [enhanceModelUpdate, runMutation],
+    [enhanceModelUpdate, runMutation, t],
   );
 
   const deleteModel = useCallback(
@@ -1034,10 +1060,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'models',
         operation: 'delete',
         action: () => apiDeleteModel(id),
-        successMessage: 'Model deleted successfully.',
-        errorMessage: 'Failed to delete model.',
+        successMessage: t('dataMutations.modelDeleted', { defaultValue: 'Model deleted successfully.' }),
+        errorMessage: t('dataMutations.modelDeleteFailed', { defaultValue: 'Failed to delete model.' }),
       }),
-    [runMutation],
+    [runMutation, t],
   );
 
   const linkModelToDealer = useCallback(
@@ -1046,11 +1072,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'dealers',
         operation: 'update',
         action: () => apiCreateDealerModel(dealerId, modelId, normalizeOptionalString(userUid)),
-        successMessage: 'Model linked to dealer successfully.',
-        errorMessage: 'Failed to link model to dealer.',
+        successMessage: t('dataMutations.modelLinked', { defaultValue: 'Model linked to dealer successfully.' }),
+        errorMessage: t('dataMutations.modelLinkFailed', { defaultValue: 'Failed to link model to dealer.' }),
         allowedRoles: ['admin', 'dealer'],
       }),
-    [runMutation, userUid],
+    [runMutation, t, userUid],
   );
 
   const unlinkModelFromDealer = useCallback(
@@ -1062,11 +1088,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           await apiDeleteDealerModel(dealerId, modelId);
           return { dealer_id: dealerId, model_id: modelId };
         },
-        successMessage: 'Model removed from dealer successfully.',
-        errorMessage: 'Failed to remove model from dealer.',
+        successMessage: t('dataMutations.modelUnlinked', { defaultValue: 'Model removed from dealer successfully.' }),
+        errorMessage: t('dataMutations.modelUnlinkFailed', { defaultValue: 'Failed to remove model from dealer.' }),
         allowedRoles: ['admin', 'dealer'],
       }),
-    [runMutation],
+    [runMutation, t],
   );
 
   const addBlogPost = useCallback(
@@ -1076,12 +1102,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'blogPosts',
         operation: 'create',
         action: () => apiCreateBlogPost(payload),
-        successMessage: 'Blog post created successfully.',
-        errorMessage: 'Failed to create blog post.',
+        successMessage: t('dataMutations.blogPostCreated', { defaultValue: 'Blog post created successfully.' }),
+        errorMessage: t('dataMutations.blogPostCreateFailed', { defaultValue: 'Failed to create blog post.' }),
         payloadForExport: payload,
       });
     },
-    [enhanceBlogPostInput, runMutation],
+    [enhanceBlogPostInput, runMutation, t],
   );
 
   const updateBlogPost = useCallback(
@@ -1090,10 +1116,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'blogPosts',
         operation: 'update',
         action: () => apiUpdateBlogPost(id, enhanceBlogPostUpdate(updates)),
-        successMessage: 'Blog post updated successfully.',
-        errorMessage: 'Failed to update blog post.',
+        successMessage: t('dataMutations.blogPostUpdated', { defaultValue: 'Blog post updated successfully.' }),
+        errorMessage: t('dataMutations.blogPostUpdateFailed', { defaultValue: 'Failed to update blog post.' }),
       }),
-    [enhanceBlogPostUpdate, runMutation],
+    [enhanceBlogPostUpdate, runMutation, t],
   );
 
   const deleteBlogPost = useCallback(
@@ -1102,10 +1128,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'blogPosts',
         operation: 'delete',
         action: () => apiDeleteBlogPost(id),
-        successMessage: 'Blog post deleted successfully.',
-        errorMessage: 'Failed to delete blog post.',
+        successMessage: t('dataMutations.blogPostDeleted', { defaultValue: 'Blog post deleted successfully.' }),
+        errorMessage: t('dataMutations.blogPostDeleteFailed', { defaultValue: 'Failed to delete blog post.' }),
       }),
-    [runMutation],
+    [runMutation, t],
   );
 
   const enhanceListingInput = useCallback(
@@ -1132,13 +1158,13 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'listings',
         operation: 'create',
         action: () => apiCreateListing(payload),
-        successMessage: 'Listing created successfully.',
-        errorMessage: 'Failed to create listing.',
+        successMessage: t('dataMutations.listingCreated', { defaultValue: 'Listing created successfully.' }),
+        errorMessage: t('dataMutations.listingCreateFailed', { defaultValue: 'Failed to create listing.' }),
         allowedRoles: ['admin', 'dealer'],
         payloadForExport: payload,
       });
     },
-    [enhanceListingInput, runMutation],
+    [enhanceListingInput, runMutation, t],
   );
 
   const updateListing = useCallback(
@@ -1147,11 +1173,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'listings',
         operation: 'update',
         action: () => apiUpdateListing(id, updates),
-        successMessage: 'Listing updated successfully.',
-        errorMessage: 'Failed to update listing.',
+        successMessage: t('dataMutations.listingUpdated', { defaultValue: 'Listing updated successfully.' }),
+        errorMessage: t('dataMutations.listingUpdateFailed', { defaultValue: 'Failed to update listing.' }),
         allowedRoles: ['admin', 'dealer'],
       }),
-    [runMutation],
+    [runMutation, t],
   );
 
   const deleteListing = useCallback(
@@ -1160,11 +1186,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'listings',
         operation: 'delete',
         action: () => apiDeleteListing(id),
-        successMessage: 'Listing deleted successfully.',
-        errorMessage: 'Failed to delete listing.',
+        successMessage: t('dataMutations.listingDeleted', { defaultValue: 'Listing deleted successfully.' }),
+        errorMessage: t('dataMutations.listingDeleteFailed', { defaultValue: 'Failed to delete listing.' }),
         allowedRoles: ['admin', 'dealer'],
       }),
-    [runMutation],
+    [runMutation, t],
   );
 
   const approveListing = useCallback(
@@ -1173,11 +1199,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         entity: 'listings',
         operation: 'update',
         action: () => apiApproveListing(id),
-        successMessage: 'Listing approved successfully.',
-        errorMessage: 'Failed to approve listing.',
+        successMessage: t('dataMutations.listingApproved', { defaultValue: 'Listing approved successfully.' }),
+        errorMessage: t('dataMutations.listingApproveFailed', { defaultValue: 'Failed to approve listing.' }),
         allowedRoles: ['admin'],
       }),
-    [runMutation],
+    [runMutation, t],
   );
 
   const { dealers, models, blogPosts, dealerModels, listings, enquiries, loadError } = dataState;

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import {
   modalCloseButtonClass,
@@ -35,16 +36,21 @@ const ModalLayout: React.FC<ModalLayoutProps> = ({
   children,
   maxWidthClass = 'max-w-3xl',
 }) => {
+  const { t } = useTranslation();
   const overlayRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
-  const getOrderedFocusables = () => {
+  const getOrderedFocusables = (): HTMLElement[] => {
     if (!contentRef.current) {
-      return [] as HTMLElement[];
+      return [];
     }
 
-    return Array.from(contentRef.current.querySelectorAll<HTMLElement>(focusableSelectors)).filter(
+    const focusableElements = Array.from(contentRef.current.querySelectorAll(focusableSelectors)).filter(
+      (element): element is HTMLElement => element instanceof HTMLElement,
+    );
+
+    return focusableElements.filter(
       element => !element.hasAttribute('disabled') && element.getAttribute('tabindex') !== '-1',
     );
   };
@@ -116,9 +122,9 @@ const ModalLayout: React.FC<ModalLayoutProps> = ({
         ref={contentRef}
         role="dialog"
         aria-modal="true"
-        className={`${modalContainerClass} ${maxWidthClass} p-6`}
+        className={`${modalContainerClass} ${maxWidthClass} flex max-h-[calc(100dvh-2rem)] flex-col p-6 sm:max-h-[calc(100dvh-3rem)]`}
       >
-        <div className={modalHeaderClass}>
+        <div className={`${modalHeaderClass} shrink-0`}>
           {headerContent ?? (
             <div className="space-y-1">
               {title ? <h3 className="text-2xl font-semibold leading-tight">{title}</h3> : null}
@@ -130,13 +136,13 @@ const ModalLayout: React.FC<ModalLayoutProps> = ({
             ref={closeButtonRef}
             onClick={onClose}
             className={modalCloseButtonClass}
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="mt-6 space-y-4 overflow-y-auto">
+        <div className="mt-6 min-h-0 space-y-4 overflow-y-auto pr-1">
           {children}
         </div>
       </div>

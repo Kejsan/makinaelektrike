@@ -21,7 +21,7 @@ import {
   toHreflang,
 } from '../utils/localizedRouting';
 import { getBlogAlternateLocales } from '../utils/localizedBlogPost';
-import type { BlogPost } from '../types';
+import type { BlogPost, Dealer, Listing, Model } from '../types';
 
 dotenv.config();
 
@@ -64,6 +64,7 @@ type SitemapSection = {
 };
 
 type FirestoreTimestampLike = Timestamp | { toDate?: () => Date } | Date | string | null | undefined;
+type TimestampWithToDate = { toDate: () => Date };
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.VITE_FIREBASE_API_KEY,
@@ -114,8 +115,13 @@ const normalizeDate = (value: FirestoreTimestampLike): string | undefined => {
     return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString().slice(0, 10);
   }
 
-  if (typeof value === 'object' && typeof value.toDate === 'function') {
-    const parsed = value.toDate();
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'toDate' in value &&
+    typeof value.toDate === 'function'
+  ) {
+    const parsed = (value as TimestampWithToDate).toDate();
     return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString().slice(0, 10);
   }
 
@@ -182,9 +188,12 @@ const getDynamicDealers = async (): Promise<SitemapUrl[]> => {
   }
 
   const snapshot = await getDocs(query(collection(firestore, 'dealers'), where('approved', '==', true)));
+  const entries: Dealer[] = snapshot.docs.map(docSnapshot => ({
+    id: docSnapshot.id,
+    ...(docSnapshot.data() as Omit<Dealer, 'id'>),
+  }));
 
-  return snapshot.docs
-    .map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() }))
+  return entries
     .filter(entry => {
       const status = (entry.status as string | undefined) ?? (entry.approved === false ? 'pending' : 'approved');
       if (entry.isDeleted === true) {
@@ -215,9 +224,12 @@ const getDynamicModels = async (): Promise<SitemapUrl[]> => {
   }
 
   const snapshot = await getDocs(collection(firestore, 'models'));
+  const entries: Model[] = snapshot.docs.map(docSnapshot => ({
+    id: docSnapshot.id,
+    ...(docSnapshot.data() as Omit<Model, 'id'>),
+  }));
 
-  return snapshot.docs
-    .map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() }))
+  return entries
     .sort((first, second) => {
       const brandComparison = compareStrings(first.brand as string | undefined, second.brand as string | undefined);
       if (brandComparison !== 0) {
@@ -255,9 +267,12 @@ const getDynamicBlogPosts = async (): Promise<SitemapUrl[]> => {
   }
 
   const snapshot = await getDocs(collection(firestore, 'blogPosts'));
+  const entries: BlogPost[] = snapshot.docs.map(docSnapshot => ({
+    id: docSnapshot.id,
+    ...(docSnapshot.data() as Omit<BlogPost, 'id'>),
+  }));
 
-  return snapshot.docs
-    .map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() }))
+  return entries
     .filter(entry => entry.published !== false && entry.status !== 'draft')
     .sort((first, second) => {
       const firstTime = new Date((first.date as string | undefined) ?? '').getTime();
@@ -291,12 +306,15 @@ const getDynamicListings = async (): Promise<SitemapUrl[]> => {
   const snapshot = await getDocs(
     query(collection(firestore, 'listings'), where('status', 'in', ['approved', 'active'])),
   );
+  const entries: Listing[] = snapshot.docs.map(docSnapshot => ({
+    id: docSnapshot.id,
+    ...(docSnapshot.data() as Omit<Listing, 'id'>),
+  }));
 
-  return snapshot.docs
-    .map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() }))
+  return entries
     .sort((first, second) => {
-      const firstTime = new Date((first.updatedAt as { toDate?: () => Date } | undefined)?.toDate?.() ?? (first.createdAt as { toDate?: () => Date } | undefined)?.toDate?.() ?? 0).getTime();
-      const secondTime = new Date((second.updatedAt as { toDate?: () => Date } | undefined)?.toDate?.() ?? (second.createdAt as { toDate?: () => Date } | undefined)?.toDate?.() ?? 0).getTime();
+      const firstTime = new Date(normalizeDate(first.updatedAt) ?? normalizeDate(first.createdAt) ?? 0).getTime();
+      const secondTime = new Date(normalizeDate(second.updatedAt) ?? normalizeDate(second.createdAt) ?? 0).getTime();
       return secondTime - firstTime;
     })
     .map(entry => ({

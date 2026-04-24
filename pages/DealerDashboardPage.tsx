@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { 
   Loader2, 
   Plus, 
@@ -26,6 +26,7 @@ import type { Dealer, Model, Enquiry } from '../types';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import { DEALERSHIP_PLACEHOLDER_IMAGE, MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
+import Link from '../components/LocalizedLink';
 
 interface ProfileFormState {
   name: string;
@@ -110,6 +111,7 @@ const parseNumericField = (value: string) => {
 };
 
 const DealerDashboardPage: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const {
     dealers,
@@ -165,6 +167,21 @@ const DealerDashboardPage: React.FC = () => {
     return models.filter(model => !assignedIds.has(model.id));
   }, [assignedModels, models]);
 
+  const dealerEnquiries = useMemo(
+    () => (dealer ? enquiries.filter(enquiry => enquiry.dealerId === dealer.id) : []),
+    [dealer, enquiries],
+  );
+
+  const enquiryDateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(i18n.language || 'sq', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      }),
+    [i18n.language],
+  );
+
   useEffect(() => {
     if (!dealer) {
       setProfileState(defaultProfileState);
@@ -179,7 +196,8 @@ const DealerDashboardPage: React.FC = () => {
       website: dealer.website ?? '',
       address: dealer.address ?? dealer.location ?? '',
       city: dealer.city ?? '',
-      notes: dealer.description ?? dealer.notes ?? '',
+      notes: dealer.notes ?? '',
+      description: dealer.description ?? '',
       brands: formatList(dealer.brands),
       languages: formatList(dealer.languages),
       typeOfCars: dealer.typeOfCars ?? '',
@@ -226,8 +244,10 @@ const DealerDashboardPage: React.FC = () => {
     [newModelImagePreview, newModelPreviewFromFile],
   );
 
-  const metaTitle = 'Paneli i dilerëve | Makina Elektrike';
-  const metaDescription = 'Menaxhoni profilin, modelet dhe ofertat që shfaqen në Makina Elektrike për klientët tuaj.';
+  const metaTitle = t('dealerDashboardPage.metaTitle', { defaultValue: 'Dealer dashboard | Makina Elektrike' });
+  const metaDescription = t('dealerDashboardPage.metaDescription', {
+    defaultValue: 'Manage your public dealer profile, model line-up, and imagery inside Makina Elektrike.',
+  });
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
@@ -252,12 +272,22 @@ const DealerDashboardPage: React.FC = () => {
     }
 
     if (!profileState.name.trim()) {
-      addToast('Please provide a dealership name.', 'error');
+      addToast(
+        t('dealerDashboardPage.toasts.missingName', {
+          defaultValue: 'Please provide a dealership name.',
+        }),
+        'error',
+      );
       return;
     }
 
     if (!profileState.address.trim() || !profileState.city.trim()) {
-      addToast('Address and city are required to publish your profile.', 'error');
+      addToast(
+        t('dealerDashboardPage.toasts.addressCityRequired', {
+          defaultValue: 'Address and city are required to publish your profile.',
+        }),
+        'error',
+      );
       return;
     }
 
@@ -288,7 +318,7 @@ const DealerDashboardPage: React.FC = () => {
           [profileState.address.trim(), profileState.city.trim()].filter(Boolean).join(', ') || undefined,
         website: profileState.website.trim() || undefined,
         notes: profileState.notes.trim() || undefined,
-        description: profileState.notes.trim() || undefined,
+        description: profileState.description.trim() || undefined,
         brands: parseList(profileState.brands),
         languages: parseList(profileState.languages),
         typeOfCars: profileState.typeOfCars.trim() || dealer.typeOfCars || 'Electric Vehicles',
@@ -330,7 +360,12 @@ const DealerDashboardPage: React.FC = () => {
       });
     } catch (error) {
       console.error('Failed to upload dealer image', error);
-      addToast('Image upload failed. Please try again.', 'error');
+      addToast(
+        t('dealerDashboardPage.toasts.imageUploadFailed', {
+          defaultValue: 'Image upload failed. Please try again.',
+        }),
+        'error',
+      );
     } finally {
       setUploadingImage(false);
       event.target.value = '';
@@ -367,7 +402,12 @@ const DealerDashboardPage: React.FC = () => {
     const existingCount = existingGallery.length;
     const availableSlots = Math.max(0, 3 - existingCount);
     if (availableSlots <= 0) {
-      addToast('Gallery limit reached. Remove an image before uploading a new one.', 'warning');
+      addToast(
+        t('dealerDashboardPage.toasts.galleryLimitReached', {
+          defaultValue: 'Gallery limit reached. Remove an image before uploading a new one.',
+        }),
+        'warning',
+      );
       event.target.value = '';
       return;
     }
@@ -382,7 +422,12 @@ const DealerDashboardPage: React.FC = () => {
       await updateDealer(dealer.id, { imageGallery: nextGallery });
     } catch (error) {
       console.error('Failed to upload gallery image', error);
-      addToast('Gallery upload failed. Please try again.', 'error');
+      addToast(
+        t('dealerDashboardPage.toasts.galleryUploadFailed', {
+          defaultValue: 'Gallery upload failed. Please try again.',
+        }),
+        'error',
+      );
     } finally {
       setGalleryUploading(false);
       event.target.value = '';
@@ -401,7 +446,12 @@ const DealerDashboardPage: React.FC = () => {
       await updateDealer(dealer.id, { imageGallery: nextGallery });
     } catch (error) {
       console.error('Failed to remove gallery image', error);
-      addToast('Could not remove that gallery image.', 'error');
+      addToast(
+        t('dealerDashboardPage.toasts.galleryRemoveFailed', {
+          defaultValue: 'Could not remove that gallery image.',
+        }),
+        'error',
+      );
     } finally {
       setGalleryRemoving(null);
     }
@@ -414,7 +464,12 @@ const DealerDashboardPage: React.FC = () => {
     }
 
     if (!selectedModelId) {
-      addToast('Select a model before attaching it to your profile.', 'error');
+      addToast(
+        t('dealerDashboardPage.toasts.selectModelFirst', {
+          defaultValue: 'Select a model before attaching it to your profile.',
+        }),
+        'error',
+      );
       return;
     }
 
@@ -480,7 +535,12 @@ const DealerDashboardPage: React.FC = () => {
     const availableSlots = Math.max(0, 3 - newModelGalleryDrafts.length);
     if (availableSlots <= 0) {
       event.target.value = '';
-      addToast('Gallery limit reached for this model. Remove an image before adding another.', 'warning');
+      addToast(
+        t('dealerDashboardPage.toasts.modelGalleryLimitReached', {
+          defaultValue: 'Gallery limit reached for this model. Remove an image before adding another.',
+        }),
+        'warning',
+      );
       return;
     }
 
@@ -515,7 +575,12 @@ const DealerDashboardPage: React.FC = () => {
     }
 
     if (!newModelState.brand.trim() || !newModelState.model_name.trim()) {
-      addToast('Brand and model name are required.', 'error');
+      addToast(
+        t('dealerDashboardPage.toasts.missingBrandModel', {
+          defaultValue: 'Brand and model name are required.',
+        }),
+        'error',
+      );
       return;
     }
 
@@ -563,7 +628,11 @@ const DealerDashboardPage: React.FC = () => {
       return (
         <div className="py-16">
           <div className="max-w-3xl mx-auto px-4 text-center text-white">
-            <p>Loading your dealer profile…</p>
+            <p>
+              {t('dealerDashboardPage.loadingProfile', {
+                defaultValue: 'Loading your dealer profile…',
+              })}
+            </p>
           </div>
         </div>
       );
@@ -572,7 +641,11 @@ const DealerDashboardPage: React.FC = () => {
     return (
       <div className="py-16">
         <div className="max-w-3xl mx-auto px-4 text-center text-white">
-          <p>Your dealer profile could not be found. Please contact support.</p>
+          <p>
+            {t('dealerDashboardPage.profileNotFound', {
+              defaultValue: 'Your dealer profile could not be found. Please contact support.',
+            })}
+          </p>
         </div>
       </div>
     );
@@ -616,9 +689,14 @@ const DealerDashboardPage: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-white">
         <div className="mb-10 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-extrabold">Dealer Dashboard</h1>
+            <h1 className="text-3xl font-extrabold">
+              {t('dealerDashboardPage.title', { defaultValue: 'Dealer dashboard' })}
+            </h1>
             <p className="text-gray-300">
-              Manage your public dealer profile, contact information, imagery, and the models you represent.
+              {t('dealerDashboardPage.subtitle', {
+                defaultValue:
+                  'Manage your public dealer profile, contact information, imagery, and the models you represent.',
+              })}
             </p>
           </div>
           <div
@@ -631,7 +709,9 @@ const DealerDashboardPage: React.FC = () => {
               className={`h-2 w-2 rounded-full ${isApprovedDealer ? 'bg-emerald-400' : 'bg-amber-400'
                 }`}
             />
-            {isApprovedDealer ? 'Approved Dealer' : 'Awaiting approval'}
+            {isApprovedDealer
+              ? t('dealerDashboardPage.statusApproved', { defaultValue: 'Approved dealer' })
+              : t('dealerDashboardPage.statusAwaiting', { defaultValue: 'Awaiting approval' })}
           </div>
         </div>
 
@@ -639,7 +719,7 @@ const DealerDashboardPage: React.FC = () => {
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
             <h3 className="text-sm font-medium text-gray-400 mb-4 flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
-              Quick Actions
+              {t('dealerDashboardPage.quickActions', { defaultValue: 'Quick actions' })}
             </h3>
             <div className="grid grid-cols-2 gap-3">
               <Link
@@ -647,7 +727,9 @@ const DealerDashboardPage: React.FC = () => {
                 className="flex flex-col items-center justify-center p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
               >
                 <PlusCircle className="h-6 w-6 text-gray-cyan mb-2 group-hover:scale-110 transition-transform" />
-                <span className="text-xs font-semibold text-center">New Listing</span>
+                <span className="text-xs font-semibold text-center">
+                  {t('dealerDashboardPage.quickActionNewListing', { defaultValue: 'New listing' })}
+                </span>
               </Link>
               {dealer.id && (
                 <Link
@@ -655,7 +737,9 @@ const DealerDashboardPage: React.FC = () => {
                   className="flex flex-col items-center justify-center p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
                 >
                   <ExternalLink className="h-6 w-6 text-gray-cyan mb-2 group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-semibold text-center">Public Profile</span>
+                  <span className="text-xs font-semibold text-center">
+                    {t('dealerDashboardPage.quickActionPublicProfile', { defaultValue: 'Public profile' })}
+                  </span>
                 </Link>
               )}
             </div>
@@ -665,15 +749,18 @@ const DealerDashboardPage: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-gray-400 flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" />
-                Recent Enquiries
+                {t('dealerDashboardPage.recentEnquiries', { defaultValue: 'Recent enquiries' })}
               </h3>
               <span className="bg-cyan-500/10 text-gray-cyan text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                {enquiries.length} New
+                {t('dealerDashboardPage.newBadge', {
+                  count: dealerEnquiries.length,
+                  defaultValue: '{{count}} new',
+                })}
               </span>
             </div>
-            {enquiries.length > 0 ? (
+            {dealerEnquiries.length > 0 ? (
               <div className="space-y-3">
-                {[...(enquiries || [])]
+                {[...(dealerEnquiries || [])]
                   .sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
                   .slice(0, 3)
                   .map((enquiry) => (
@@ -686,11 +773,16 @@ const DealerDashboardPage: React.FC = () => {
                         <p className="text-sm font-semibold truncate">{enquiry.name}</p>
                         <span className="text-[10px] text-gray-500 flex items-center gap-1 shrink-0">
                           <Clock className="h-3 w-3" />
-                          {enquiry.createdAt ? new Date(enquiry.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}
+                          {enquiry.createdAt
+                            ? enquiryDateFormatter.format(new Date(enquiry.createdAt.seconds * 1000))
+                            : t('dealerDashboardPage.justNow', { defaultValue: 'Just now' })}
                         </span>
                       </div>
                       <p className="text-xs text-gray-400 truncate mt-0.5">
-                        Interested in: <span className="text-gray-200">{enquiry.carModel || 'General Inquiry'}</span>
+                        {t('dealerDashboardPage.messagePreviewLabel', { defaultValue: 'Message' })}:{' '}
+                        <span className="text-gray-200">
+                          {enquiry.message?.trim() || t('dealerDashboardPage.generalEnquiry', { defaultValue: 'General enquiry' })}
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -698,7 +790,9 @@ const DealerDashboardPage: React.FC = () => {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-4 text-center">
-                <p className="text-sm text-gray-500 italic">No enquiries yet</p>
+                <p className="text-sm text-gray-500 italic">
+                  {t('dealerDashboardPage.noEnquiries', { defaultValue: 'No enquiries yet' })}
+                </p>
               </div>
             )}
           </div>
@@ -708,7 +802,9 @@ const DealerDashboardPage: React.FC = () => {
           <div className="lg:col-span-2 space-y-8">
             <section className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
               <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Contact information</h2>
+                <h2 className="text-xl font-semibold">
+                  {t('dealerDashboardPage.contactInformation', { defaultValue: 'Contact information' })}
+                </h2>
                 <button
                   type="submit"
                   form="dealer-profile-form"
@@ -716,72 +812,83 @@ const DealerDashboardPage: React.FC = () => {
                   disabled={isUpdatingDealer}
                 >
                   {isUpdatingDealer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  <span>Save changes</span>
+                  <span>{t('dealerDashboardPage.saveChanges', { defaultValue: 'Save changes' })}</span>
                 </button>
               </div>
               <form id="dealer-profile-form" className="space-y-6" onSubmit={handleProfileSubmit}>
                 <div className="grid gap-6 md:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="name">
-                      Dealership name
+                      {t('dealerDashboardPage.fields.dealershipName', { defaultValue: 'Dealership name' })}
                     </label>
                     <input
                       id="name"
                       name="name"
+                      autoComplete="organization"
                       value={profileState.name}
                       onChange={handleProfileChange}
                       className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                      placeholder="Makina Elektrike Dealer"
+                      placeholder={t('dealerDashboardPage.fields.dealershipNamePlaceholder', {
+                        defaultValue: 'Makina Elektrike Dealer',
+                      })}
                       required
                     />
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="contactName">
-                      Primary contact
+                      {t('dealerDashboardPage.fields.primaryContact', { defaultValue: 'Primary contact' })}
                     </label>
                     <input
                       id="contactName"
                       name="contactName"
+                      autoComplete="name"
                       value={profileState.contactName}
                       onChange={handleProfileChange}
                       className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                      placeholder="Jane Doe"
+                      placeholder={t('dealerDashboardPage.fields.primaryContactPlaceholder', {
+                        defaultValue: 'Jane Doe',
+                      })}
                     />
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="phone">
-                      Phone number
+                      {t('dealerDashboardPage.fields.phoneNumber', { defaultValue: 'Phone number' })}
                     </label>
                     <input
                       id="phone"
                       name="phone"
+                      autoComplete="tel"
                       value={profileState.phone}
                       onChange={handleProfileChange}
                       className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                      placeholder="+355 69 123 4567"
+                      placeholder={t('dealerDashboardPage.fields.phonePlaceholder', { defaultValue: '+355 69 123 4567' })}
                     />
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="email">
-                      Email
+                      {t('common.email')}
                     </label>
                     <input
                       id="email"
                       name="email"
                       type="email"
+                      autoComplete="email"
                       value={profileState.email}
                       onChange={handleProfileChange}
                       className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                      placeholder="dealer@example.com"
+                      placeholder={t('dealerDashboardPage.fields.emailPlaceholder', {
+                        defaultValue: 'dealer@example.com',
+                      })}
                     />
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="website">
-                      Website
+                      {t('registerDealerPage.fields.website', { defaultValue: 'Website' })}
                     </label>
                     <input
                       id="website"
                       name="website"
+                      autoComplete="url"
                       value={profileState.website}
                       onChange={handleProfileChange}
                       className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
@@ -790,29 +897,33 @@ const DealerDashboardPage: React.FC = () => {
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="city">
-                      City
+                      {t('registerDealerPage.fields.city', { defaultValue: 'City' })}
                     </label>
                     <input
                       id="city"
                       name="city"
+                      autoComplete="address-level2"
                       value={profileState.city}
                       onChange={handleProfileChange}
                       className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                      placeholder="Tirana"
+                      placeholder={t('dealerDashboardPage.fields.cityPlaceholder', { defaultValue: 'Tirana' })}
                       required
                     />
                   </div>
                   <div className="md:col-span-2">
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="address">
-                      Street address
+                      {t('dealerDashboardPage.fields.streetAddress', { defaultValue: 'Street address' })}
                     </label>
                     <input
                       id="address"
                       name="address"
+                      autoComplete="street-address"
                       value={profileState.address}
                       onChange={handleProfileChange}
                       className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                      placeholder="123 Electric Ave"
+                      placeholder={t('dealerDashboardPage.fields.streetAddressPlaceholder', {
+                        defaultValue: '123 Electric Ave',
+                      })}
                       required
                     />
                   </div>
@@ -821,7 +932,7 @@ const DealerDashboardPage: React.FC = () => {
                 <div className="grid gap-6 md:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="brands">
-                      Brands you carry
+                      {t('dealerDashboardPage.fields.brands', { defaultValue: 'Brands you carry' })}
                     </label>
                     <input
                       id="brands"
@@ -829,13 +940,17 @@ const DealerDashboardPage: React.FC = () => {
                       value={profileState.brands}
                       onChange={handleProfileChange}
                       className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                      placeholder="Tesla, Hyundai, Kia"
+                      placeholder={t('dealerDashboardPage.fields.brandsPlaceholder', {
+                        defaultValue: 'Tesla, Hyundai, Kia',
+                      })}
                     />
-                    <p className="mt-1 text-xs text-gray-400">Separate entries with commas.</p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      {t('dealerDashboardPage.fields.separateEntries', { defaultValue: 'Separate entries with commas.' })}
+                    </p>
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="languages">
-                      Languages spoken
+                      {t('dealerDashboardPage.fields.languages', { defaultValue: 'Languages spoken' })}
                     </label>
                     <input
                       id="languages"
@@ -843,13 +958,17 @@ const DealerDashboardPage: React.FC = () => {
                       value={profileState.languages}
                       onChange={handleProfileChange}
                       className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                      placeholder="Albanian, English, Italian"
+                      placeholder={t('dealerDashboardPage.fields.languagesPlaceholder', {
+                        defaultValue: 'Albanian, English, Italian',
+                      })}
                     />
-                    <p className="mt-1 text-xs text-gray-400">Separate entries with commas.</p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      {t('dealerDashboardPage.fields.separateEntries', { defaultValue: 'Separate entries with commas.' })}
+                    </p>
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="typeOfCars">
-                      Vehicle focus
+                      {t('dealerDashboardPage.fields.vehicleFocus', { defaultValue: 'Vehicle focus' })}
                     </label>
                     <input
                       id="typeOfCars"
@@ -857,12 +976,14 @@ const DealerDashboardPage: React.FC = () => {
                       value={profileState.typeOfCars}
                       onChange={handleProfileChange}
                       className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                      placeholder="New EVs, Certified Pre-Owned"
+                      placeholder={t('dealerDashboardPage.fields.vehicleFocusPlaceholder', {
+                        defaultValue: 'New EVs, Certified Pre-Owned',
+                      })}
                     />
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="priceRange">
-                      Typical price range
+                      {t('dealerDashboardPage.fields.priceRange', { defaultValue: 'Typical price range' })}
                     </label>
                     <input
                       id="priceRange"
@@ -870,14 +991,16 @@ const DealerDashboardPage: React.FC = () => {
                       value={profileState.priceRange}
                       onChange={handleProfileChange}
                       className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                      placeholder="€20,000 - €60,000"
+                      placeholder={t('dealerDashboardPage.fields.priceRangePlaceholder', {
+                        defaultValue: '€20,000 - €60,000',
+                      })}
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="description">
-                    Business description
+                    {t('dealerDashboardPage.fields.businessDescription', { defaultValue: 'Business description' })}
                   </label>
                   <textarea
                     id="description"
@@ -886,29 +1009,33 @@ const DealerDashboardPage: React.FC = () => {
                     onChange={handleProfileChange}
                     rows={4}
                     className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                    placeholder="Tell customers about your dealership, services, and specialties."
+                    placeholder={t('dealerDashboardPage.fields.businessDescriptionPlaceholder', {
+                      defaultValue: 'Tell customers about your dealership, services, and specialties.',
+                    })}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="notes">
-                    Highlights & notes
+                  <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="dealer-notes">
+                    {t('dealerDashboardPage.fields.highlights', { defaultValue: 'Highlights & notes' })}
                   </label>
                   <textarea
-                    id="notes"
+                    id="dealer-notes"
                     name="notes"
                     value={profileState.notes}
                     onChange={handleProfileChange}
                     rows={4}
                     className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                    placeholder="Share what makes your dealership unique."
+                    placeholder={t('dealerDashboardPage.fields.highlightsPlaceholder', {
+                      defaultValue: 'Share what makes your dealership unique.',
+                    })}
                   />
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="facebook">
-                      Facebook URL
+                      {t('admin.fields.facebookUrl', { defaultValue: 'Facebook URL' })}
                     </label>
                     <input
                       id="facebook"
@@ -921,7 +1048,7 @@ const DealerDashboardPage: React.FC = () => {
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="instagram">
-                      Instagram URL
+                      {t('admin.fields.instagramUrl', { defaultValue: 'Instagram URL' })}
                     </label>
                     <input
                       id="instagram"
@@ -934,7 +1061,7 @@ const DealerDashboardPage: React.FC = () => {
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="twitter">
-                      X / Twitter URL
+                      {t('dealerDashboardPage.fields.twitterUrl', { defaultValue: 'X / Twitter URL' })}
                     </label>
                     <input
                       id="twitter"
@@ -947,7 +1074,7 @@ const DealerDashboardPage: React.FC = () => {
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="youtube">
-                      YouTube URL
+                      {t('admin.fields.youtubeUrl', { defaultValue: 'YouTube URL' })}
                     </label>
                     <input
                       id="youtube"
@@ -964,7 +1091,9 @@ const DealerDashboardPage: React.FC = () => {
 
             <section className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
               <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Models you represent</h2>
+                <h2 className="text-xl font-semibold">
+                  {t('dealerDashboardPage.modelsTitle', { defaultValue: 'Models you represent' })}
+                </h2>
               </div>
               <div className="space-y-6">
                 <form className="flex flex-col gap-4 md:flex-row" onSubmit={handleAttachModel}>
@@ -973,7 +1102,9 @@ const DealerDashboardPage: React.FC = () => {
                     value={selectedModelId}
                     onChange={event => setSelectedModelId(event.target.value)}
                   >
-                    <option value="">Select an existing model</option>
+                    <option value="">
+                      {t('dealerDashboardPage.selectExistingModel', { defaultValue: 'Select an existing model' })}
+                    </option>
                     {availableModels.map(model => (
                       <option key={model.id} value={model.id}>
                         {model.brand} · {model.model_name}
@@ -990,7 +1121,7 @@ const DealerDashboardPage: React.FC = () => {
                     ) : (
                       <Plus className="h-4 w-4" />
                     )}
-                    <span>Attach model</span>
+                    <span>{t('dealerDashboardPage.attachModel', { defaultValue: 'Attach model' })}</span>
                   </button>
                 </form>
 
@@ -1016,27 +1147,35 @@ const DealerDashboardPage: React.FC = () => {
                           disabled={dealerMutations.update.loading}
                         >
                           <Trash2 className="h-4 w-4" />
-                          Remove
+                          {t('common.delete')}
                         </button>
                       </li>
                     ))}
                   </ul>
                 ) : (
                   <p className="text-sm text-gray-300">
-                    No models linked yet. Attach an existing model or create a new one below to showcase the vehicles you offer.
+                    {t('dealerDashboardPage.noModels', {
+                      defaultValue:
+                        'No models linked yet. Attach an existing model or create a new one below to showcase the vehicles you offer.',
+                    })}
                   </p>
                 )}
 
                 <div className="rounded-xl border border-white/10 bg-gray-900/50 p-5">
-                  <h3 className="text-lg font-semibold">Add a new model</h3>
+                  <h3 className="text-lg font-semibold">
+                    {t('dealerDashboardPage.addNewModelTitle', { defaultValue: 'Add a new model' })}
+                  </h3>
                   <p className="mt-1 text-sm text-gray-300">
-                    Can&apos;t find the model you need? Create it here and we&apos;ll automatically attach it to your dealer page.
+                    {t('dealerDashboardPage.addNewModelDescription', {
+                      defaultValue:
+                        "Can't find the model you need? Create it here and we'll automatically attach it to your dealer page.",
+                    })}
                   </p>
                   <form className="mt-4 space-y-4" onSubmit={handleCreateModel}>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div>
                         <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="brand">
-                          Brand
+                          {t('modelsPage.brand', { defaultValue: 'Brand' })}
                         </label>
                         <input
                           id="brand"
@@ -1044,13 +1183,13 @@ const DealerDashboardPage: React.FC = () => {
                           value={newModelState.brand}
                           onChange={handleNewModelChange}
                           className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                          placeholder="Brand"
+                          placeholder={t('dealerDashboardPage.createModel.brandPlaceholder', { defaultValue: 'Brand' })}
                           required
                         />
                       </div>
                       <div>
                         <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="model_name">
-                          Model name
+                          {t('admin.fields.modelName', { defaultValue: 'Model name' })}
                         </label>
                         <input
                           id="model_name"
@@ -1058,13 +1197,13 @@ const DealerDashboardPage: React.FC = () => {
                           value={newModelState.model_name}
                           onChange={handleNewModelChange}
                           className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                          placeholder="Model"
+                          placeholder={t('dealerDashboardPage.createModel.modelPlaceholder', { defaultValue: 'Model' })}
                           required
                         />
                       </div>
                       <div>
                         <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="body_type">
-                          Body type
+                          {t('modelsPage.bodyType', { defaultValue: 'Body type' })}
                         </label>
                         <input
                           id="body_type"
@@ -1072,12 +1211,14 @@ const DealerDashboardPage: React.FC = () => {
                           value={newModelState.body_type}
                           onChange={handleNewModelChange}
                           className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                          placeholder="SUV, Hatchback..."
+                          placeholder={t('dealerDashboardPage.createModel.bodyTypePlaceholder', {
+                            defaultValue: 'SUV, Hatchback...',
+                          })}
                         />
                       </div>
                       <div>
                         <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="range_wltp">
-                          Range (WLTP km)
+                          {t('admin.fields.rangeWltp', { defaultValue: 'Range (WLTP km)' })}
                         </label>
                         <input
                           id="range_wltp"
@@ -1090,7 +1231,7 @@ const DealerDashboardPage: React.FC = () => {
                       </div>
                       <div>
                         <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="power_kw">
-                          Power (kW)
+                          {t('admin.fields.powerKw', { defaultValue: 'Power (kW)' })}
                         </label>
                         <input
                           id="power_kw"
@@ -1103,7 +1244,7 @@ const DealerDashboardPage: React.FC = () => {
                       </div>
                       <div>
                         <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="image_url">
-                          Image URL (optional)
+                          {t('dealerDashboardPage.createModel.imageUrlOptional', { defaultValue: 'Image URL (optional)' })}
                         </label>
                         <input
                           id="image_url"
@@ -1116,12 +1257,15 @@ const DealerDashboardPage: React.FC = () => {
                       </div>
                       <div className="md:col-span-2">
                         <span className="mb-2 block text-sm font-medium text-gray-200">
-                          Upload model image
+                          {t('dealerDashboardPage.createModel.uploadModelImage', { defaultValue: 'Upload model image' })}
                         </span>
                         <div className="flex flex-wrap items-center gap-4">
                           <img
                             src={newModelImagePreview || MODEL_PLACEHOLDER_IMAGE}
-                            alt={`${newModelState.brand || 'Model'} preview`}
+                            alt={t('dealerDashboardPage.createModel.modelPreviewAlt', {
+                              name: newModelState.brand || t('dealerDashboardPage.createModel.modelFallbackName', { defaultValue: 'Model' }),
+                              defaultValue: '{{name}} preview',
+                            })}
                             className="h-24 w-32 rounded-lg border border-white/10 object-cover bg-gray-900/60"
                           />
                           <div className="flex flex-col gap-2">
@@ -1131,7 +1275,11 @@ const DealerDashboardPage: React.FC = () => {
                               ) : (
                                 <Upload className="h-4 w-4" />
                               )}
-                              <span>{creatingModel ? 'Uploading…' : 'Upload image'}</span>
+                              <span>
+                                {creatingModel
+                                  ? t('dealerDashboardPage.uploading', { defaultValue: 'Uploading…' })
+                                  : t('admin.uploadImage', { defaultValue: 'Upload image' })}
+                              </span>
                               <input
                                 type="file"
                                 accept="image/*"
@@ -1147,26 +1295,33 @@ const DealerDashboardPage: React.FC = () => {
                                 className="text-left text-xs text-gray-300 transition hover:text-white"
                                 disabled={creatingModel}
                               >
-                                Remove selected image
+                                {t('dealerDashboardPage.createModel.removeSelectedImage', { defaultValue: 'Remove selected image' })}
                               </button>
                             )}
-                            <p className="text-xs text-gray-400">JPEG or PNG recommended, up to 5MB.</p>
+                            <p className="text-xs text-gray-400">
+                              {t('admin.imageUploadHint', { defaultValue: 'JPEG or PNG recommended, up to 5MB.' })}
+                            </p>
                           </div>
                         </div>
                       </div>
                       <div className="md:col-span-2">
                         <span className="mb-2 block text-sm font-medium text-gray-200">
-                          Gallery images
+                          {t('dealerDashboardPage.createModel.galleryImages', { defaultValue: 'Gallery images' })}
                         </span>
                         <p className="mb-3 text-xs text-gray-400">
-                          Add up to three supporting images for this model. They will appear on the public page below the dealer list.
+                          {t('dealerDashboardPage.createModel.galleryDescription', {
+                            defaultValue:
+                              'Add up to three supporting images for this model. They will appear on the public page below the dealer list.',
+                          })}
                         </p>
                         <div className="flex flex-wrap gap-4">
                           {newModelGalleryDrafts.map((draft, index) => (
                             <div key={draft.preview} className="relative">
                               <img
                                 src={draft.preview}
-                                alt="Model gallery preview"
+                                alt={t('dealerDashboardPage.createModel.galleryPreviewAlt', {
+                                  defaultValue: 'Model gallery preview',
+                                })}
                                 className="h-24 w-32 rounded-lg border border-dashed border-white/20 object-cover"
                               />
                               <button
@@ -1175,12 +1330,16 @@ const DealerDashboardPage: React.FC = () => {
                                 className="absolute right-1 top-1 rounded-full bg-black/60 px-2 py-1 text-xs text-white transition hover:bg-black/80"
                                 disabled={creatingModel}
                               >
-                                Remove
+                                {t('common.delete')}
                               </button>
                             </div>
                           ))}
                           {newModelGalleryDrafts.length === 0 && (
-                            <p className="text-sm text-gray-400">No gallery images selected yet.</p>
+                            <p className="text-sm text-gray-400">
+                              {t('dealerDashboardPage.createModel.noGalleryImages', {
+                                defaultValue: 'No gallery images selected yet.',
+                              })}
+                            </p>
                           )}
                         </div>
                         <label className={`mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${newModelGalleryUploadDisabled
@@ -1194,10 +1353,12 @@ const DealerDashboardPage: React.FC = () => {
                           )}
                           <span>
                             {newModelGalleryUploadDisabled
-                              ? 'Gallery limit reached'
+                              ? t('admin.modelGalleryLimitReached', { defaultValue: 'Gallery limit reached' })
                               : creatingModel
-                                ? 'Uploading…'
-                                : 'Upload gallery images'}
+                                ? t('dealerDashboardPage.uploading', { defaultValue: 'Uploading…' })
+                                : t('dealerDashboardPage.createModel.uploadGalleryImages', {
+                                    defaultValue: 'Upload gallery images',
+                                  })}
                           </span>
                           <input
                             type="file"
@@ -1208,21 +1369,27 @@ const DealerDashboardPage: React.FC = () => {
                             disabled={creatingModel || newModelGalleryUploadDisabled}
                           />
                         </label>
-                        <p className="mt-1 text-xs text-gray-400">JPEG or PNG recommended, up to 5MB each.</p>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {t('dealerDashboardPage.createModel.galleryImageHint', {
+                            defaultValue: 'JPEG or PNG recommended, up to 5MB each.',
+                          })}
+                        </p>
                       </div>
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="notes">
-                        Model notes
+                      <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="model-notes">
+                        {t('dealerDashboardPage.createModel.notes', { defaultValue: 'Model notes' })}
                       </label>
                       <textarea
-                        id="notes"
+                        id="model-notes"
                         name="notes"
                         value={newModelState.notes}
                         onChange={handleNewModelChange}
                         rows={3}
                         className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
-                        placeholder="Charging speeds, standout features, etc."
+                        placeholder={t('dealerDashboardPage.createModel.notesPlaceholder', {
+                          defaultValue: 'Charging speeds, standout features, etc.',
+                        })}
                       />
                     </div>
                     <button
@@ -1235,7 +1402,11 @@ const DealerDashboardPage: React.FC = () => {
                       ) : (
                         <Plus className="h-4 w-4" />
                       )}
-                      <span>Create & attach model</span>
+                      <span>
+                        {t('dealerDashboardPage.createModel.createAndAttach', {
+                          defaultValue: 'Create & attach model',
+                        })}
+                      </span>
                     </button>
                   </form>
                 </div>
@@ -1245,20 +1416,27 @@ const DealerDashboardPage: React.FC = () => {
 
           <aside className="space-y-6">
             <section className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-xl">
-              <h2 className="text-xl font-semibold">Hero imagery</h2>
+              <h2 className="text-xl font-semibold">
+                {t('dealerDashboardPage.heroTitle', { defaultValue: 'Hero imagery' })}
+              </h2>
               <p className="mt-2 text-sm text-gray-300">
-                Upload a feature image that appears on your public dealer page. High-resolution landscape photos work best.
+                {t('dealerDashboardPage.heroDescription', {
+                  defaultValue:
+                    'Upload a feature image that appears on your public dealer page. High-resolution landscape photos work best.',
+                })}
               </p>
               <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-gray-900/60">
                 <img
                   src={profileState.imageUrl || DEALERSHIP_PLACEHOLDER_IMAGE}
-                  alt={profileState.name || 'Dealer image preview'}
+                  alt={profileState.name || t('dealerDashboardPage.heroPreviewAlt', { defaultValue: 'Dealer image preview' })}
                   className="h-48 w-full object-cover"
                 />
               </div>
               {!profileState.imageUrl && (
                 <p className="mt-2 text-xs text-gray-400">
-                  We&apos;re showing a placeholder image until you upload your own photo.
+                  {t('dealerDashboardPage.heroHint', {
+                    defaultValue: "We're showing a placeholder image until you upload your own photo.",
+                  })}
                 </p>
               )}
               <label className="mt-4 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-gray-cyan px-4 py-2 text-sm font-semibold text-gray-900 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
@@ -1267,7 +1445,11 @@ const DealerDashboardPage: React.FC = () => {
                 ) : (
                   <Upload className="h-4 w-4" />
                 )}
-                <span>{uploadingImage ? 'Uploading…' : 'Upload image'}</span>
+                <span>
+                  {uploadingImage
+                    ? t('dealerDashboardPage.uploading', { defaultValue: 'Uploading…' })
+                    : t('dealerDashboardPage.uploadHeroImage', { defaultValue: 'Upload image' })}
+                </span>
                 <input
                   type="file"
                   accept="image/*"
@@ -1284,15 +1466,20 @@ const DealerDashboardPage: React.FC = () => {
                   disabled={dealerMutations.update.loading}
                 >
                   <Trash2 className="h-4 w-4" />
-                  Remove image
+                  {t('dealerDashboardPage.removeCurrentImage', { defaultValue: 'Remove image' })}
                 </button>
               )}
             </section>
 
             <section className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-              <h2 className="text-xl font-semibold">Gallery</h2>
+              <h2 className="text-xl font-semibold">
+                {t('dealerDashboardPage.galleryTitle', { defaultValue: 'Gallery' })}
+              </h2>
               <p className="mt-2 text-sm text-gray-300">
-                Showcase up to three additional photos. They appear beneath your model line-up on the public page.
+                {t('dealerDashboardPage.galleryDescription', {
+                  defaultValue:
+                    'Showcase up to three additional photos. They appear beneath your model line-up on the public page.',
+                })}
               </p>
               <div className="mt-4 flex flex-col gap-4">
                 {dealerGallery.length > 0 ? (
@@ -1301,7 +1488,7 @@ const DealerDashboardPage: React.FC = () => {
                       <div key={imageUrl} className="relative">
                         <img
                           src={imageUrl}
-                          alt="Dealer gallery image"
+                          alt={t('dealerDashboardPage.galleryImageAlt', { defaultValue: 'Dealer gallery image' })}
                           className="h-24 w-32 rounded-lg border border-white/10 object-cover"
                         />
                         <button
@@ -1310,13 +1497,17 @@ const DealerDashboardPage: React.FC = () => {
                           className="absolute right-1 top-1 rounded-full bg-black/60 px-2 py-1 text-xs text-white transition hover:bg-black/80"
                           disabled={galleryRemoving === imageUrl || dealerMutations.update.loading}
                         >
-                          {galleryRemoving === imageUrl ? 'Removing…' : 'Remove'}
+                          {galleryRemoving === imageUrl
+                            ? t('dealerDashboardPage.removing', { defaultValue: 'Removing…' })
+                            : t('common.delete')}
                         </button>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-400">No gallery images yet.</p>
+                  <p className="text-sm text-gray-400">
+                    {t('dealerDashboardPage.noGalleryImages', { defaultValue: 'No gallery images yet.' })}
+                  </p>
                 )}
                 <label className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${galleryUploading
                   ? 'cursor-wait border border-white/10 bg-white/5 text-gray-400'
@@ -1327,10 +1518,10 @@ const DealerDashboardPage: React.FC = () => {
                   {galleryUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                   <span>
                     {galleryUploading
-                      ? 'Uploading…'
+                      ? t('dealerDashboardPage.uploading', { defaultValue: 'Uploading…' })
                       : dealerGallery.length >= 3
-                        ? 'Gallery limit reached'
-                        : 'Upload gallery image'}
+                        ? t('admin.modelGalleryLimitReached', { defaultValue: 'Gallery limit reached' })
+                        : t('dealerDashboardPage.uploadGalleryImage', { defaultValue: 'Upload gallery image' })}
                   </span>
                   <input
                     type="file"
@@ -1341,15 +1532,23 @@ const DealerDashboardPage: React.FC = () => {
                     disabled={galleryUploading || dealerGallery.length >= 3}
                   />
                 </label>
-                <p className="text-xs text-gray-400">JPEG or PNG recommended. Maximum of 3 gallery images.</p>
+                <p className="text-xs text-gray-400">
+                  {t('dealerDashboardPage.galleryHelp', {
+                    defaultValue: 'JPEG or PNG recommended. Maximum of 3 gallery images.',
+                  })}
+                </p>
               </div>
             </section>
 
             <section className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-              <h2 className="text-xl font-semibold">Need help?</h2>
+              <h2 className="text-xl font-semibold">
+                {t('dealerDashboardPage.helpTitle', { defaultValue: 'Need help?' })}
+              </h2>
               <p className="mt-2 text-sm text-gray-300">
-                Changes go live immediately after they are saved. If you need assistance with imagery, copywriting, or have other
-                questions, reach out to our support team anytime.
+                {t('dealerDashboardPage.helpDescription', {
+                  defaultValue:
+                    'Changes go live immediately after they are saved. If you need assistance with imagery, copywriting, or have other questions, reach out to our support team anytime.',
+                })}
               </p>
             </section>
           </aside>

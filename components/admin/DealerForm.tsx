@@ -302,7 +302,8 @@ const DealerForm: React.FC<DealerFormProps> = ({ initialValues, onSubmit, onCanc
   };
 
   const handleGalleryFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files ?? []);
+    const fileList = event.target.files as FileList | null;
+    const files = fileList ? Array.from<File>(fileList) : [];
     if (!files.length) {
       return;
     }
@@ -313,7 +314,7 @@ const DealerForm: React.FC<DealerFormProps> = ({ initialValues, onSubmit, onCanc
       return;
     }
 
-    const selectedFiles = files.slice(0, availableSlots);
+    const selectedFiles: File[] = files.slice(0, availableSlots);
     const drafts = selectedFiles.map(file => ({ file, preview: URL.createObjectURL(file) }));
     setGalleryDrafts(prev => [...prev, ...drafts]);
     event.target.value = '';

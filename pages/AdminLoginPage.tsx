@@ -17,7 +17,7 @@ const AdminLoginPage: React.FC = () => {
   if (initializing) {
     return (
       <div className="flex items-center justify-center py-24">
-        <span className="text-gray-300">Loading...</span>
+        <span className="text-gray-300">{t('common.loading')}</span>
       </div>
     );
   }
@@ -109,7 +109,9 @@ const AdminLoginPage: React.FC = () => {
               </label>
               <input
                 id="email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 className="mt-1 block w-full rounded-md bg-gray-900/60 border border-gray-700 px-3 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
@@ -122,7 +124,9 @@ const AdminLoginPage: React.FC = () => {
               </label>
               <input
                 id="password"
+                name="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 className="mt-1 block w-full rounded-md bg-gray-900/60 border border-gray-700 px-3 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"

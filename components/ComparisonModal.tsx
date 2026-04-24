@@ -69,7 +69,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, allM
 
     return (
         <div className={modalOverlayClass} role="dialog" aria-modal="true">
-            <div className={`${modalContainerClass} max-w-7xl h-[90vh] w-full bg-navy-blue/80 backdrop-blur-2xl border border-gray-cyan/30 flex flex-col`}>
+            <div className={`${modalContainerClass} max-w-7xl w-full border border-gray-cyan/30 bg-navy-blue/80 backdrop-blur-2xl flex max-h-[calc(100dvh-2rem)] flex-col sm:max-h-[calc(100dvh-3rem)]`}>
                 {/* Header */}
                 <div className={`${modalHeaderClass} flex-shrink-0 border-b border-white/10 p-4`}
                 >
@@ -83,13 +83,14 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, allM
                 </div>
                 
                 {/* Content */}
-                <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-x-6 overflow-hidden p-4">
+                <div className="grid min-h-0 flex-1 grid-cols-1 gap-x-6 overflow-hidden p-4 lg:grid-cols-3">
                     {/* Left: Model Selector */}
-                    <div className="lg:col-span-1 flex flex-col overflow-hidden h-full">
+                    <div className="lg:col-span-1 flex h-full min-h-0 flex-col overflow-hidden">
                         <div className="relative mb-4 flex-shrink-0">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                             <input
                                 type="text"
+                                autoComplete="off"
                                 placeholder={t('compare.searchPlaceholder')}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -130,7 +131,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, allM
                     </div>
                     
                     {/* Right: Comparison Table */}
-                    <div className="lg:col-span-2 overflow-auto h-full mt-4 lg:mt-0">
+                    <div className="lg:col-span-2 mt-4 min-h-0 overflow-auto lg:mt-0">
                         {selectedModels.length === 0 ? (
                             <div className="flex items-center justify-center h-full text-center text-gray-400">
                                 <p>{t('compare.noModelsSelected')}</p>

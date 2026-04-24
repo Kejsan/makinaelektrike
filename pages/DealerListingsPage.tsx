@@ -7,6 +7,7 @@ import ListingForm, { ListingFormValues } from '../components/dashboard/ListingF
 import { Listing } from '../types';
 import ModalLayout from '../components/ModalLayout';
 import SEO from '../components/SEO';
+import { BASE_URL } from '../constants/seo';
 import { 
     Plus, 
     Edit, 
@@ -20,7 +21,7 @@ import {
     XCircle
 } from 'lucide-react';
 import { uploadListingImage, uploadListingGalleryImage } from '../services/listings';
-import { Link } from 'react-router-dom';
+import Link from '../components/LocalizedLink';
 
 const DealerListingsPage: React.FC = () => {
     const { t } = useTranslation();
@@ -82,15 +83,19 @@ const DealerListingsPage: React.FC = () => {
     const getStatusInfo = (status: string) => {
         switch (status) {
             case 'approved':
-                return { icon: <CheckCircle className="h-3 w-3" />, className: 'bg-green-500/10 text-green-400', label: 'Approved' };
+                return {
+                    icon: <CheckCircle className="h-3 w-3" />,
+                    className: 'bg-green-500/10 text-green-400',
+                    label: t('dealerListingsPage.statusApproved', { defaultValue: 'Approved' }),
+                };
             case 'active':
-                return { icon: <Eye className="h-3 w-3" />, className: 'bg-cyan-500/10 text-gray-cyan', label: 'Active' };
+                return { icon: <Eye className="h-3 w-3" />, className: 'bg-cyan-500/10 text-gray-cyan', label: t('admin.statusActive', { defaultValue: 'Active' }) };
             case 'inactive':
-                return { icon: <EyeOff className="h-3 w-3" />, className: 'bg-yellow-500/10 text-yellow-400', label: 'Inactive' };
+                return { icon: <EyeOff className="h-3 w-3" />, className: 'bg-yellow-500/10 text-yellow-400', label: t('admin.statusInactive', { defaultValue: 'Inactive' }) };
             case 'pending':
-                return { icon: <Clock className="h-3 w-3" />, className: 'bg-blue-500/10 text-blue-400', label: 'Pending' };
+                return { icon: <Clock className="h-3 w-3" />, className: 'bg-blue-500/10 text-blue-400', label: t('admin.statusPending', { defaultValue: 'Pending' }) };
             case 'rejected':
-                return { icon: <XCircle className="h-3 w-3" />, className: 'bg-red-500/10 text-red-400', label: 'Rejected' };
+                return { icon: <XCircle className="h-3 w-3" />, className: 'bg-red-500/10 text-red-400', label: t('admin.statusRejected', { defaultValue: 'Rejected' }) };
             default:
                 return { icon: <AlertCircle className="h-3 w-3" />, className: 'bg-gray-500/10 text-gray-400', label: status };
         }
@@ -154,10 +159,15 @@ const DealerListingsPage: React.FC = () => {
             <div className="mb-6">
                 <Link to="/dealer/dashboard" className="text-gray-400 hover:text-gray-cyan flex items-center gap-2 text-sm transition-colors group">
                     <ChevronLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-                    Back to Dashboard
+                    {t('dealerListingsPage.backToDashboard', { defaultValue: 'Back to dashboard' })}
                 </Link>
             </div>
-            <SEO title="Manage Listings | Dealer Dashboard" description="Manage your car listings" />
+            <SEO
+                title={t('dealerListingsPage.metaTitle', { defaultValue: 'Manage listings | Dealer dashboard' })}
+                description={t('dealerListingsPage.metaDescription', { defaultValue: 'Manage your car listings.' })}
+                canonical={`${BASE_URL}/dealer/listings/`}
+                robots="noindex, nofollow"
+            />
 
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">{t('dealer.listings', { defaultValue: 'My Listings' })}</h1>
@@ -194,7 +204,7 @@ const DealerListingsPage: React.FC = () => {
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-gray-500">
-                                        No Image
+                                        {t('dealerListingsPage.noImage', { defaultValue: 'No image' })}
                                     </div>
                                 )}
                                 {(() => {
@@ -230,7 +240,7 @@ const DealerListingsPage: React.FC = () => {
                                     <button
                                         onClick={() => handleEdit(listing)}
                                         className="p-2.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all text-gray-400 hover:text-white"
-                                        title="Edit"
+                                        title={t('common.edit')}
                                     >
                                         <Edit className="h-4 w-4" />
                                     </button>
@@ -245,9 +255,9 @@ const DealerListingsPage: React.FC = () => {
                                             }`}
                                         >
                                             {listing.status === 'active' ? (
-                                                <><EyeOff className="h-4 w-4" /> Deactivate</>
+                                                <><EyeOff className="h-4 w-4" /> {t('dealerListingsPage.deactivate', { defaultValue: 'Deactivate' })}</>
                                             ) : (
-                                                <><Eye className="h-4 w-4" /> Activate</>
+                                                <><Eye className="h-4 w-4" /> {t('dealerListingsPage.activate', { defaultValue: 'Activate' })}</>
                                             )}
                                         </button>
                                     )}
@@ -255,7 +265,7 @@ const DealerListingsPage: React.FC = () => {
                                     <button
                                         onClick={() => handleDelete(listing.id)}
                                         className="p-2.5 rounded-xl bg-red-500/5 border border-white/5 text-red-400/80 hover:bg-red-500/10 transition-all"
-                                        title="Delete"
+                                        title={t('common.delete')}
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </button>
