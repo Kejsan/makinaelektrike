@@ -172,6 +172,54 @@ const buildSitemapIndexXml = (
   )
   .join('\n')}\n</sitemapindex>\n`;
 
+const stripSiteOrigin = (url: string) => {
+  if (url.startsWith(SITE)) {
+    return url.slice(SITE.length) || '/';
+  }
+
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url;
+  }
+};
+
+const readExistingSitemapSection = (key: string): SitemapUrl[] => {
+  if (!fs.existsSync(sitemapDir)) {
+    return [];
+  }
+
+  const files = fs
+    .readdirSync(sitemapDir)
+    .filter(fileName => fileName === `${key}.xml` || fileName.startsWith(`${key}-`))
+    .sort();
+
+  return files.flatMap(fileName => {
+    const xml = fs.readFileSync(path.join(sitemapDir, fileName), 'utf8');
+    return [...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].map(match => {
+      const block = match[1] ?? '';
+      const loc = block.match(/<loc>([\s\S]*?)<\/loc>/)?.[1]?.trim() ?? '';
+      const lastmod = block.match(/<lastmod>([\s\S]*?)<\/lastmod>/)?.[1]?.trim();
+      const changefreq = block.match(/<changefreq>([\s\S]*?)<\/changefreq>/)?.[1]?.trim();
+      const priority = block.match(/<priority>([\s\S]*?)<\/priority>/)?.[1]?.trim();
+      const alternates = [...block.matchAll(/<xhtml:link[^>]*hreflang="([^"]+)"[^>]*href="([^"]+)"/g)]
+        .map(alternate => ({
+          hreflang: alternate[1] ?? '',
+          href: alternate[2] ?? '',
+        }))
+        .filter(alternate => alternate.hreflang && alternate.href);
+
+      return {
+        loc: stripSiteOrigin(loc),
+        lastmod,
+        changefreq,
+        priority,
+        alternates,
+      };
+    });
+  });
+};
+
 const getFirestoreInstance = () => {
   if (!hasFirebaseConfig) {
     return null;
@@ -404,24 +452,45 @@ const buildSitemaps = async () => {
       priority: '0.6',
       alternateLocales: getBlogAlternateLocales(post),
     }));
+  let usingExistingDynamicSitemaps = false;
+
+  const useExistingDynamicSitemaps = (reason: string, error?: unknown) => {
+    console.warn(`${reason} Reusing existing dynamic sitemap files where available.`);
+    if (error) {
+      console.warn(error);
+    }
+
+    dealerUrls = readExistingSitemapSection('dealers');
+    modelUrls = readExistingSitemapSection('models');
+    listingUrls = readExistingSitemapSection('listings');
+    const existingBlogUrls = readExistingSitemapSection('blog');
+    if (existingBlogUrls.length > 0) {
+      blogUrls = existingBlogUrls;
+    }
+    usingExistingDynamicSitemaps = true;
+  };
 
   if (hasFirebaseConfig) {
-    [dealerUrls, modelUrls, listingUrls, blogUrls] = await Promise.all([
-      getDynamicDealers(),
-      getDynamicModels(),
-      getDynamicListings(),
-      getDynamicBlogPosts(),
-    ]);
+    try {
+      [dealerUrls, modelUrls, listingUrls, blogUrls] = await Promise.all([
+        getDynamicDealers(),
+        getDynamicModels(),
+        getDynamicListings(),
+        getDynamicBlogPosts(),
+      ]);
+    } catch (error) {
+      useExistingDynamicSitemaps('Live Firestore sitemap data could not be loaded.', error);
+    }
   } else {
-    console.warn('Firebase environment variables are missing. Dynamic dealer, model, and listing URLs were skipped.');
+    useExistingDynamicSitemaps('Firebase environment variables are missing.');
   }
 
   const sections: SitemapSection[] = [
     { key: 'main', urls: mainUrls },
-    { key: 'dealers', urls: dealerUrls.flatMap(expandLocalizedUrls) },
-    { key: 'models', urls: modelUrls.flatMap(expandLocalizedUrls) },
-    { key: 'listings', urls: listingUrls.flatMap(expandLocalizedUrls) },
-    { key: 'blog', urls: blogUrls.flatMap(expandLocalizedUrls) },
+    { key: 'dealers', urls: usingExistingDynamicSitemaps ? dealerUrls : dealerUrls.flatMap(expandLocalizedUrls) },
+    { key: 'models', urls: usingExistingDynamicSitemaps ? modelUrls : modelUrls.flatMap(expandLocalizedUrls) },
+    { key: 'listings', urls: usingExistingDynamicSitemaps ? listingUrls : listingUrls.flatMap(expandLocalizedUrls) },
+    { key: 'blog', urls: usingExistingDynamicSitemaps ? blogUrls : blogUrls.flatMap(expandLocalizedUrls) },
   ].filter(section => section.urls.length > 0);
 
   const generatedFiles = await writeSitemapFiles(sections);

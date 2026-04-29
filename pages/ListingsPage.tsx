@@ -80,6 +80,8 @@ const ListingsPage: React.FC = () => {
                         <label className="sr-only" htmlFor="listings-sort">{t('listings.sortLabel')}</label>
                         <select
                             id="listings-sort"
+                            name="listings-sort"
+                            aria-label={t('listings.sortLabel')}
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
                             className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm focus:border-gray-cyan focus:outline-none sm:w-auto"
@@ -111,10 +113,13 @@ const ListingsPage: React.FC = () => {
 
                         <div className="min-h-0 flex-1 space-y-8 overflow-y-auto rounded-2xl border border-white/10 bg-white/5 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] lg:sticky lg:top-24 lg:h-fit lg:overflow-visible lg:p-6">
                             <div>
-                                <label className="block text-sm font-bold text-gray-300 mb-3 uppercase tracking-wider">
+                                <label htmlFor="listings-make-filter" className="block text-sm font-bold text-gray-300 mb-3 uppercase tracking-wider">
                                     {t('listings.make')}
                                 </label>
                                 <select
+                                    id="listings-make-filter"
+                                    name="listings-make-filter"
+                                    aria-label={t('listings.make')}
                                     className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 focus:border-gray-cyan outline-none"
                                     value={selectedMake}
                                     onChange={(e) => setSelectedMake(e.target.value)}
@@ -127,7 +132,7 @@ const ListingsPage: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-bold text-gray-300 mb-3 uppercase tracking-wider">
+                                <label htmlFor="listings-max-price-filter" className="block text-sm font-bold text-gray-300 mb-3 uppercase tracking-wider">
                                     {t('listings.priceRange')}
                                 </label>
                                 <div className="flex gap-2 text-sm text-gray-400 mb-2">
@@ -135,6 +140,9 @@ const ListingsPage: React.FC = () => {
                                     <span className="ml-auto">€{priceRange[1].toLocaleString()}+</span>
                                 </div>
                                 <input
+                                    id="listings-max-price-filter"
+                                    name="listings-max-price-filter"
+                                    aria-label={t('listings.priceRange')}
                                     type="range"
                                     min="0"
                                     max="150000"
@@ -146,7 +154,7 @@ const ListingsPage: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-bold text-gray-300 mb-3 uppercase tracking-wider">
+                                <label htmlFor="listings-min-year-filter" className="block text-sm font-bold text-gray-300 mb-3 uppercase tracking-wider">
                                     {t('listings.year')}
                                 </label>
                                 <div className="flex gap-2 text-sm text-gray-400 mb-2">
@@ -154,6 +162,9 @@ const ListingsPage: React.FC = () => {
                                     <span className="ml-auto">{yearRange[1]}</span>
                                 </div>
                                 <input
+                                    id="listings-min-year-filter"
+                                    name="listings-min-year-filter"
+                                    aria-label={t('listings.year')}
                                     type="range"
                                     min="2010"
                                     max={new Date().getFullYear()}

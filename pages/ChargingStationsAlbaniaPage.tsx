@@ -40,6 +40,7 @@ import Link from '../components/LocalizedLink';
 import { normalizeAppLocale } from '../utils/localizedRouting';
 
 L.Icon.Default.mergeOptions({
+  imagePath: '',
   iconRetinaUrl: markerIconRetina,
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
@@ -480,16 +481,11 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
         return;
       }
 
-      const isCustom = feature.properties.isCustomStation === true;
-
       const markerOptions: L.MarkerOptions = {
+        icon: customStationIcon,
         riseOnHover: true,
         title: feature.properties.title ?? content.stationFallbackTitle,
       };
-
-      if (isCustom) {
-        markerOptions.icon = customStationIcon;
-      }
 
       const marker = L.marker([latLng.lat, latLng.lng], markerOptions);
 
@@ -734,6 +730,9 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
                   <input
+                    id="charging-station-search"
+                    name="charging-station-search"
+                    aria-label={content.searchLabel}
                     type="search"
                     value={searchTerm}
                     onChange={handleSearchInput}

@@ -44,6 +44,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.join(__dirname, '..');
 const distDir = path.join(rootDir, 'dist');
+const publicDir = path.join(rootDir, 'public');
+const sitemapDir = path.join(publicDir, 'sitemaps');
 const shellPath = path.join(distDir, 'index.html');
 
 type StructuredData = Record<string, unknown> | Array<Record<string, unknown>>;
@@ -883,6 +885,78 @@ const sortBlogPosts = (posts: BlogPost[]) =>
     return secondTime - firstTime;
   });
 
+const readSitemapEntityIds = (section: 'dealers' | 'models' | 'listings', basePath: string): string[] => {
+  if (!fs.existsSync(sitemapDir)) {
+    return [];
+  }
+
+  const files = fs
+    .readdirSync(sitemapDir)
+    .filter(fileName => fileName === `${section}.xml` || fileName.startsWith(`${section}-`))
+    .sort();
+
+  const ids = new Set<string>();
+  const pattern = new RegExp(`^/${basePath}/([^/]+)/?$`);
+
+  files.forEach(fileName => {
+    const xml = fs.readFileSync(path.join(sitemapDir, fileName), 'utf8');
+    for (const match of xml.matchAll(/<loc>([\s\S]*?)<\/loc>/g)) {
+      const loc = match[1]?.trim();
+      if (!loc) {
+        continue;
+      }
+
+      let pathname = loc;
+      try {
+        pathname = new URL(loc).pathname;
+      } catch {
+        // Keep relative sitemap paths as-is.
+      }
+
+      const normalizedPath = stripLocalePrefix(pathname).pathname;
+      const id = normalizedPath.match(pattern)?.[1];
+      if (id) {
+        ids.add(decodeURIComponent(id));
+      }
+    }
+  });
+
+  return [...ids].sort();
+};
+
+const getFallbackDealersFromSitemap = (): Dealer[] =>
+  readSitemapEntityIds('dealers', 'dealers').map(id => ({
+    id,
+    name: `Dealer profile ${id}`,
+    city: 'Albania',
+    approved: true,
+    status: 'approved',
+    isActive: true,
+    brands: [],
+    languages: [],
+  } as Dealer));
+
+const getFallbackModelsFromSitemap = (): Model[] =>
+  readSitemapEntityIds('models', 'models').map(id => ({
+    id,
+    brand: 'Electric vehicle',
+    model_name: id,
+  } as Model));
+
+const getFallbackListingsFromSitemap = (): Listing[] =>
+  readSitemapEntityIds('listings', 'listings').map(id => ({
+    id,
+    dealerId: '',
+    make: 'Electric vehicle',
+    model: id,
+    year: new Date().getFullYear(),
+    price: 0,
+    priceCurrency: 'EUR',
+    mileage: 0,
+    fuelType: 'Electric',
+    status: 'approved',
+  } as Listing));
+
 const getPublicDealers = async (): Promise<Dealer[]> => {
   const firestore = getFirestoreInstance();
   if (!firestore) {
@@ -997,13 +1071,41 @@ const getPublicBlogPosts = async (): Promise<BlogPost[]> => {
 };
 
 const loadPublicSiteData = async (): Promise<PublicSiteData> => {
-  const [dealers, models, listings, blogPosts, dealerModels] = await Promise.all([
+  let [dealers, models, listings, blogPosts, dealerModels] = await Promise.all([
     getPublicDealers(),
     getPublicModels(),
     getPublicListings(),
     getPublicBlogPosts(),
     getPublicDealerModels(),
   ]);
+
+  if (!dealers.length) {
+    const fallbackDealers = getFallbackDealersFromSitemap();
+    if (fallbackDealers.length) {
+      console.warn(`Using ${fallbackDealers.length} dealer URL fallback(s) from existing sitemaps for prerendering.`);
+      dealers = fallbackDealers;
+    }
+  }
+
+  if (!models.length) {
+    const fallbackModels = getFallbackModelsFromSitemap();
+    if (fallbackModels.length) {
+      console.warn(`Using ${fallbackModels.length} model URL fallback(s) from existing sitemaps for prerendering.`);
+      models = fallbackModels;
+    }
+  }
+
+  if (!listings.length) {
+    const fallbackListings = getFallbackListingsFromSitemap();
+    if (fallbackListings.length) {
+      console.warn(`Using ${fallbackListings.length} listing URL fallback(s) from existing sitemaps for prerendering.`);
+      listings = fallbackListings;
+    }
+  }
+
+  if (!dealerModels.length && (dealers.length || models.length)) {
+    dealerModels = [];
+  }
 
   return {
     dealers,
