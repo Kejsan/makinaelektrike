@@ -19,11 +19,9 @@ import {
   getDoc,
   serverTimestamp,
   setDoc,
-  updateDoc,
   type DocumentData,
 } from 'firebase/firestore';
 import { auth, firestore } from '../services/firebase';
-import { useToast } from './ToastContext';
 import type { UserProfile, UserRole } from '../types';
 import i18n from '../i18n/config';
 
@@ -95,7 +93,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { addToast } = useToast();
 
   const loadProfile = useCallback(
     async (firebaseUser: User | null) => {

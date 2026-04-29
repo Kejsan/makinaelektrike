@@ -5,7 +5,7 @@ import { DataContext } from '../contexts/DataContext';
 import { AuthContext } from '../contexts/AuthContext';
 import { ToastContext } from '../contexts/ToastContext';
 import ListingForm, { ListingFormValues } from '../components/dashboard/ListingForm';
-import { Listing, ListingStatus } from '../types';
+import { Listing, ListingStatus, Model } from '../types';
 import ModalLayout from '../components/ModalLayout';
 import SEO from '../components/SEO';
 import { BASE_URL } from '../constants/seo';
@@ -29,7 +29,7 @@ const DealerListingsPage: React.FC = () => {
     const { t } = useTranslation();
     const [searchParams, setSearchParams] = useSearchParams();
     const { user } = useContext(AuthContext);
-    const { listings, dealers, addListing, updateListing, deleteListing } = useContext(DataContext);
+    const { listings, dealers, models, getModelsForDealer, addListing, updateListing, deleteListing } = useContext(DataContext);
     const { addToast } = useContext(ToastContext);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,6 +45,31 @@ const DealerListingsPage: React.FC = () => {
             dealers.find(entry => entry.id === user.uid)
         );
     }, [dealers, user]);
+
+    const availableListingModels: Model[] = useMemo(() => {
+        const sortByName = (entries: Model[]) =>
+            [...entries].sort((first, second) => {
+                const brandComparison = (first.brand ?? '').localeCompare(second.brand ?? '', undefined, {
+                    sensitivity: 'base',
+                });
+                if (brandComparison !== 0) {
+                    return brandComparison;
+                }
+                return (first.model_name ?? '').localeCompare(second.model_name ?? '', undefined, {
+                    sensitivity: 'base',
+                });
+            });
+
+        if (!dealer) {
+            return sortByName(models);
+        }
+
+        const assignedModels = getModelsForDealer(dealer.id);
+        const assignedIds = new Set(assignedModels.map(model => model.id));
+        const remainingModels = models.filter(model => !assignedIds.has(model.id));
+
+        return [...sortByName(assignedModels), ...sortByName(remainingModels)];
+    }, [dealer, getModelsForDealer, models]);
 
     // Filter listings for the current dealer
     const dealerListings = useMemo(() => {
@@ -491,6 +516,7 @@ const DealerListingsPage: React.FC = () => {
                 >
                     <ListingForm
                         initialValues={editingListing}
+                        availableModels={availableListingModels}
                         onSubmit={handleFormSubmit}
                         onCancel={closeModal}
                         isSubmitting={isSubmitting}

@@ -1,6 +1,6 @@
 import React, { ChangeEvent, useRef, useState, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, CheckCircle2, FileText, Loader2, Upload, Download } from 'lucide-react';
+import { AlertTriangle, FileText, Loader2, Upload, Download } from 'lucide-react';
 import { DataContext } from '../../contexts/DataContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';

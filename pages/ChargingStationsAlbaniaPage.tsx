@@ -32,7 +32,7 @@ import {
   formatChargingStationsListHeading,
   getChargingStationsPageContent,
 } from '../data/chargingStationsPageContent';
-import { StationProperties, fetchStations } from '../services/ocm';
+import { fetchStations } from '../services/ocm';
 import type { StationFeatureCollection } from '../services/ocm';
 import { fetchChargingStations, mergeStationsWithOCM } from '../services/chargingStations';
 import { useToast } from '../contexts/ToastContext';
@@ -492,18 +492,6 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
       }
 
       const marker = L.marker([latLng.lat, latLng.lng], markerOptions);
-
-      const handleCopy = () => {
-        const address = formatAddress(feature.properties);
-        navigator.clipboard
-          .writeText(address)
-          .then(() => addToast(content.toasts.addressCopied, 'success'))
-          .catch(() => addToast(content.toasts.addressCopyFailed, 'error'));
-      };
-
-      const handleShare = () => {
-        shareStation(feature);
-      };
 
       marker.on('click', () => {
         setSelectedStation(feature);

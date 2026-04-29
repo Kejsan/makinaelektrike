@@ -431,7 +431,6 @@ const BulkImportModal: React.FC<BulkImportModalProps> = ({ entity, onClose }) =>
     const buildDealerPayload: EntityConfig['buildPayload'] = values => {
       const input = values as Partial<DealerDocument>;
 
-      const status = (input.status as DealerDocument['status']) ?? (input.approved ? 'approved' : 'pending');
       const payload: DealerDocument = {
         name: input.name ?? '',
         companyName: input.companyName ?? null,

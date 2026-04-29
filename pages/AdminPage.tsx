@@ -17,16 +17,13 @@ import {
   UserPlus,
   Key,
   CheckCircle,
-  CheckSquare,
-  Square,
-  FileText,
   Home,
   ExternalLink,
   Search,
   Eye,
   EyeOff,
 } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -58,12 +55,7 @@ import {
   uploadModelGalleryImage,
   uploadModelHeroImage,
 } from '../services/storage';
-import {
-  modalCloseButtonClass,
-  modalContainerClass,
-  modalHeaderClass,
-  modalOverlayClass,
-} from '../constants/modalStyles';
+import ModalLayout from '../components/ModalLayout';
 
 const ModelForm = lazy(() => import('../components/admin/ModelForm'));
 const BulkImportModal = lazy(() => import('../components/admin/BulkImportModal'));
@@ -86,22 +78,10 @@ const AdminLazyFallback: React.FC<{ label?: string }> = ({ label }) => (
 );
 
 const AdminModal: React.FC<ModalProps> = ({ title, onClose, children }) => {
-  const { t } = useTranslation();
-
   return createPortal(
-    <div className={modalOverlayClass}>
-      <div
-        className={`${modalContainerClass} max-w-3xl overflow-hidden bg-gray-900/95 flex max-h-[calc(100dvh-2rem)] flex-col sm:max-h-[calc(100dvh-3rem)]`}
-      >
-        <div className={`${modalHeaderClass} shrink-0 border-b border-white/10 px-6 py-4`}>
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <button onClick={onClose} className={modalCloseButtonClass} aria-label={t('common.close')}>
-            <X size={18} />
-          </button>
-        </div>
-        <div className="min-h-0 overflow-y-auto px-6 py-5">{children}</div>
-      </div>
-    </div>,
+    <ModalLayout isOpen onClose={onClose} title={title} maxWidthClass="max-w-3xl">
+      {children}
+    </ModalLayout>,
     document.body
   );
 };
@@ -1139,8 +1119,6 @@ const AdminPage: React.FC = () => {
                         : isActiveDealer
                           ? 'border-emerald-500/40 bg-emerald-500/20 text-emerald-100'
                           : 'border-slate-500/40 bg-slate-500/20 text-slate-100';
-
-                  const isProcessing = dealerUpdateLoading && dealerAction?.id === dealer.id;
 
                   const showEditButton = dealerFilter !== 'deleted';
                   const showDeleteButton = dealerFilter !== 'deleted';

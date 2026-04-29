@@ -8,7 +8,7 @@ import {
   serviceUnavailable,
   withTimeout,
 } from './_lib/http';
-import { getOptionalString, getRequiredString } from './_lib/validation';
+import { getOptionalString, getRequiredEmail, getRequiredString } from './_lib/validation';
 import { getAdminFirestore } from './_lib/firebaseAdmin';
 
 interface CreateEnquiryBody {
@@ -18,6 +18,7 @@ interface CreateEnquiryBody {
   email?: string;
   phone?: string;
   message?: string;
+  company?: string;
 }
 
 export const handler = async (event: FunctionEvent) => {
@@ -27,10 +28,15 @@ export const handler = async (event: FunctionEvent) => {
 
   try {
     const body = event.body ? (JSON.parse(event.body) as CreateEnquiryBody) : {};
+    const honeypot = getOptionalString(body.company, { field: 'company', maxLength: 120 });
+    if (honeypot) {
+      return json(200, { ok: true });
+    }
+
     const listingId = getRequiredString(body.listingId, 'listingId', 128);
     const dealerId = getRequiredString(body.dealerId, 'dealerId', 128);
     const name = getRequiredString(body.name, 'name', 120);
-    const email = getRequiredString(body.email, 'email', 254);
+    const email = getRequiredEmail(body.email);
     const phone = getOptionalString(body.phone, { field: 'phone', maxLength: 40 });
     const message = getRequiredString(body.message, 'message', 5000);
 
@@ -83,7 +89,7 @@ export const handler = async (event: FunctionEvent) => {
     if (message.startsWith('Missing Firebase admin credentials')) {
       return serviceUnavailable('Server-side enquiries are not configured.');
     }
-    if (message.includes('required') || message.includes('characters')) {
+    if (message.includes('required') || message.includes('characters') || message.includes('valid email')) {
       return badRequest(message);
     }
     return internalError(message);

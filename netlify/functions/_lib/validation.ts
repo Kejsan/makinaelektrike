@@ -38,6 +38,14 @@ export const getRequiredString = (value: unknown, field: string, maxLength: numb
   return trimmed;
 };
 
+export const getRequiredEmail = (value: unknown, field = 'email') => {
+  const email = getRequiredString(value, field, 254).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error(`${field} must be a valid email address.`);
+  }
+  return email;
+};
+
 export const getOptionalBoolean = (value: unknown) => {
   if (typeof value === 'boolean') {
     return value;

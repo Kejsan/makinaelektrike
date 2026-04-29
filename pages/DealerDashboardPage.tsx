@@ -26,7 +26,7 @@ import {
   uploadModelGalleryImage,
   uploadModelHeroImage,
 } from '../services/storage';
-import type { Dealer, Model, Enquiry } from '../types';
+import type { Dealer, Model } from '../types';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import { DEALERSHIP_PLACEHOLDER_IMAGE, MODEL_PLACEHOLDER_IMAGE } from '../constants/media';

@@ -8,7 +8,7 @@ import {
   serviceUnavailable,
   withTimeout,
 } from './_lib/http';
-import { getOptionalString, getRequiredString } from './_lib/validation';
+import { getOptionalString, getRequiredEmail, getRequiredString } from './_lib/validation';
 import { getAdminFirestore } from './_lib/firebaseAdmin';
 
 interface ContactSubmitBody {
@@ -34,7 +34,7 @@ export const handler = async (event: FunctionEvent) => {
     }
 
     const name = getRequiredString(body.name, 'name', 120);
-    const email = getRequiredString(body.email, 'email', 254);
+    const email = getRequiredEmail(body.email);
     const phone = getOptionalString(body.phone, { field: 'phone', maxLength: 40 });
     const message = getRequiredString(body.message, 'message', 5000);
     const locale = getOptionalString(body.locale, { field: 'locale', maxLength: 12 });
@@ -64,7 +64,7 @@ export const handler = async (event: FunctionEvent) => {
     if (message.startsWith('Missing Firebase admin credentials')) {
       return serviceUnavailable('Server-side contact submissions are not configured.');
     }
-    if (message.includes('required') || message.includes('characters')) {
+    if (message.includes('required') || message.includes('characters') || message.includes('valid email')) {
       return badRequest(message);
     }
     return internalError(message);

@@ -3,7 +3,6 @@ import {
     collection,
     query,
     where,
-    orderBy,
     serverTimestamp,
     type Unsubscribe,
 } from 'firebase/firestore';
@@ -13,11 +12,16 @@ import type { Enquiry } from '../types';
 
 const enquiriesCollection = collection(firestore, 'enquiries');
 
+type PublicEnquiryPayload = Omit<Enquiry, 'id' | 'createdAt' | 'status'> & {
+    company?: string;
+};
+
 const createEnquiryDirect = async (
-    enquiry: Omit<Enquiry, 'id' | 'createdAt' | 'status'>
+    enquiry: PublicEnquiryPayload
 ): Promise<void> => {
+    const { company: _company, ...payload } = enquiry;
     await addDoc(enquiriesCollection, {
-        ...enquiry,
+        ...payload,
         status: 'new',
         createdAt: serverTimestamp(),
     });
@@ -32,7 +36,7 @@ const readFunctionError = async (response: Response) => {
     }
 };
 
-export const createEnquiry = async (enquiry: Omit<Enquiry, 'id' | 'createdAt' | 'status'>): Promise<void> => {
+export const createEnquiry = async (enquiry: PublicEnquiryPayload): Promise<void> => {
     const response = await fetch('/.netlify/functions/create-enquiry', {
         method: 'POST',
         headers: {

@@ -41,7 +41,6 @@ import {
   subscribeToDealerModelsForDealers,
   createDealer as apiCreateDealer,
   updateDealer as apiUpdateDealer,
-  deleteDealer as apiDeleteDealer,
   approveDealerStatus as apiApproveDealerStatus,
   rejectDealerStatus as apiRejectDealerStatus,
   deactivateDealerStatus as apiDeactivateDealerStatus,
@@ -54,10 +53,6 @@ import {
   deleteBlogPost as apiDeleteBlogPost,
   createDealerModel as apiCreateDealerModel,
   deleteDealerModel as apiDeleteDealerModel,
-  approveDealerRecord,
-  rejectDealerRecord,
-  deactivateDealerRecord,
-  reactivateDealerRecord,
   softDeleteDealerRecord,
 } from '../services/api';
 import { useAuth } from './AuthContext';
@@ -234,7 +229,7 @@ const getRequiredCollections = (pathname: string): LoadedCollection[] => {
   }
 
   if (pathname === '/dealer/listings') {
-    return ['dealers', 'listings'];
+    return ['dealers', 'models', 'dealerModels', 'listings'];
   }
 
   if (pathname.startsWith('/dealer/')) {
@@ -882,8 +877,6 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
       const existingOwnerDealerId = normalizeOptionalString(rawOwnerDealerId);
       const existingOwnerUid = normalizeOptionalString(rawOwnerUid);
-      const existingCreatedBy = normalizeOptionalString(rawCreatedBy);
-      const existingUpdatedBy = normalizeOptionalString(rawUpdatedBy);
 
       let derivedOwnerDealerId = existingOwnerDealerId;
       let derivedOwnerUid = existingOwnerUid;

@@ -578,6 +578,10 @@
     "soldBy": "Venduto da",
     "verifiedDealer": "Concessionario verificato",
     "notFoundTitle": "Annuncio non trovato",
+    "previousImage": "Immagine precedente",
+    "nextImage": "Immagine successiva",
+    "showImage": "Mostra immagine {{index}}",
+    "thumbnailAlt": "Miniatura immagine annuncio {{index}}",
     "fields": {
       "make": "Marca",
       "model": "Modello",
@@ -607,7 +611,10 @@
     "defaultMessage": "Ciao, sono interessato a questa {{make}} {{model}}. È ancora disponibile?",
     "success": "Messaggio inviato con successo.",
     "error": "Invio del messaggio non riuscito. Riprova.",
-    "send": "Invia messaggio"
+    "send": "Invia messaggio",
+    "emailPlaceholder": "nome@example.com",
+    "phonePlaceholder": "+355 69...",
+    "honeypot": "Azienda"
   },
   "dealer": {
     "listings": "I miei annunci",
@@ -616,6 +623,16 @@
     "createFirst": "Crea il tuo primo annuncio",
     "editListing": "Modifica annuncio",
     "newListing": "Nuovo annuncio"
+  },
+  "dealerWorkspace": {
+    "label": "Area concessionario",
+    "accountFallback": "Account concessionario",
+    "navigation": "Navigazione area concessionario",
+    "dashboard": "Dashboard",
+    "listings": "Annunci",
+    "newListing": "Nuovo annuncio",
+    "viewSite": "Vedi sito pubblico",
+    "logout": "Esci"
   },
   "dealerListingsPage": {
     "metaTitle": "Gestisci annunci | Dashboard concessionario",
@@ -655,6 +672,11 @@
         "media": "Foto",
         "mediaHelp": "Usa una foto principale orizzontale e immagini galleria da più angolazioni."
       },
+      "modelProfile": "Profilo modello",
+      "modelProfilePlaceholder": "Scegli un profilo modello",
+      "modelProfileHelp": "Opzionale. La scelta di un profilo precompila specifiche e foto del veicolo, e puoi comunque modificare ogni campo.",
+      "modelProfileUnavailable": "Nessun profilo modello è ancora disponibile. Inserisci manualmente i dettagli dell'annuncio.",
+      "modelProfileApplied": "{{model}} viene usato come profilo di partenza.",
       "title": "Titolo annuncio",
       "titlePlaceholder": "2025 Tesla Model Y Long Range",
       "description": "Descrizione",
@@ -974,7 +996,13 @@
     "cargo": "Bagagliaio",
     "emptyTitle": "Nessun {{tab}} salvato",
     "emptyText": "Sfoglia i nostri {{tab}} e fai clic sull'icona del cuore per salvarli qui e ritrovarli più tardi.",
-    "newest": "Più recenti"
+    "newest": "Più recenti",
+    "gridView": "Vista griglia",
+    "listView": "Vista elenco",
+    "sortFavorites": "Ordina preferiti",
+    "closeCompareBar": "Chiudi barra confronto",
+    "addToCompare": "Aggiungi {{name}} al confronto",
+    "removeFromCompare": "Rimuovi {{name}} dal confronto"
   },
   "sitemap": {
     "title": "Mappa del sito",

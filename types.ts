@@ -257,6 +257,7 @@ export interface Listing extends FirestoreTimestamps {
   // Vehicle Details
   title: string;
   description: string;
+  modelId?: string;
   make: string;
   model: string;
   year: number;

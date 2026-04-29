@@ -605,6 +605,16 @@
     "editListing": "Ndrysho Listimin",
     "newListing": "Listim i Ri"
   },
+  "dealerWorkspace": {
+    "label": "Hapësira e shitësit",
+    "accountFallback": "Llogaria e shitësit",
+    "navigation": "Navigimi i hapësirës së shitësit",
+    "dashboard": "Paneli",
+    "listings": "Listimet",
+    "newListing": "Listim i ri",
+    "viewSite": "Shiko faqen publike",
+    "logout": "Dil"
+  },
   "dealerListingsPage": {
     "metaTitle": "Menaxho listimet | Paneli i shitësit",
     "metaDescription": "Menaxhoni listimet tuaja të makinave.",
@@ -643,6 +653,11 @@
         "media": "Fotot",
         "mediaHelp": "Përdorni një foto kryesore horizontale dhe imazhe galerie nga disa kënde."
       },
+      "modelProfile": "Profili i modelit",
+      "modelProfilePlaceholder": "Zgjidh një profil modeli",
+      "modelProfileHelp": "Opsionale. Zgjedhja e një profili plotëson specifikimet dhe fotot e automjetit, ndërsa çdo fushë mund të ndryshohet.",
+      "modelProfileUnavailable": "Nuk ka ende profile modelesh të disponueshme. Plotësoni detajet e listimit manualisht.",
+      "modelProfileApplied": "{{model}} po përdoret si profil fillestar.",
       "title": "Titulli i listimit",
       "titlePlaceholder": "2025 Tesla Model Y Long Range",
       "description": "Përshkrimi",
@@ -1108,6 +1123,10 @@
     "soldBy": "Shitet nga",
     "verifiedDealer": "Shitës i verifikuar",
     "notFoundTitle": "Listimi nuk u gjet",
+    "previousImage": "Imazhi i mëparshëm",
+    "nextImage": "Imazhi tjetër",
+    "showImage": "Shfaq imazhin {{index}}",
+    "thumbnailAlt": "Miniatura e imazhit {{index}} të listimit",
     "fields": {
       "make": "Marka",
       "model": "Modeli",
@@ -1137,7 +1156,10 @@
     "defaultMessage": "Përshëndetje, jam i interesuar për këtë {{make}} {{model}}. A është ende në dispozicion?",
     "success": "Mesazhi u dërgua me sukses.",
     "error": "Dërgimi i mesazhit dështoi. Ju lutem provoni përsëri.",
-    "send": "Dërgo mesazhin"
+    "send": "Dërgo mesazhin",
+    "emailPlaceholder": "emri@example.com",
+    "phonePlaceholder": "+355 69...",
+    "honeypot": "Kompania"
   },
   "registerUserPage": {
     "metaTitle": "Krijo llogarinë | Makina Elektrike",
@@ -1292,7 +1314,13 @@
     "cargo": "Bagazhi",
     "emptyTitle": "Nuk ka {{tab}} të ruajtura",
     "emptyText": "Shfletoni {{tab}} tona dhe klikoni ikonën e zemrës për t’i ruajtur këtu për qasje të shpejtë më vonë.",
-    "newest": "Më të rejat"
+    "newest": "Më të rejat",
+    "gridView": "Pamje me rrjet",
+    "listView": "Pamje me listë",
+    "sortFavorites": "Rendit të ruajturat",
+    "closeCompareBar": "Mbyll shiritin e krahasimit",
+    "addToCompare": "Shto {{name}} në krahasim",
+    "removeFromCompare": "Hiq {{name}} nga krahasimi"
   },
   "auth": {
     "awaitingApprovalTitle": "Në pritje të aprovimit",

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ScrollToTopButton from './components/ScrollToTopButton';
+import DealerWorkspaceShell from './components/dashboard/DealerWorkspaceShell';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataContext, DataProvider } from './contexts/DataContext';
 import { ToastProvider, ToastContainer } from './contexts/ToastContext';
@@ -79,6 +80,16 @@ const RouteContent: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   <Suspense fallback={<LoadingScreen />}>{children}</Suspense>
 );
 
+const isFocusedWorkspaceRoute = (pathname: string) => {
+  const normalizedPath = stripLocalePrefix(pathname).pathname;
+  return (
+    normalizedPath === '/admin' ||
+    normalizedPath.startsWith('/admin/') ||
+    normalizedPath === '/dealer' ||
+    normalizedPath.startsWith('/dealer/')
+  );
+};
+
 const LegacyDefaultLocaleRedirect: React.FC = () => {
   const location = useLocation();
   const normalizedPath = stripLocalePrefix(location.pathname).pathname;
@@ -142,6 +153,95 @@ const DealerRoute: React.FC<{ children: React.ReactElement }> = ({ children }) =
   return children;
 };
 
+const AppRoutes = () => (
+  <Routes>
+    <Route path="/sq" element={<LegacyDefaultLocaleRedirect />} />
+    <Route path="/sq/*" element={<LegacyDefaultLocaleRedirect />} />
+    {PUBLIC_ROUTE_LOCALES.map(locale =>
+      PUBLIC_ROUTE_DEFINITIONS.map(route => (
+        <React.Fragment key={`${locale ?? 'sq'}:${route.path}`}>
+          <Route
+            path={buildLocalizedRoutePath(route.path, locale)}
+            element={<RouteContent>{route.element}</RouteContent>}
+          />
+        </React.Fragment>
+      ))
+    )}
+    {PUBLIC_ROUTE_LOCALES.map(locale => (
+      <React.Fragment key={`${locale ?? 'sq'}:/privacy`}>
+        <Route
+          path={buildLocalizedRoutePath('/privacy', locale)}
+          element={<LocalizedNavigate to="/privacy-policy" replace />}
+        />
+      </React.Fragment>
+    ))}
+    {PUBLIC_ROUTE_LOCALES.map(locale => (
+      <React.Fragment key={`${locale ?? 'sq'}:/cookies`}>
+        <Route
+          path={buildLocalizedRoutePath('/cookies', locale)}
+          element={<LocalizedNavigate to="/cookie-policy" replace />}
+        />
+      </React.Fragment>
+    ))}
+    <Route path="/admin/login" element={<RouteContent><AdminLoginPage /></RouteContent>} />
+    <Route
+      path="/dealer/listings"
+      element={
+        <RouteContent>
+          <DealerRoute>
+            <DealerWorkspaceShell>
+              <DealerListingsPage />
+            </DealerWorkspaceShell>
+          </DealerRoute>
+        </RouteContent>
+      }
+    />
+    <Route
+      path="/dealer/dashboard"
+      element={(
+        <RouteContent>
+          <DealerRoute>
+            <DealerWorkspaceShell>
+              <DealerDashboardPage />
+            </DealerWorkspaceShell>
+          </DealerRoute>
+        </RouteContent>
+      )}
+    />
+    <Route
+      path="/admin"
+      element={(
+        <RouteContent>
+          <AdminRoute>
+            <AdminPage />
+          </AdminRoute>
+        </RouteContent>
+      )}
+    />
+  </Routes>
+);
+
+const AppShell = () => {
+  const location = useLocation();
+  const isFocusedWorkspace = isFocusedWorkspaceRoute(location.pathname);
+
+  return (
+    <div className={isFocusedWorkspace ? 'min-h-screen' : 'flex min-h-screen flex-col'}>
+      {!isFocusedWorkspace && <Header />}
+      {isFocusedWorkspace ? (
+        <AppRoutes />
+      ) : (
+        <main className="flex-grow">
+          <AppRoutes />
+        </main>
+      )}
+      {!isFocusedWorkspace && <Footer />}
+      {!isFocusedWorkspace && <ScrollToTopButton />}
+      <ToastContainer />
+    </div>
+  );
+};
+
 const App: React.FC = () => {
 
   return (
@@ -151,75 +251,7 @@ const App: React.FC = () => {
       <ToastProvider>
         <AuthProvider>
           <DataProvider>
-            <div className="flex flex-col min-h-screen">
-              <Header />
-              <main className="flex-grow">
-                <Routes>
-                  <Route path="/sq" element={<LegacyDefaultLocaleRedirect />} />
-                  <Route path="/sq/*" element={<LegacyDefaultLocaleRedirect />} />
-                  {PUBLIC_ROUTE_LOCALES.map(locale =>
-                    PUBLIC_ROUTE_DEFINITIONS.map(route => (
-                      <React.Fragment key={`${locale ?? 'sq'}:${route.path}`}>
-                        <Route
-                          path={buildLocalizedRoutePath(route.path, locale)}
-                          element={<RouteContent>{route.element}</RouteContent>}
-                        />
-                      </React.Fragment>
-                    ))
-                  )}
-                  {PUBLIC_ROUTE_LOCALES.map(locale => (
-                    <React.Fragment key={`${locale ?? 'sq'}:/privacy`}>
-                      <Route
-                        path={buildLocalizedRoutePath('/privacy', locale)}
-                        element={<LocalizedNavigate to="/privacy-policy" replace />}
-                      />
-                    </React.Fragment>
-                  ))}
-                  {PUBLIC_ROUTE_LOCALES.map(locale => (
-                    <React.Fragment key={`${locale ?? 'sq'}:/cookies`}>
-                      <Route
-                        path={buildLocalizedRoutePath('/cookies', locale)}
-                        element={<LocalizedNavigate to="/cookie-policy" replace />}
-                      />
-                    </React.Fragment>
-                  ))}
-                  <Route path="/admin/login" element={<RouteContent><AdminLoginPage /></RouteContent>} />
-                  <Route
-                    path="/dealer/listings"
-                    element={
-                      <RouteContent>
-                        <DealerRoute>
-                          <DealerListingsPage />
-                        </DealerRoute>
-                      </RouteContent>
-                    }
-                  />
-                  <Route
-                    path="/dealer/dashboard"
-                    element={(
-                      <RouteContent>
-                        <DealerRoute>
-                          <DealerDashboardPage />
-                        </DealerRoute>
-                      </RouteContent>
-                    )}
-                  />
-                  <Route
-                    path="/admin"
-                    element={(
-                      <RouteContent>
-                        <AdminRoute>
-                          <AdminPage />
-                        </AdminRoute>
-                      </RouteContent>
-                    )}
-                  />
-                </Routes>
-              </main>
-              <Footer />
-              <ScrollToTopButton />
-              <ToastContainer />
-            </div>
+            <AppShell />
           </DataProvider>
         </AuthProvider>
       </ToastProvider>

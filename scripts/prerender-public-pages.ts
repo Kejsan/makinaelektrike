@@ -38,7 +38,6 @@ import {
 dotenv.config();
 
 const SITE_URL = (process.env.VITE_SITE_URL || 'https://makinaelektrike.com').replace(/\/+$/, '');
-const DEFAULT_OG_IMAGE = `${SITE_URL}${DEFAULT_OG_IMAGE_PATH}`;
 const TWITTER_SITE = '@makinaelektrike';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -2400,7 +2399,6 @@ const renderLegalPage = (options: {
 
 const renderDealerDetailPages = (
   data: PublicSiteData,
-  dealersById: Map<string, Dealer>,
   modelsById: Map<string, Model>,
   lang: AppLocale,
 ) => {
@@ -3004,7 +3002,7 @@ const generatePages = (data: PublicSiteData) => {
   ]);
 
   const dynamicPages = SUPPORTED_LOCALES.flatMap<PageDefinition>(lang => [
-    ...renderDealerDetailPages(data, dealersById, modelsById, lang),
+    ...renderDealerDetailPages(data, modelsById, lang),
     ...renderModelDetailPages(data, dealersById, lang),
     ...renderListingDetailPages(data, dealersById, lang),
     ...renderBlogPostPages(data.blogPosts, lang),

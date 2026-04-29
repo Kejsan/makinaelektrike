@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Listing } from '../../types';
+import { Listing, Model } from '../../types';
 
 export interface ListingFormValues extends Omit<Listing, 'id' | 'createdAt' | 'updatedAt' | 'dealerId'> {
     id?: string;
@@ -10,6 +10,7 @@ export interface ListingFormValues extends Omit<Listing, 'id' | 'createdAt' | 'u
 
 interface ListingFormProps {
     initialValues?: Listing;
+    availableModels?: Model[];
     onSubmit: (values: ListingFormValues) => void | Promise<void>;
     onCancel: () => void;
     isSubmitting?: boolean;
@@ -52,9 +53,19 @@ const checkboxClass = 'h-4 w-4 rounded border-white/20 bg-white/10 text-gray-cya
 const sanitizeOptionalNumber = (value?: number) =>
     typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
 
-const ListingForm: React.FC<ListingFormProps> = ({ initialValues, onSubmit, onCancel, isSubmitting }) => {
+const getModelProfileLabel = (model: Model) =>
+    [model.brand, model.model_name].filter(Boolean).join(' ').trim();
+
+const ListingForm: React.FC<ListingFormProps> = ({
+    initialValues,
+    availableModels = [],
+    onSubmit,
+    onCancel,
+    isSubmitting,
+}) => {
     const { t } = useTranslation();
     const [formState, setFormState] = useState<ListingFormValues>(defaultState);
+    const [selectedModelId, setSelectedModelId] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState('');
     const [galleryDrafts, setGalleryDrafts] = useState<{ file: File; preview: string }[]>([]);
@@ -85,6 +96,8 @@ const ListingForm: React.FC<ListingFormProps> = ({ initialValues, onSubmit, onCa
     const visibleFuelTypeOptions = formState.fuelType && !fuelTypeOptions.some(option => option.value === formState.fuelType)
         ? [{ value: formState.fuelType, label: formState.fuelType }, ...fuelTypeOptions]
         : fuelTypeOptions;
+    const selectedModelProfile = availableModels.find(model => model.id === selectedModelId);
+    const selectedModelLabel = selectedModelProfile ? getModelProfileLabel(selectedModelProfile) : '';
     const totalGalleryCount = existingGallery.length + galleryDrafts.length;
 
     useEffect(() => {
@@ -114,6 +127,7 @@ const ListingForm: React.FC<ListingFormProps> = ({ initialValues, onSubmit, onCa
         setErrors({});
 
         if (initialValues) {
+            setSelectedModelId(initialValues.modelId ?? '');
             setFormState({
                 ...defaultState,
                 ...initialValues,
@@ -136,6 +150,7 @@ const ListingForm: React.FC<ListingFormProps> = ({ initialValues, onSubmit, onCa
             setImagePreview(initialValues.images?.[0] || '');
             setExistingGallery(initialValues.imageGallery || []);
         } else {
+            setSelectedModelId('');
             setFormState(defaultState);
             setImagePreview('');
             setExistingGallery([]);
@@ -168,6 +183,57 @@ const ListingForm: React.FC<ListingFormProps> = ({ initialValues, onSubmit, onCa
             [name]: fieldValue,
         }));
         clearError(name);
+    };
+
+    const handleModelProfileChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        const modelId = event.target.value;
+        setSelectedModelId(modelId);
+
+        if (!modelId) {
+            setFormState(prev => ({
+                ...prev,
+                modelId: undefined,
+            }));
+            return;
+        }
+
+        const profile = availableModels.find(model => model.id === modelId);
+        if (!profile) {
+            return;
+        }
+
+        const primaryImage = profile.image_url?.trim() || '';
+        const profileGallery = (profile.imageGallery ?? []).filter(Boolean).slice(0, galleryLimit);
+
+        setFormState(prev => {
+            const generatedTitle = `${prev.year || new Date().getFullYear()} ${getModelProfileLabel(profile)}`.trim();
+            const shouldUseProfileImage = Boolean(primaryImage) && !imageFile;
+            const shouldUseProfileGallery = profileGallery.length > 0 && galleryDrafts.length === 0;
+
+            return {
+                ...prev,
+                modelId: profile.id,
+                title: prev.title.trim() ? prev.title : generatedTitle,
+                make: profile.brand || prev.make,
+                model: profile.model_name || prev.model,
+                bodyType: profile.body_type || prev.bodyType,
+                batteryCapacity: profile.battery_capacity ?? prev.batteryCapacity,
+                range: profile.range_wltp ?? prev.range,
+                images: shouldUseProfileImage ? [primaryImage] : prev.images,
+                imageGallery: shouldUseProfileGallery ? profileGallery : prev.imageGallery,
+            };
+        });
+
+        if (primaryImage && !imageFile) {
+            setImagePreview(primaryImage);
+        }
+
+        if (profileGallery.length > 0 && galleryDrafts.length === 0) {
+            setExistingGallery(profileGallery);
+        }
+
+        clearError('make');
+        clearError('model');
     };
 
     const handleLocationChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -345,6 +411,7 @@ const ListingForm: React.FC<ListingFormProps> = ({ initialValues, onSubmit, onCa
             model: formState.model.trim(),
             bodyType: formState.bodyType.trim(),
             fuelType: formState.fuelType.trim(),
+            modelId: formState.modelId || undefined,
             batteryCapacity: sanitizeOptionalNumber(formState.batteryCapacity),
             range: sanitizeOptionalNumber(formState.range),
             location,
@@ -365,6 +432,43 @@ const ListingForm: React.FC<ListingFormProps> = ({ initialValues, onSubmit, onCa
                     <p className="mt-1 text-sm text-gray-400">{t('dealerListingsPage.form.sections.vehicleHelp')}</p>
                 </div>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="md:col-span-2">
+                        <label htmlFor="listing-model-profile" className="mb-1 block text-sm font-medium text-gray-300">
+                            {t('dealerListingsPage.form.modelProfile')}
+                        </label>
+                        <select
+                            id="listing-model-profile"
+                            value={selectedModelId}
+                            onChange={handleModelProfileChange}
+                            disabled={availableModels.length === 0}
+                            className={selectClass}
+                        >
+                            <option value="">{t('dealerListingsPage.form.modelProfilePlaceholder')}</option>
+                            {availableModels.map(model => {
+                                const specs = [
+                                    model.year_start ? String(model.year_start) : '',
+                                    model.range_wltp ? `${model.range_wltp} km` : '',
+                                ].filter(Boolean).join(' - ');
+                                const label = getModelProfileLabel(model);
+                                return (
+                                    <option key={model.id} value={model.id}>
+                                        {specs ? `${label} (${specs})` : label}
+                                    </option>
+                                );
+                            })}
+                        </select>
+                        <p className="mt-2 text-xs text-gray-400">
+                            {availableModels.length > 0
+                                ? t('dealerListingsPage.form.modelProfileHelp')
+                                : t('dealerListingsPage.form.modelProfileUnavailable')}
+                        </p>
+                        {selectedModelProfile && (
+                            <p className="mt-2 text-xs font-medium text-gray-cyan">
+                                {t('dealerListingsPage.form.modelProfileApplied', { model: selectedModelLabel })}
+                            </p>
+                        )}
+                    </div>
+
                     <div className="md:col-span-2">
                         <label htmlFor="listing-title" className="mb-1 block text-sm font-medium text-gray-300">
                             {t('dealerListingsPage.form.title')}

@@ -10,7 +10,11 @@
   </sitemap>
   <sitemap>
     <loc>https://makinaelektrike.com/sitemaps/models.xml</loc>
-    <lastmod>2026-04-22</lastmod>
+    <lastmod>2026-04-29</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://makinaelektrike.com/sitemaps/listings.xml</loc>
+    <lastmod>2026-04-29</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://makinaelektrike.com/sitemaps/blog.xml</loc>

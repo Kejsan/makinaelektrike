@@ -1,16 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Send, Phone, MessageSquare } from 'lucide-react';
+import { Send, Phone } from 'lucide-react';
 import { Listing, Dealer } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../contexts/ToastContext';
 import { createEnquiry } from '../../services/enquiries';
 import OptimizedImage from '../OptimizedImage';
 import { DEALERSHIP_PLACEHOLDER_IMAGE } from '../../constants/media';
-import {
-    modalCloseButtonClass,
-    modalContainerClass,
-    modalOverlayClass,
-} from '../../constants/modalStyles';
+import ModalLayout from '../ModalLayout';
 
 interface EnquiryModalProps {
     listing: Listing;
@@ -27,6 +23,7 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
         name: '',
         email: '',
         phone: '',
+        company: '',
         message: t('enquiry.defaultMessage', {
             make: listing.make,
             model: listing.model
@@ -53,6 +50,7 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                 name: formData.name,
                 email: formData.email,
                 phone: formData.phone,
+                company: formData.company,
                 message: formData.message,
             });
 
@@ -73,25 +71,13 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
     };
 
     return (
-        <div className={modalOverlayClass} role="dialog" aria-modal="true">
-            <div className="flex min-h-full items-start justify-center py-4 sm:items-center sm:py-6">
-            <div className={`${modalContainerClass} relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden bg-[#0f172a] shadow-2xl sm:max-h-[calc(100dvh-3rem)]`}>
-                <button
-                    onClick={onClose}
-                    className={`${modalCloseButtonClass} absolute right-4 top-4 z-10`}
-                    aria-label={t('common.close')}
-                >
-                    <X size={24} />
-                </button>
-
-                <div className="overflow-y-auto p-6">
-                    <h2 className="text-2xl font-bold text-white mb-2">
-                        {t('enquiry.title')}
-                    </h2>
-                    <p className="text-gray-400 text-sm mb-6">
-                        {t('enquiry.subtitle')}
-                    </p>
-
+        <ModalLayout
+            isOpen={isOpen}
+            onClose={onClose}
+            title={t('enquiry.title')}
+            description={t('enquiry.subtitle')}
+            maxWidthClass="max-w-lg"
+        >
                     {dealer && (
                         <div className="flex items-center gap-4 mb-6 p-4 bg-white/5 rounded-xl border border-white/5">
                             <OptimizedImage
@@ -114,11 +100,24 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="hidden" aria-hidden="true">
+                            <label htmlFor="enquiry-company">{t('enquiry.honeypot')}</label>
+                            <input
+                                id="enquiry-company"
+                                type="text"
+                                name="company"
+                                tabIndex={-1}
+                                autoComplete="off"
+                                value={formData.company}
+                                onChange={e => setFormData({ ...formData, company: e.target.value })}
+                            />
+                        </div>
                         <div>
-                            <label className="block text-gray-400 text-xs uppercase font-bold mb-2">
+                            <label htmlFor="enquiry-name" className="block text-gray-400 text-xs uppercase font-bold mb-2">
                                 {t('common.name')}
                             </label>
                             <input
+                                id="enquiry-name"
                                 type="text"
                                 name="name"
                                 autoComplete="name"
@@ -130,12 +129,13 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
-                                <label className="block text-gray-400 text-xs uppercase font-bold mb-2">
+                                <label htmlFor="enquiry-email" className="block text-gray-400 text-xs uppercase font-bold mb-2">
                                     {t('common.email')}
                                 </label>
                                 <input
+                                    id="enquiry-email"
                                     type="email"
                                     name="email"
                                     autoComplete="email"
@@ -143,30 +143,32 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                                     className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-gray-cyan outline-none transition"
                                     value={formData.email}
                                     onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                    placeholder="name@example.com"
+                                    placeholder={t('enquiry.emailPlaceholder')}
                                 />
                             </div>
                             <div>
-                                <label className="block text-gray-400 text-xs uppercase font-bold mb-2">
+                                <label htmlFor="enquiry-phone" className="block text-gray-400 text-xs uppercase font-bold mb-2">
                                     {t('common.phone')}
                                 </label>
                                 <input
+                                    id="enquiry-phone"
                                     type="tel"
                                     name="phone"
                                     autoComplete="tel"
                                     className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-gray-cyan outline-none transition"
                                     value={formData.phone}
                                     onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                    placeholder="+355 69..."
+                                    placeholder={t('enquiry.phonePlaceholder')}
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-gray-400 text-xs uppercase font-bold mb-2">
+                            <label htmlFor="enquiry-message" className="block text-gray-400 text-xs uppercase font-bold mb-2">
                                 {t('common.message')}
                             </label>
                             <textarea
+                                id="enquiry-message"
                                 name="message"
                                 required
                                 rows={4}
@@ -191,10 +193,7 @@ const EnquiryModal: React.FC<EnquiryModalProps> = ({ listing, dealer, isOpen, on
                             )}
                         </button>
                     </form>
-                </div>
-            </div>
-            </div>
-        </div>
+        </ModalLayout>
     );
 };
 

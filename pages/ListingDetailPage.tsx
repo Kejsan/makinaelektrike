@@ -8,6 +8,7 @@ import { MapPin, Gauge, ChevronLeft, ChevronRight, Phone, MessageSquare, ShieldC
 import EnquiryModal from '../components/listings/EnquiryModal';
 import { DEALERSHIP_PLACEHOLDER_IMAGE, MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
 import Link from '../components/LocalizedLink';
+import type { Listing } from '../types';
 
 const ListingDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -46,47 +47,46 @@ const ListingDetailPage: React.FC = () => {
         );
     }
 
-    const allImages = listing.images && listing.images.length > 0
-        ? listing.images
-        : [listing.image_url || MODEL_PLACEHOLDER_IMAGE]; // Fallback to legacy or placeholder
+    const legacyImageUrl = (listing as Listing & { image_url?: string }).image_url;
+    const displayImages = Array.from(new Set([
+        ...(listing.images ?? []),
+        ...(listing.imageGallery ?? []),
+        legacyImageUrl,
+    ].filter(Boolean))) as string[];
 
-    // Add gallery images if they exist and are not already in listing.images (which should handle it, but just in case of data structure migration)
-    if (listing.imageGallery && listing.imageGallery.length > 0) {
-        // This depends on how we stored it. If listing.images includes all, we are good.
-        // Assuming listing.images IS the main gallery array based on ListingForm
-    }
-
-    // Previous implementation might have used image_url as separate. 
-    // ListingForm saves to `images` array. So `allImages` logic above should be fine.
-
-    const displayImages = allImages;
+    const galleryImages = displayImages.length > 0 ? displayImages : [MODEL_PLACEHOLDER_IMAGE];
+    const extendedListing = listing as Listing & {
+        transmission?: string;
+        drivetrain?: string;
+        color?: string;
+    };
     const specificationRows = [
         { label: t('listings.fields.make'), value: listing.make },
         { label: t('listings.fields.model'), value: listing.model },
         { label: t('listings.fields.year'), value: listing.year },
         { label: t('listings.fields.mileage'), value: `${listing.mileage.toLocaleString()} km` },
         { label: t('listings.fields.fuelType'), value: listing.fuelType },
-        { label: t('listings.fields.transmission'), value: listing.transmission },
-        { label: t('listings.fields.drivetrain'), value: listing.drivetrain },
         { label: t('listings.fields.bodyType'), value: listing.bodyType },
-        { label: t('listings.fields.color'), value: listing.color },
+        { label: t('listings.fields.transmission'), value: extendedListing.transmission },
+        { label: t('listings.fields.drivetrain'), value: extendedListing.drivetrain },
+        { label: t('listings.fields.color'), value: extendedListing.color },
         ...(listing.batteryCapacity
             ? [{ label: t('listings.fields.battery'), value: `${listing.batteryCapacity} kWh` }]
             : []),
         ...(listing.range
             ? [{ label: t('listings.fields.range'), value: `${listing.range} km` }]
             : []),
-    ];
+    ].filter(row => row.value !== undefined && row.value !== null && String(row.value).trim() !== '');
 
-    const nextImage = () => setActiveImageIndex((prev) => (prev + 1) % displayImages.length);
-    const prevImage = () => setActiveImageIndex((prev) => (prev - 1 + displayImages.length) % displayImages.length);
+    const nextImage = () => setActiveImageIndex((prev) => (prev + 1) % galleryImages.length);
+    const prevImage = () => setActiveImageIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
 
     return (
         <div className="min-h-screen bg-[#020817] text-white py-12">
             <SEO
                 title={`${listing.make} ${listing.model} (${listing.year}) | Makina Elektrike`}
                 description={listing.description || `Check out this ${listing.year} ${listing.make} ${listing.model} for sale.`}
-                image={displayImages[0]}
+                image={galleryImages[0]}
             />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -100,45 +100,53 @@ const ListingDetailPage: React.FC = () => {
                     <div className="space-y-4">
                         <div className="relative aspect-[16/10] bg-black/40 rounded-3xl overflow-hidden border border-white/10 group">
                             <OptimizedImage
-                                src={displayImages[activeImageIndex]}
+                                src={galleryImages[activeImageIndex]}
                                 alt={`${listing.make} ${listing.model}`}
                                 fallbackSrc={MODEL_PLACEHOLDER_IMAGE}
                                 priority
                                 className="w-full h-full object-cover"
                             />
 
-                            {displayImages.length > 1 && (
+                            {galleryImages.length > 1 && (
                                 <>
                                     <button
                                         onClick={(e) => { e.preventDefault(); prevImage(); }}
-                                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-gray-cyan/80 p-2 rounded-full backdrop-blur text-white transition opacity-0 group-hover:opacity-100"
+                                        className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white backdrop-blur transition hover:bg-gray-cyan/80 sm:left-4 sm:opacity-0 sm:group-hover:opacity-100"
+                                        aria-label={t('listings.previousImage')}
                                     >
                                         <ChevronLeft size={24} />
                                     </button>
                                     <button
                                         onClick={(e) => { e.preventDefault(); nextImage(); }}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-gray-cyan/80 p-2 rounded-full backdrop-blur text-white transition opacity-0 group-hover:opacity-100"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white backdrop-blur transition hover:bg-gray-cyan/80 sm:right-4 sm:opacity-0 sm:group-hover:opacity-100"
+                                        aria-label={t('listings.nextImage')}
                                     >
                                         <ChevronRight size={24} />
                                     </button>
 
                                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur px-3 py-1 rounded-full text-xs font-mono">
-                                        {activeImageIndex + 1} / {displayImages.length}
+                                        {activeImageIndex + 1} / {galleryImages.length}
                                     </div>
                                 </>
                             )}
                         </div>
 
-                        {displayImages.length > 1 && (
+                        {galleryImages.length > 1 && (
                             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                                {displayImages.map((img, idx) => (
+                                {galleryImages.map((img, idx) => (
                                     <button
                                         key={idx}
                                         onClick={() => setActiveImageIndex(idx)}
                                         className={`relative w-24 aspect-[16/10] flex-shrink-0 rounded-lg overflow-hidden border-2 transition ${activeImageIndex === idx ? 'border-gray-cyan' : 'border-transparent opacity-60 hover:opacity-100'
                                             }`}
+                                        aria-label={t('listings.showImage', { index: idx + 1 })}
                                     >
-                                        <OptimizedImage src={img} fallbackSrc={MODEL_PLACEHOLDER_IMAGE} className="w-full h-full object-cover" alt="thumbnail" />
+                                        <OptimizedImage
+                                            src={img}
+                                            fallbackSrc={MODEL_PLACEHOLDER_IMAGE}
+                                            className="w-full h-full object-cover"
+                                            alt={t('listings.thumbnailAlt', { index: idx + 1 })}
+                                        />
                                     </button>
                                 ))}
                             </div>

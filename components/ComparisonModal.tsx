@@ -1,14 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Model } from '../types';
-import { X, Search, Trash2 } from 'lucide-react';
+import { Search, Trash2, Scale } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
-import {
-  modalCloseButtonClass,
-  modalContainerClass,
-  modalHeaderClass,
-  modalOverlayClass,
-} from '../constants/modalStyles';
+import ModalLayout from './ModalLayout';
 
 interface ComparisonModalProps {
     isOpen: boolean;
@@ -68,22 +63,24 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, allM
     if (!isOpen) return null;
 
     return (
-        <div className={modalOverlayClass} role="dialog" aria-modal="true">
-            <div className={`${modalContainerClass} max-w-7xl w-full border border-gray-cyan/30 bg-navy-blue/80 backdrop-blur-2xl flex max-h-[calc(100dvh-2rem)] flex-col sm:max-h-[calc(100dvh-3rem)]`}>
-                {/* Header */}
-                <div className={`${modalHeaderClass} flex-shrink-0 border-b border-white/10 p-4`}
-                >
-                    <div>
+        <ModalLayout
+            isOpen={isOpen}
+            onClose={onClose}
+            maxWidthClass="max-w-7xl"
+            bodyClassName="mt-6 min-h-[min(72dvh,760px)] overflow-hidden"
+            headerContent={(
+                <div className="flex min-w-0 items-center gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-cyan text-navy-blue">
+                        <Scale size={24} />
+                    </div>
+                    <div className="min-w-0">
                         <h2 className="text-2xl font-bold text-white">{t('compare.title')}</h2>
                         <p className="text-sm text-gray-400">{t('compare.selectPrompt')}</p>
                     </div>
-                    <button onClick={onClose} className={modalCloseButtonClass} aria-label={t('common.close')}>
-                        <X size={24} />
-                    </button>
                 </div>
-                
-                {/* Content */}
-                <div className="grid min-h-0 flex-1 grid-cols-1 gap-x-6 overflow-hidden p-4 lg:grid-cols-3">
+            )}
+        >
+                <div className="grid h-full min-h-0 grid-cols-1 gap-x-6 overflow-hidden lg:grid-cols-3">
                     {/* Left: Model Selector */}
                     <div className="lg:col-span-1 flex h-full min-h-0 flex-col overflow-hidden">
                         <div className="relative mb-4 flex-shrink-0">
@@ -102,9 +99,13 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, allM
                                 const isSelected = selectedIds.includes(model.id);
                                 const isDisabled = !isSelected && selectedIds.length >= 3;
                                 return (
-                                    <div key={model.id}
+                                    <button
+                                        key={model.id}
+                                        type="button"
                                         onClick={() => !isDisabled && handleSelectModel(model.id)}
-                                        className={`flex items-center p-2 rounded-lg cursor-pointer transition-all border ${
+                                        disabled={isDisabled}
+                                        aria-pressed={isSelected}
+                                        className={`flex w-full items-center rounded-lg border p-2 text-left transition-all ${
                                             isSelected ? 'bg-gray-cyan/20 border-gray-cyan' : 'bg-white/5 border-transparent hover:border-gray-600'
                                         } ${ isDisabled ? 'opacity-50 cursor-not-allowed' : '' }`}
                                     >
@@ -113,6 +114,8 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, allM
                                             checked={isSelected}
                                             disabled={isDisabled}
                                             readOnly
+                                            tabIndex={-1}
+                                            aria-hidden="true"
                                             className="w-5 h-5 rounded text-gray-cyan bg-gray-700 border-gray-600 focus:ring-gray-cyan"
                                         />
                                         <img
@@ -124,7 +127,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, allM
                                             <p className="font-semibold text-white text-sm">{model.brand}</p>
                                             <p className="text-gray-300 text-xs">{model.model_name}</p>
                                         </div>
-                                    </div>
+                                    </button>
                                 );
                             })}
                         </div>
@@ -142,7 +145,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, allM
                                     <thead className="sticky top-0 bg-navy-blue/90 backdrop-blur-sm">
                                         <tr>
                                             <th className="p-3 text-sm font-semibold text-gray-300 w-1/4">
-                                                <button onClick={clearSelection} className="flex items-center gap-2 text-vivid-red hover:text-opacity-80 transition-opacity">
+                                                <button type="button" onClick={clearSelection} className="flex items-center gap-2 text-vivid-red hover:text-opacity-80 transition-opacity">
                                                   <Trash2 size={16}/>
                                                   {t('compare.clear')}
                                                 </button>
@@ -155,7 +158,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, allM
                                                         className="w-full h-24 object-cover rounded-lg mb-2"
                                                     />
                                                     <p className="font-bold text-white text-base">{model.brand} {model.model_name}</p>
-                                                     <button onClick={() => handleSelectModel(model.id)} className="text-xs text-vivid-red hover:underline mt-1">{t('compare.remove')}</button>
+                                                     <button type="button" onClick={() => handleSelectModel(model.id)} className="mt-1 text-xs text-vivid-red hover:underline">{t('compare.remove')}</button>
                                                 </th>
                                             ))}
                                             {/* Fill empty columns */}
@@ -182,8 +185,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({ isOpen, onClose, allM
                         )}
                     </div>
                 </div>
-            </div>
-        </div>
+        </ModalLayout>
     );
 };
 

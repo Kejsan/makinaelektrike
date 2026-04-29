@@ -6,7 +6,6 @@ import CustomSelect from '../components/CustomSelect';
 import { Building, Car, Globe, ListFilter } from 'lucide-react';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
-import type { Dealer } from '../types';
 
 const DealersListPage: React.FC = () => {
     const { t } = useTranslation();

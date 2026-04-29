@@ -1,12 +1,9 @@
 import {
     addDoc,
     collection,
-    deleteDoc,
     doc,
     getDoc,
     getDocs,
-    limit,
-    onSnapshot,
     orderBy,
     query,
     serverTimestamp,

@@ -43,7 +43,6 @@ const dealersCollection = collection(firestore, 'dealers');
 const modelsCollection = collection(firestore, 'models');
 const blogPostsCollection = collection(firestore, 'blogPosts');
 const dealerModelsCollection = collection(firestore, 'dealerModels');
-const listingsCollection = collection(firestore, 'listings');
 
 const compareStrings = (a?: string | null, b?: string | null) => {
   const first = (a ?? '').trim().toLocaleLowerCase();

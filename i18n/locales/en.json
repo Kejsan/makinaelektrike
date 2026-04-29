@@ -605,6 +605,16 @@
     "editListing": "Edit Listing",
     "newListing": "New Listing"
   },
+  "dealerWorkspace": {
+    "label": "Dealer workspace",
+    "accountFallback": "Dealer account",
+    "navigation": "Dealer workspace navigation",
+    "dashboard": "Dashboard",
+    "listings": "Listings",
+    "newListing": "New listing",
+    "viewSite": "View public site",
+    "logout": "Log out"
+  },
   "dealerListingsPage": {
     "metaTitle": "Manage listings | Dealer dashboard",
     "metaDescription": "Manage your car listings.",
@@ -643,6 +653,11 @@
         "media": "Photos",
         "mediaHelp": "Use a landscape main photo and gallery images from several angles."
       },
+      "modelProfile": "Model profile",
+      "modelProfilePlaceholder": "Choose a model profile",
+      "modelProfileHelp": "Optional. Choosing a profile prefills vehicle specs and photos, and you can still edit every field.",
+      "modelProfileUnavailable": "No model profiles are available yet. Enter the listing details manually.",
+      "modelProfileApplied": "Using {{model}} as the starting profile.",
       "title": "Listing title",
       "titlePlaceholder": "2025 Tesla Model Y Long Range",
       "description": "Description",
@@ -1108,6 +1123,10 @@
     "soldBy": "Sold by",
     "verifiedDealer": "Verified dealer",
     "notFoundTitle": "Listing not found",
+    "previousImage": "Previous image",
+    "nextImage": "Next image",
+    "showImage": "Show image {{index}}",
+    "thumbnailAlt": "Listing image {{index}} thumbnail",
     "fields": {
       "make": "Make",
       "model": "Model",
@@ -1137,7 +1156,10 @@
     "defaultMessage": "Hi, I am interested in this {{make}} {{model}}. Is it still available?",
     "success": "Message sent successfully.",
     "error": "Failed to send message. Please try again.",
-    "send": "Send message"
+    "send": "Send message",
+    "emailPlaceholder": "name@example.com",
+    "phonePlaceholder": "+355 69...",
+    "honeypot": "Company"
   },
   "registerUserPage": {
     "metaTitle": "Create your account | Makina Elektrike",
@@ -1292,7 +1314,13 @@
     "cargo": "Cargo",
     "emptyTitle": "No {{tab}} saved",
     "emptyText": "Browse our {{tab}} and click the heart icon to save them here for quick access later.",
-    "newest": "Newest"
+    "newest": "Newest",
+    "gridView": "Grid view",
+    "listView": "List view",
+    "sortFavorites": "Sort favorites",
+    "closeCompareBar": "Close compare bar",
+    "addToCompare": "Add {{name}} to comparison",
+    "removeFromCompare": "Remove {{name}} from comparison"
   },
   "auth": {
     "awaitingApprovalTitle": "Awaiting Approval",

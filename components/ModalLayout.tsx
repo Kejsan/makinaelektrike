@@ -16,6 +16,7 @@ interface ModalLayoutProps {
   headerContent?: React.ReactNode;
   children: React.ReactNode;
   maxWidthClass?: string;
+  bodyClassName?: string;
 }
 
 const focusableSelectors = [
@@ -35,6 +36,7 @@ const ModalLayout: React.FC<ModalLayoutProps> = ({
   headerContent,
   children,
   maxWidthClass = 'max-w-3xl',
+  bodyClassName = 'mt-6 min-h-0 space-y-4 overflow-y-auto pr-1',
 }) => {
   const { t } = useTranslation();
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -54,6 +56,17 @@ const ModalLayout: React.FC<ModalLayoutProps> = ({
       element => !element.hasAttribute('disabled') && element.getAttribute('tabindex') !== '-1',
     );
   };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -142,7 +155,7 @@ const ModalLayout: React.FC<ModalLayoutProps> = ({
           </button>
         </div>
 
-        <div className="mt-6 min-h-0 space-y-4 overflow-y-auto pr-1">
+        <div className={bodyClassName}>
           {children}
         </div>
       </div>

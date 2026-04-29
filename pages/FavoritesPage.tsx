@@ -4,13 +4,14 @@ import { useFavorites } from '../hooks/useFavorites';
 import { Dealer, Model } from '../types';
 import DealerCard from '../components/DealerCard';
 import ModelCard from '../components/ModelCard';
-import { Heart, Share2, Download, Copy, Search, LayoutGrid, List as ListIcon, Info, ArrowUpDown, X, CheckCircle2, ClipboardList } from 'lucide-react';
+import { Heart, Share2, Download, Search, LayoutGrid, List as ListIcon, Info, ArrowUpDown, X, CheckCircle2, ClipboardList } from 'lucide-react';
 import { DataContext } from '../contexts/DataContext';
 import SEO from '../components/SEO';
-import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import { BASE_URL } from '../constants/seo';
 import { MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
 import { useToast } from '../contexts/ToastContext';
 import ListingCard from '../components/listings/ListingCard';
+import ModalLayout from '../components/ModalLayout';
 
 const FavoritesPage: React.FC = () => {
     const { t } = useTranslation();
@@ -210,6 +211,7 @@ const FavoritesPage: React.FC = () => {
 
                         <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
                             <button
+                                type="button"
                                 onClick={handleShareList}
                                 className="group inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3.5 text-sm font-black text-white transition-all hover:scale-[1.01] active:scale-95 hover:shadow-neon-cyan/20 sm:w-auto"
                             >
@@ -217,6 +219,7 @@ const FavoritesPage: React.FC = () => {
                                 {t('favoritesPage.share')}
                             </button>
                             <button
+                                type="button"
                                 onClick={handleExportList}
                                 className="group inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3.5 text-sm font-black text-white transition-all hover:scale-[1.01] active:scale-95 hover:shadow-neon-cyan/20 sm:w-auto"
                             >
@@ -230,6 +233,7 @@ const FavoritesPage: React.FC = () => {
                     <div className="mt-12 grid gap-2 rounded-2xl bg-white/5 border border-white/10 p-1.5 backdrop-blur-md sm:mt-16 sm:max-w-fit sm:grid-cols-3">
                         {tabOptions.map(tab => (
                             <button
+                                type="button"
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left text-sm font-black transition-all rounded-xl sm:min-w-[210px] ${
@@ -257,7 +261,10 @@ const FavoritesPage: React.FC = () => {
                     <div className="relative w-full lg:max-w-xl">
                         <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-red-500 transition-colors" size={20} />
                         <input
+                            id="favorites-search"
+                            name="favorites-search"
                             type="text"
+                            aria-label={t('search.placeholder')}
                             placeholder={t('search.placeholder')}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -268,13 +275,19 @@ const FavoritesPage: React.FC = () => {
                     <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto lg:justify-end relative z-10">
                         <div className="flex items-center gap-1 bg-black/60 border border-white/10 rounded-2xl p-1.5 shadow-inner">
                             <button
+                                type="button"
                                 onClick={() => setViewMode('grid')}
+                                aria-label={t('favoritesPage.gridView')}
+                                title={t('favoritesPage.gridView')}
                                 className={`p-3 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-red-500 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
                             >
                                 <LayoutGrid size={20} />
                             </button>
                             <button
+                                type="button"
                                 onClick={() => setViewMode('list')}
+                                aria-label={t('favoritesPage.listView')}
+                                title={t('favoritesPage.listView')}
                                 className={`p-3 rounded-xl transition-all ${viewMode === 'list' ? 'bg-red-500 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
                             >
                                 <ListIcon size={20} />
@@ -283,6 +296,9 @@ const FavoritesPage: React.FC = () => {
 
                         <div className="relative group/select w-full sm:w-auto">
                             <select
+                                id="favorites-sort"
+                                name="favorites-sort"
+                                aria-label={t('favoritesPage.sortFavorites')}
                                 value={sortBy}
                                 onChange={(e) => setSortBy(e.target.value)}
                                 className="w-full appearance-none bg-black/60 border border-white/10 rounded-2xl py-4 px-6 pr-12 text-white text-sm font-black focus:outline-none focus:ring-2 focus:ring-red-500/30 cursor-pointer shadow-inner hover:bg-black/80 transition-all sm:min-w-[220px]"
@@ -305,6 +321,7 @@ const FavoritesPage: React.FC = () => {
 
                         {activeTab === 'models' && favoriteModels.length > 1 && (
                             <button
+                                type="button"
                                 onClick={() => {
                                     setCompareMode(!compareMode);
                                     if (compareMode) setSelectedForCompare([]);
@@ -347,6 +364,7 @@ const FavoritesPage: React.FC = () => {
                             </div>
                             {selectedForCompare.length >= 2 && (
                                 <button 
+                                    type="button"
                                     onClick={() => setShowCompareModal(true)}
                                     className="bg-white text-black px-10 py-4 rounded-2xl font-black text-sm shadow-[0_10px_30px_rgba(255,255,255,0.2)] transition-all hover:scale-110 active:scale-95 hover:bg-gray-100"
                                 >
@@ -354,10 +372,13 @@ const FavoritesPage: React.FC = () => {
                                 </button>
                             )}
                             <button 
+                                type="button"
                                 onClick={() => {
                                     setCompareMode(false);
                                     setSelectedForCompare([]);
                                 }}
+                                aria-label={t('favoritesPage.closeCompareBar')}
+                                title={t('favoritesPage.closeCompareBar')}
                                 className="p-4 text-gray-400 hover:text-white transition-all hover:rotate-90"
                             >
                                 <X size={24} />
@@ -387,7 +408,14 @@ const FavoritesPage: React.FC = () => {
                                     <div key={item.id} className="relative group transition-all duration-500">
                                         {compareMode && (
                                             <button
+                                                type="button"
                                                 onClick={() => toggleCompareSelection(item.id)}
+                                                aria-label={t(
+                                                    selectedForCompare.includes(item.id)
+                                                        ? 'favoritesPage.removeFromCompare'
+                                                        : 'favoritesPage.addToCompare',
+                                                    { name: `${item.brand} ${item.model_name}` },
+                                                )}
                                                 className={`absolute top-6 left-6 z-20 p-3 rounded-2xl border transition-all duration-300 ${
                                                     selectedForCompare.includes(item.id)
                                                         ? 'bg-red-500 border-red-400 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)] scale-110 rounded-full'
@@ -487,37 +515,39 @@ const FavoritesPage: React.FC = () => {
             </div>
 
             {/* Compare Modal */}
-            {showCompareModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 transition-all duration-500 animate-fadeIn">
-                    <div className="absolute inset-0 bg-black/95 backdrop-blur-3xl" onClick={() => setShowCompareModal(false)} />
-                    <div className="relative bg-[#0F0F0F] border border-white/10 rounded-[3rem] w-full max-w-7xl max-h-[90vh] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] flex flex-col scale-in">
-                        <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/2">
-                            <div className="flex items-center gap-6">
-                                <div className="p-3 bg-red-500 rounded-2xl shadow-lg shadow-red-500/30">
-                                    <ArrowUpDown size={28} className="text-white" />
-                                </div>
-                                <div>
-                                    <h2 className="text-3xl font-black text-white tracking-tighter">{t('favoritesPage.compareModalTitle')}</h2>
-                                    <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mt-1">{t('favoritesPage.sideBySide')}</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setShowCompareModal(false)} className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-500 hover:border-red-500 transition-all">
-                                <X size={24} />
-                            </button>
+            <ModalLayout
+                isOpen={showCompareModal}
+                onClose={() => setShowCompareModal(false)}
+                maxWidthClass="max-w-7xl"
+                headerContent={(
+                    <div className="flex min-w-0 items-center gap-4">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-500 shadow-lg shadow-red-500/30">
+                            <ArrowUpDown size={24} className="text-white" />
                         </div>
-                        <div className="flex-1 overflow-auto p-10 custom-scrollbar">
-                            <table className="w-full text-left border-collapse min-w-[800px]">
+                        <div className="min-w-0">
+                            <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+                                {t('favoritesPage.compareModalTitle')}
+                            </h2>
+                            <p className="mt-1 text-xs font-bold uppercase tracking-widest text-gray-400">
+                                {t('favoritesPage.sideBySide')}
+                            </p>
+                        </div>
+                    </div>
+                )}
+            >
+                <div className="-mx-2 overflow-x-auto pb-2 custom-scrollbar sm:mx-0">
+                    <table className="w-full min-w-[720px] border-collapse text-left">
                                 <thead>
                                     <tr>
-                                        <th className="p-6 border-b border-white/10 text-gray-500 font-black uppercase text-xs tracking-widest w-1/4 select-none">{t('favoritesPage.spec')}</th>
+                                        <th className="w-1/4 select-none border-b border-white/10 p-4 text-xs font-black uppercase tracking-widest text-gray-500 sm:p-6">{t('favoritesPage.spec')}</th>
                                         {selectedModels.map(model => (
-                                            <th key={model.id} className="p-6 border-b border-white/10 min-w-[250px] relative">
-                                                <div className="flex flex-col gap-6">
-                                                    <div className="relative group/img overflow-hidden rounded-2xl aspect-video border border-white/10 shadow-2xl">
+                                            <th key={model.id} className="relative min-w-[220px] border-b border-white/10 p-4 sm:min-w-[250px] sm:p-6">
+                                                <div className="flex flex-col gap-4">
+                                                    <div className="group/img relative aspect-video overflow-hidden rounded-xl border border-white/10 shadow-2xl">
                                                         <img src={model.image_url || MODEL_PLACEHOLDER_IMAGE} alt={model.model_name} className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110" />
                                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                                                        <div className="absolute bottom-4 left-4">
-                                                            <div className="text-white font-black text-xl tracking-tight leading-none">{model.model_name}</div>
+                                                        <div className="absolute bottom-3 left-3 right-3">
+                                                            <div className="text-lg font-black leading-none tracking-tight text-white sm:text-xl">{model.model_name}</div>
                                                             <div className="text-red-500 font-bold text-xs uppercase tracking-widest mt-1">{model.brand}</div>
                                                         </div>
                                                     </div>
@@ -541,10 +571,10 @@ const FavoritesPage: React.FC = () => {
                                         { key: 'cargo_volume_l', label: t('favoritesPage.cargo'), format: (v: any) => v ? `${v} L` : '-' },
                                     ].map((spec, idx) => (
                                         <tr key={spec.key} className={`group/row transition-all ${idx % 2 === 0 ? 'bg-white/[0.02]' : 'bg-transparent'}`}>
-                                            <td className="p-6 border-white/5 text-gray-400 font-black text-sm group-hover/row:text-white transition-colors">{spec.label}</td>
+                                            <td className="border-white/5 p-4 text-sm font-black text-gray-400 transition-colors group-hover/row:text-white sm:p-6">{spec.label}</td>
                                             {selectedModels.map(model => (
-                                                <td key={model.id} className="p-6 border-white/5 text-white font-medium group-hover/row:bg-red-500/5 transition-all">
-                                                    <span className="bg-white/5 px-4 py-2 rounded-xl inline-block border border-white/5 shadow-inner group-hover/row:border-red-500/20 group-hover/row:text-red-500 transition-all">
+                                                <td key={model.id} className="border-white/5 p-4 font-medium text-white transition-all group-hover/row:bg-red-500/5 sm:p-6">
+                                                    <span className="inline-block rounded-lg border border-white/5 bg-white/5 px-4 py-2 shadow-inner transition-all group-hover/row:border-red-500/20 group-hover/row:text-red-500">
                                                         {spec.format ? spec.format(model[spec.key as keyof Model]) : (model[spec.key as keyof Model] || '-')}
                                                     </span>
                                                 </td>
@@ -554,17 +584,16 @@ const FavoritesPage: React.FC = () => {
                                 </tbody>
                             </table>
                         </div>
-                        <div className="p-8 border-t border-white/5 bg-white/2 flex justify-end">
-                            <button 
-                                onClick={() => setShowCompareModal(false)}
-                                className="bg-white text-black px-10 py-4 rounded-2xl font-black text-sm shadow-xl transition-all hover:scale-105 active:scale-95 hover:bg-gray-100"
-                            >
-                                {t('common.close')}
-                            </button>
-                        </div>
-                    </div>
+                <div className="flex justify-end border-t border-white/10 pt-4">
+                    <button
+                        type="button"
+                        onClick={() => setShowCompareModal(false)}
+                        className="rounded-lg bg-white px-8 py-3 text-sm font-black text-black shadow-xl transition-all hover:bg-gray-100 active:scale-95"
+                    >
+                        {t('common.close')}
+                    </button>
                 </div>
-            )}
+            </ModalLayout>
         </div>
     );
 };
