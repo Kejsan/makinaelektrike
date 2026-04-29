@@ -1,19 +1,17 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   Search, 
   Filter, 
-  MoreVertical, 
   CheckCircle, 
   XCircle, 
   Trash2, 
   Eye, 
   EyeOff,
-  ExternalLink,
   Car,
   ChevronDown
 } from 'lucide-react';
 import { Listing, Dealer, ListingStatus } from '../../types';
-import { formatDate } from '../../utils/date';
 
 interface AdminListingsTabProps {
   listings: Listing[];
@@ -36,12 +34,13 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
   onSelectAll,
   onBulkAction
 }) => {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const getDealerName = (dealerId: string) => {
     const dealer = dealers.find(d => d.id === dealerId || d.ownerUid === dealerId);
-    return dealer?.name || 'Unknown Dealer';
+    return dealer?.name || t('admin.listings.unknownDealer', { defaultValue: 'Unknown dealer' });
   };
 
   const filteredListings = useMemo(() => {
@@ -55,10 +54,18 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
 
       return matchesSearch && matchesStatus;
     });
-  }, [listings, searchTerm, statusFilter, dealers]);
+  }, [listings, searchTerm, statusFilter, dealers, t]);
 
   const allFilteredIds = useMemo(() => filteredListings.map(l => l.id), [filteredListings]);
   const isAllSelected = filteredListings.length > 0 && filteredListings.every(l => selectedIds.includes(l.id));
+
+  const statusLabels: Record<string, string> = {
+    active: t('admin.listings.status.active', { defaultValue: 'Active' }),
+    pending: t('admin.listings.status.pending', { defaultValue: 'Pending review' }),
+    rejected: t('admin.listings.status.rejected', { defaultValue: 'Rejected' }),
+    sold: t('admin.listings.status.sold', { defaultValue: 'Sold' }),
+    inactive: t('admin.listings.status.inactive', { defaultValue: 'Hidden' }),
+  };
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -71,8 +78,8 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
     const style = styles[status as keyof typeof styles] || 'bg-gray-500/10 text-gray-400 border-gray-500/20';
     
     return (
-      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${style} capitalize`}>
-        {status}
+      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${style}`}>
+        {statusLabels[status] || status}
       </span>
     );
   };
@@ -85,7 +92,8 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search make, model, or dealer..."
+            autoComplete="off"
+            placeholder={t('admin.listings.searchPlaceholder', { defaultValue: 'Search make, model, or dealer...' })}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-black/20 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-gray-cyan/50"
@@ -100,12 +108,12 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full lg:w-48 bg-black/20 border border-white/10 rounded-lg pl-10 pr-8 py-2 text-sm text-white appearance-none cursor-pointer focus:outline-none focus:border-gray-cyan/50"
             >
-              <option value="all">All Statuses</option>
-              <option value="pending">Pending Review</option>
-              <option value="active">Active</option>
-              <option value="inactive">Hidden</option>
-              <option value="rejected">Rejected</option>
-              <option value="sold">Sold</option>
+              <option value="all">{t('admin.listings.allStatuses', { defaultValue: 'All statuses' })}</option>
+              <option value="pending">{statusLabels.pending}</option>
+              <option value="active">{statusLabels.active}</option>
+              <option value="inactive">{statusLabels.inactive}</option>
+              <option value="rejected">{statusLabels.rejected}</option>
+              <option value="sold">{statusLabels.sold}</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           </div>
@@ -114,39 +122,39 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
 
       {/* Bulk Actions Toolbar */}
       {selectedIds.length > 0 && (
-        <div className="flex items-center gap-4 bg-gray-cyan/10 border border-gray-cyan/30 p-4 rounded-xl animate-in fade-in slide-in-from-top-2">
+        <div className="flex flex-col gap-3 rounded-xl border border-gray-cyan/30 bg-gray-cyan/10 p-4 animate-in fade-in slide-in-from-top-2 sm:flex-row sm:items-center sm:gap-4">
           <span className="text-sm font-medium text-gray-cyan">
-            {selectedIds.length} items selected
+            {t('admin.selectedCount', { defaultValue: '{{count}} selected', count: selectedIds.length })}
           </span>
-          <div className="h-4 w-px bg-gray-cyan/30" />
-          <div className="flex gap-2">
+          <div className="hidden h-4 w-px bg-gray-cyan/30 sm:block" />
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => onBulkAction('approve')}
               className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-semibold hover:bg-emerald-500/30 transition-colors"
             >
               <CheckCircle size={14} />
-              Approve
+              {t('admin.approve')}
             </button>
             <button
               onClick={() => onBulkAction('hide')}
               className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-semibold hover:bg-amber-500/30 transition-colors"
             >
               <EyeOff size={14} />
-              Hide
+              {t('admin.hide')}
             </button>
             <button
               onClick={() => onBulkAction('reject')}
               className="inline-flex items-center gap-2 px-3 py-1.5 bg-orange-500/20 text-orange-400 rounded-lg text-xs font-semibold hover:bg-orange-500/30 transition-colors"
             >
               <XCircle size={14} />
-              Reject
+              {t('admin.reject')}
             </button>
             <button
               onClick={() => onBulkAction('delete')}
               className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-xs font-semibold hover:bg-red-500/30 transition-colors"
             >
               <Trash2 size={14} />
-              Delete
+              {t('admin.delete')}
             </button>
           </div>
         </div>
@@ -155,7 +163,7 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
       {/* Table */}
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-gray-300">
+          <table className="w-full min-w-[900px] text-left text-sm text-gray-300">
             <thead className="bg-black/40 text-gray-400 uppercase text-xs font-medium">
               <tr>
                 <th className="px-6 py-4 w-10">
@@ -163,14 +171,15 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
                     type="checkbox"
                     checked={isAllSelected}
                     onChange={() => onSelectAll(isAllSelected ? [] : allFilteredIds)}
+                    aria-label={t('admin.listings.selectAll', { defaultValue: 'Select all listings' })}
                     className="rounded border-white/10 bg-white/5 text-gray-cyan focus:ring-gray-cyan/50"
                   />
                 </th>
-                <th className="px-6 py-4 font-semibold">Vehicle</th>
-                <th className="px-6 py-4 font-semibold">Dealer</th>
-                <th className="px-6 py-4 font-semibold">Price</th>
-                <th className="px-6 py-4 font-semibold">Status</th>
-                <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                <th className="px-6 py-4 font-semibold">{t('admin.listings.vehicle', { defaultValue: 'Vehicle' })}</th>
+                <th className="px-6 py-4 font-semibold">{t('admin.listings.dealer', { defaultValue: 'Dealer' })}</th>
+                <th className="px-6 py-4 font-semibold">{t('admin.price')}</th>
+                <th className="px-6 py-4 font-semibold">{t('admin.status')}</th>
+                <th className="px-6 py-4 font-semibold text-right">{t('admin.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -181,7 +190,7 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
                       <div className="p-3 bg-white/5 rounded-full">
                         <Car className="h-6 w-6" />
                       </div>
-                      <p>No listings found matching your criteria.</p>
+                      <p>{t('admin.listings.noResults', { defaultValue: 'No listings found matching your criteria.' })}</p>
                     </div>
                   </td>
                 </tr>
@@ -193,6 +202,10 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
                         type="checkbox"
                         checked={selectedIds.includes(listing.id)}
                         onChange={() => onToggleSelect(listing.id)}
+                        aria-label={t('admin.listings.selectListing', {
+                          defaultValue: 'Select {{vehicle}}',
+                          vehicle: `${listing.make} ${listing.model}`,
+                        })}
                         className="rounded border-white/10 bg-white/5 text-gray-cyan focus:ring-gray-cyan/50"
                       />
                     </td>
@@ -237,7 +250,8 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
                           <button
                             onClick={() => onUpdateStatus(listing.id, 'active')}
                             className="p-2 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors border border-transparent hover:border-emerald-500/30"
-                            title="Approve"
+                            title={t('admin.approve')}
+                            aria-label={t('admin.approve')}
                           >
                             <CheckCircle className="h-4 w-4" />
                           </button>
@@ -247,7 +261,8 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
                           <button
                             onClick={() => onUpdateStatus(listing.id, 'inactive')}
                             className="p-2 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors border border-transparent hover:border-amber-500/30"
-                            title="Hide"
+                            title={t('admin.hide')}
+                            aria-label={t('admin.hide')}
                           >
                             <EyeOff className="h-4 w-4" />
                           </button>
@@ -257,7 +272,8 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
                           <button
                             onClick={() => onUpdateStatus(listing.id, 'active')}
                             className="p-2 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors border border-transparent hover:border-emerald-500/30"
-                            title="Show"
+                            title={t('admin.show')}
+                            aria-label={t('admin.show')}
                           >
                             <Eye className="h-4 w-4" />
                           </button>
@@ -266,7 +282,8 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
                         <button
                           onClick={() => onDelete(listing.id)}
                           className="p-2 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors border border-transparent hover:border-red-500/30"
-                          title="Delete"
+                          title={t('admin.delete')}
+                          aria-label={t('admin.delete')}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>

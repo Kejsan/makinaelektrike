@@ -124,7 +124,7 @@ const DealerRoute: React.FC<{ children: React.ReactElement }> = ({ children }) =
   }
 
   if (!user) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (role !== 'dealer') {

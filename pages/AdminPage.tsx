@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Shield,
@@ -33,14 +33,12 @@ import { useToast } from '../contexts/ToastContext';
 import { DataContext } from '../contexts/DataContext';
 import { Dealer, DealerStatus, Model, BlogPost, ChargingStation } from '../types';
 import DealerForm, { DealerFormValues } from '../components/admin/DealerForm';
-import ModelForm, { ModelFormValues } from '../components/admin/ModelForm';
+import type { ModelFormValues } from '../components/admin/ModelForm';
 import BlogPostForm, { BlogPostFormValues } from '../components/admin/BlogPostForm';
 import ChargingStationForm from '../components/admin/ChargingStationForm';
-import BulkImportModal, { BulkImportEntity } from '../components/admin/BulkImportModal';
+import type { BulkImportEntity } from '../components/admin/BulkImportModal';
 import BlogTextImportModal from '../components/admin/BlogTextImportModal';
 import OfflineQueuePanel from '../components/admin/OfflineQueuePanel';
-import AdminListingsTab from '../components/admin/AdminListingsTab';
-import { MigrationTool } from '../components/admin/MigrationTool';
 import {
   fetchChargingStations,
   createChargingStation,
@@ -67,11 +65,25 @@ import {
   modalOverlayClass,
 } from '../constants/modalStyles';
 
+const ModelForm = lazy(() => import('../components/admin/ModelForm'));
+const BulkImportModal = lazy(() => import('../components/admin/BulkImportModal'));
+const AdminListingsTab = lazy(() => import('../components/admin/AdminListingsTab'));
+const MigrationTool = lazy(() =>
+  import('../components/admin/MigrationTool').then(module => ({ default: module.MigrationTool })),
+);
+
 interface ModalProps {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
 }
+
+const AdminLazyFallback: React.FC<{ label?: string }> = ({ label }) => (
+  <div className="flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-8 text-sm text-gray-300">
+    <Loader2 className="h-4 w-4 animate-spin text-gray-cyan" />
+    <span>{label ?? 'Loading...'}</span>
+  </div>
+);
 
 const AdminModal: React.FC<ModalProps> = ({ title, onClose, children }) => {
   const { t } = useTranslation();
@@ -1592,17 +1604,27 @@ const AdminPage: React.FC = () => {
     
     return (
       <div className="space-y-6">
-        <h2 className="text-xl font-semibold text-white">Manage Listings ({listings.length})</h2>
-        <AdminListingsTab 
-          listings={listings} 
-          dealers={dealers} 
-          onUpdateStatus={(id, status) => updateListing(id, { status })} 
-          onDelete={deleteListing}
-          selectedIds={selectedIds}
-          onToggleSelect={toggleSelect}
-          onSelectAll={toggleSelectAll}
-          onBulkAction={handleBulkListingAction}
-        />
+        <h2 className="text-xl font-semibold text-white">
+          {t('admin.manageListings', { defaultValue: 'Manage listings' })} ({listings.length})
+        </h2>
+        <Suspense
+          fallback={
+            <AdminLazyFallback
+              label={t('admin.loadingListingsPanel', { defaultValue: 'Loading listings tools...' })}
+            />
+          }
+        >
+          <AdminListingsTab
+            listings={listings}
+            dealers={dealers}
+            onUpdateStatus={(id, status) => updateListing(id, { status })}
+            onDelete={deleteListing}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
+            onSelectAll={toggleSelectAll}
+            onBulkAction={handleBulkListingAction}
+          />
+        </Suspense>
       </div>
     );
   };
@@ -2145,7 +2167,19 @@ const AdminPage: React.FC = () => {
           {activeTab === 'listings' && renderListingsPanel()}
           {activeTab === 'blog' && renderBlogPanel()}
           {activeTab === 'stations' && renderStationsPanel()}
-          {activeTab === 'migration' && <div className="mt-6"><MigrationTool /></div>}
+          {activeTab === 'migration' && (
+            <div className="mt-6">
+              <Suspense
+                fallback={
+                  <AdminLazyFallback
+                    label={t('admin.loadingMigrationTools', { defaultValue: 'Loading migration tools...' })}
+                  />
+                }
+              >
+                <MigrationTool />
+              </Suspense>
+            </div>
+          )}
         </div>
       </main>
     </div>
@@ -2170,13 +2204,21 @@ const AdminPage: React.FC = () => {
           title={modelFormState.mode === 'edit' ? t('admin.editModel') : t('admin.addNewModel')}
           onClose={closeAllModals}
         >
-          <ModelForm
-            initialValues={modelFormState.entity}
-            onSubmit={handleModelSubmit}
-            onCancel={closeAllModals}
-            isSubmitting={modelSubmitting}
-            isAdmin={isAdmin}
-          />
+          <Suspense
+            fallback={
+              <AdminLazyFallback
+                label={t('admin.loadingModelForm', { defaultValue: 'Loading model form...' })}
+              />
+            }
+          >
+            <ModelForm
+              initialValues={modelFormState.entity}
+              onSubmit={handleModelSubmit}
+              onCancel={closeAllModals}
+              isSubmitting={modelSubmitting}
+              isAdmin={isAdmin}
+            />
+          </Suspense>
         </AdminModal>
       )}
 
@@ -2221,7 +2263,15 @@ const AdminPage: React.FC = () => {
 
       {bulkEntity && bulkEntity !== 'blog' && (
         <AdminModal title={getBulkModalTitle(bulkEntity)} onClose={() => setBulkEntity(null)}>
-          <BulkImportModal entity={bulkEntity} onClose={() => setBulkEntity(null)} />
+          <Suspense
+            fallback={
+              <AdminLazyFallback
+                label={t('admin.loadingImportTools', { defaultValue: 'Loading import tools...' })}
+              />
+            }
+          >
+            <BulkImportModal entity={bulkEntity} onClose={() => setBulkEntity(null)} />
+          </Suspense>
         </AdminModal>
       )}
 

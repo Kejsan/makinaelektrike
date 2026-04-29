@@ -36,6 +36,7 @@ const BlogCard: React.FC<{ post: BlogPost }> = ({ post }) => {
           className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
           src={localizedPost.imageUrl}
           alt={localizedPost.title}
+          sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
         />
       </div>
       <div className="p-6">

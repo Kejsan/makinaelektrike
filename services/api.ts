@@ -420,6 +420,47 @@ export const subscribeToDealersByOwner = (
   return subscribeToCollection(dealersQuery, mapDealers, options);
 };
 
+export const subscribeToDealersForAccount = (
+  ownerUid: string,
+  options: SubscriptionOptions<Dealer>,
+): Unsubscribe => {
+  let ownerMatches: Dealer[] = [];
+  let idMatch: Dealer | null = null;
+
+  const emit = () => {
+    const merged = new Map<string, Dealer>();
+    ownerMatches.forEach(dealer => merged.set(dealer.id, dealer));
+    if (idMatch) {
+      merged.set(idMatch.id, idMatch);
+    }
+    options.onData(sortDealersByName(Array.from(merged.values())));
+  };
+
+  const unsubscribeOwner = subscribeToDealersByOwner(ownerUid, {
+    onData: dealers => {
+      ownerMatches = dealers;
+      emit();
+    },
+    onError: options.onError,
+  });
+
+  const unsubscribeById = onSnapshot(
+    doc(dealersCollection, ownerUid),
+    snapshot => {
+      idMatch = snapshot.exists()
+        ? normalizeDealerStatus({ id: snapshot.id, ...(snapshot.data() as DealerDocument) })
+        : null;
+      emit();
+    },
+    options.onError,
+  );
+
+  return () => {
+    unsubscribeOwner();
+    unsubscribeById();
+  };
+};
+
 export const listModels = async (): Promise<Model[]> => {
   const snapshot = await getDocs(query(modelsCollection));
   return sortModels(mapModels(snapshot));

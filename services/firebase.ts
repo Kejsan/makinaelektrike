@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
+import type { Analytics } from 'firebase/analytics';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -19,18 +20,26 @@ export const auth = getAuth(app);
 export const firestore = getFirestore(app);
 export const storage = getStorage(app);
 
+let analyticsLoadPromise: Promise<Analytics | null> | null = null;
+
 export const loadAnalytics = async () => {
   if (typeof window === 'undefined') {
     return null;
   }
 
-  const analyticsModule = await import('firebase/analytics');
-
-  if (!(await analyticsModule.isSupported())) {
-    return null;
+  if (analyticsLoadPromise) {
+    return analyticsLoadPromise;
   }
 
-  return analyticsModule.getAnalytics(app);
+  analyticsLoadPromise = import('firebase/analytics').then(async analyticsModule => {
+    if (!(await analyticsModule.isSupported())) {
+      return null;
+    }
+
+    return analyticsModule.getAnalytics(app);
+  });
+
+  return analyticsLoadPromise;
 };
 
 export default app;

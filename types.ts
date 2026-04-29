@@ -243,8 +243,8 @@ export interface ListingFinancialOptions {
 }
 
 export interface ListingLocation {
-  lat: number;
-  lng: number;
+  lat?: number;
+  lng?: number;
   address?: string;
   city?: string;
 }

@@ -29,3 +29,6 @@ service-account.json
 # Prevent accidentally re-adding large favicon binaries
 public/favicon.png
 assets/Makina Elektrike - icon.png
+
+# Local scratch screenshots and trace artifacts
+jules-scratch/

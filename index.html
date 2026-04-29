@@ -7,16 +7,45 @@
   <meta name="google-site-verification" content="KC6PoqVYWiXEM8dXU1tvOKZGJJ6_54HgawfPrcagADE" />
   <!-- The favicon is set programmatically to the Makina Elektrike brand mark -->
   <title>Makina Elektrike</title>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-989F0RTPB3"></script>
+  <!-- Google tag is loaded after primary content to avoid competing with first paint. -->
   <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() {
-      dataLayer.push(arguments);
-    }
-    gtag('js', new Date());
+    (function () {
+      var measurementId = 'G-989F0RTPB3';
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = window.gtag || function () {
+        window.dataLayer.push(arguments);
+      };
 
-    gtag('config', 'G-989F0RTPB3');
+      function loadGoogleTag() {
+        if (window.__makinaElektrikeGoogleTagLoaded) {
+          return;
+        }
+        window.__makinaElektrikeGoogleTagLoaded = true;
+
+        var script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(measurementId);
+        document.head.appendChild(script);
+
+        window.gtag('js', new Date());
+        window.gtag('config', measurementId);
+      }
+
+      function scheduleGoogleTag() {
+        if ('requestIdleCallback' in window) {
+          window.requestIdleCallback(loadGoogleTag, { timeout: 3000 });
+          return;
+        }
+
+        window.setTimeout(loadGoogleTag, 2500);
+      }
+
+      if (document.readyState === 'complete') {
+        scheduleGoogleTag();
+      } else {
+        window.addEventListener('load', scheduleGoogleTag, { once: true });
+      }
+    })();
   </script>
   <script type="importmap">
   {

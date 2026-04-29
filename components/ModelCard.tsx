@@ -20,6 +20,7 @@ const ModelCard: React.FC<{ model: Model }> = ({ model }) => {
     return (
         <div className="relative bg-white/5 backdrop-blur-md rounded-xl border border-white/10 shadow-lg overflow-hidden group transition-all duration-300 transform hover:-translate-y-1 hover:shadow-neon-cyan h-full flex flex-col">
              <button
+                type="button"
                 onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -37,6 +38,7 @@ const ModelCard: React.FC<{ model: Model }> = ({ model }) => {
                         src={imageUrl}
                         alt={`${model.brand} ${model.model_name}`}
                         fallbackSrc={MODEL_PLACEHOLDER_IMAGE}
+                        sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
                     />
                     {model.body_type && (
                         <div className="absolute top-4 left-4 bg-gray-cyan/80 text-white text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm">{model.body_type}</div>

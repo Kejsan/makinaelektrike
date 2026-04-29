@@ -43,17 +43,23 @@ const ListingsPage: React.FC = () => {
         });
     }, [listings, selectedMake, priceRange, yearRange, sortBy]);
 
+    const resetFilters = () => {
+        setSelectedMake('');
+        setPriceRange([0, 200000]);
+        setYearRange([2010, new Date().getFullYear()]);
+    };
+
     return (
-        <div className="min-h-screen bg-[#020817] text-white py-12">
+        <div className="min-h-screen bg-[#020817] py-8 text-white sm:py-12">
             <SEO
                 title={t('listings.seoTitle')}
                 description={t('listings.seoDesc')}
             />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-8 gap-4">
-                    <div>
-                        <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+                <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                    <div className="min-w-0">
+                        <h1 className="text-3xl font-extrabold leading-tight text-white sm:text-4xl">
                             {t('listings.title')}
                         </h1>
                         <p className="text-gray-400 mt-2">
@@ -61,17 +67,22 @@ const ListingsPage: React.FC = () => {
                         </p>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto">
                         <button
-                            className="md:hidden flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg"
+                            type="button"
+                            className="flex items-center justify-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold md:hidden"
                             onClick={() => setShowMobileFilters(!showMobileFilters)}
+                            aria-expanded={showMobileFilters}
+                            aria-controls="listings-filter-panel"
                         >
                             <Filter size={18} /> {t('common.filters')}
                         </button>
+                        <label className="sr-only" htmlFor="listings-sort">{t('listings.sortLabel')}</label>
                         <select
+                            id="listings-sort"
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
-                            className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gray-cyan"
+                            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm focus:border-gray-cyan focus:outline-none sm:w-auto"
                         >
                             <option value="newest">{t('filter.newest')}</option>
                             <option value="price_asc">{t('filter.price_asc')}</option>
@@ -82,13 +93,23 @@ const ListingsPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Filters Sidebar */}
-                    <div className={`lg:block ${showMobileFilters ? 'fixed inset-0 z-50 bg-[#020817] p-6 overflow-y-auto' : 'hidden'}`}>
-                        <div className="flex justify-between items-center lg:hidden mb-6">
+                    <aside
+                        id="listings-filter-panel"
+                        className={`lg:block ${showMobileFilters ? 'fixed inset-0 z-50 flex flex-col bg-[#020817]/95 p-4 backdrop-blur-xl lg:static lg:z-auto lg:flex-none lg:bg-transparent lg:p-0 lg:backdrop-blur-none' : 'hidden'}`}
+                    >
+                        <div className="mb-4 flex items-center justify-between lg:hidden">
                             <h2 className="text-xl font-bold">{t('common.filters')}</h2>
-                            <button onClick={() => setShowMobileFilters(false)}><X size={24} /></button>
+                            <button
+                                type="button"
+                                onClick={() => setShowMobileFilters(false)}
+                                className="rounded-lg border border-white/10 bg-white/5 p-2"
+                                aria-label={t('common.close')}
+                            >
+                                <X size={20} />
+                            </button>
                         </div>
 
-                        <div className="space-y-8 bg-white/5 p-6 rounded-2xl border border-white/10 sticky top-24">
+                        <div className="min-h-0 flex-1 space-y-8 overflow-y-auto rounded-2xl border border-white/10 bg-white/5 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] lg:sticky lg:top-24 lg:h-fit lg:overflow-visible lg:p-6">
                             <div>
                                 <label className="block text-sm font-bold text-gray-300 mb-3 uppercase tracking-wider">
                                     {t('listings.make')}
@@ -143,17 +164,21 @@ const ListingsPage: React.FC = () => {
                             </div>
 
                             <button
-                                onClick={() => {
-                                    setSelectedMake('');
-                                    setPriceRange([0, 200000]);
-                                    setYearRange([2010, new Date().getFullYear()]);
-                                }}
+                                type="button"
+                                onClick={resetFilters}
                                 className="w-full py-2 text-sm text-gray-400 hover:text-white border border-white/10 hover:border-white/30 rounded-lg transition"
                             >
                                 {t('common.clearFilters')}
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowMobileFilters(false)}
+                                className="w-full rounded-lg bg-gray-cyan px-4 py-2 text-sm font-semibold text-gray-900 transition hover:opacity-90 lg:hidden"
+                            >
+                                {t('listings.applyFilters')}
+                            </button>
                         </div>
-                    </div>
+                    </aside>
 
                     {/* Listings Grid */}
                     <div className="lg:col-span-3">
@@ -162,7 +187,7 @@ const ListingsPage: React.FC = () => {
                                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-cyan"></div>
                             </div>
                         ) : filteredListings.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                                 {filteredListings.map(listing => (
                                     <ListingCard key={listing.id} listing={listing} />
                                 ))}

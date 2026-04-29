@@ -42,6 +42,7 @@ const LanguageSwitcher: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-white transition-colors hover:text-gray-cyan"
         aria-haspopup="true"
+        aria-expanded={isOpen}
       >
         <Globe size={20} />
         <span className="hidden md:inline">{t('header.language')}</span>
@@ -101,6 +102,7 @@ const Header: React.FC = () => {
   useEffect(() => {
     setMobileMenuOpen(false);
     setAccountMenuOpen(false);
+    setActiveDropdown(null);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -114,6 +116,19 @@ const Header: React.FC = () => {
       document.body.style.overflow = '';
     };
   }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false);
+        setAccountMenuOpen(false);
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -239,6 +254,8 @@ const Header: React.FC = () => {
                   onClick={() =>
                     setActiveDropdown((current) => (current === 'discover' ? null : 'discover'))
                   }
+                  aria-haspopup="true"
+                  aria-expanded={activeDropdown === 'discover'}
                 >
                   {t('header.discover')}
                   <ChevronDown
@@ -305,6 +322,7 @@ const Header: React.FC = () => {
                   onClick={() => setAccountMenuOpen((open) => !open)}
                   className="inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-sm font-medium text-white transition hover:border-gray-cyan/70 hover:text-gray-cyan"
                   aria-haspopup="true"
+                  aria-expanded={accountMenuOpen}
                 >
                   <UserRound size={18} className="text-gray-cyan" />
                   <span className="max-w-[10rem] truncate text-left">
@@ -364,6 +382,8 @@ const Header: React.FC = () => {
             onClick={() => setMobileMenuOpen((open) => !open)}
             className="inline-flex items-center justify-center rounded-md p-2 text-slate-200 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 lg:hidden"
             aria-label={mobileMenuOpen ? (t('header.closeMenu') as string) : (t('header.openMenu') as string)}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-navigation-menu"
           >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
@@ -371,49 +391,77 @@ const Header: React.FC = () => {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden absolute left-0 top-full w-full border-t border-slate-800 bg-[#0b132b] px-4 pb-6 pt-4 shadow-2xl">
-            <div className="flex flex-col gap-3 text-sm font-medium text-white">
-              <Link to="/listings" className={mobileNavLinkClasses('/listings')}>
-                {t('header.listings')}
-              </Link>
-              <Link to="/models" className={mobileNavLinkClasses('/models')}>
-                {t('header.models')}
-              </Link>
-              <Link
-                to="/albania-charging-stations"
-                className={mobileNavLinkClasses('/albania-charging-stations')}
-              >
-                {t('header.chargingStations')}
-              </Link>
-              <Link to="/about" className={mobileNavLinkClasses('/about')}>
-                {t('header.about')}
-              </Link>
-              <Link to="/blog" className={mobileNavLinkClasses('/blog')}>
-                {t('header.blog')}
-              </Link>
-              <Link to="/help-center" className={mobileNavLinkClasses('/help-center')}>
-                {t('header.helpCenter')}
-              </Link>
-              <Link to="/dealers" className={mobileNavLinkClasses('/dealers')}>
-                {t('header.dealers')}
-              </Link>
+          <div
+            id="mobile-navigation-menu"
+            className="absolute left-0 top-full z-[60] max-h-[calc(100dvh-4.5rem)] w-full overflow-y-auto overscroll-contain border-t border-slate-800 bg-[#0b132b] px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 shadow-2xl lg:hidden"
+          >
+            <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm font-medium text-white">
+              {user && (
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-xs uppercase tracking-wide text-slate-400">
+                    {t('header.accountMenuTitle')}
+                  </p>
+                  <p className="mt-1 truncate text-sm font-semibold text-white">
+                    {user.displayName || user.email || t('header.account')}
+                  </p>
+                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {role === 'admin' && (
+                      <Link to="/admin" className={mobileNavLinkClasses('/admin')}>
+                        {t('header.admin')}
+                      </Link>
+                    )}
+                    {role === 'dealer' && (
+                      <Link to="/dealer/dashboard" className={mobileNavLinkClasses('/dealer/dashboard')}>
+                        {t('header.dealerDashboard')}
+                      </Link>
+                    )}
+                    {role === 'pending' && (
+                      <Link to="/awaiting-approval" className={mobileNavLinkClasses('/awaiting-approval')}>
+                        {t('header.awaitingApproval')}
+                      </Link>
+                    )}
+                    <Link
+                      to="/favorites"
+                      className="flex items-center gap-2 rounded-md px-3 py-2 text-base font-medium text-white transition-colors hover:bg-white/5 hover:text-gray-cyan"
+                    >
+                      <Heart className="h-5 w-5" />
+                      <span>{t('header.favorites')}</span>
+                    </Link>
+                  </div>
+                </div>
+              )}
 
-              <div className="my-2 h-px bg-slate-800" />
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {primaryNav.map(item => (
+                  <Link key={item.to} to={item.to} className={mobileNavLinkClasses(item.to)}>
+                    {item.label}
+                  </Link>
+                ))}
+                {discoverNav.map(item => (
+                  <Link key={item.to} to={item.to} className={mobileNavLinkClasses(item.to)}>
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+
+              <div className="h-px bg-slate-800" />
 
               <div className="flex items-center justify-between rounded-lg bg-slate-900 px-3 py-2">
                 <span className="text-sm text-slate-100">{t('header.language')}</span>
                 <LanguageSwitcher />
               </div>
 
-              <Link
-                to="/favorites"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-100 hover:bg-slate-900"
-              >
-                <Heart className="h-5 w-5" />
-                <span>{t('header.favorites')}</span>
-              </Link>
+              {!user && (
+                <Link
+                  to="/favorites"
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-100 hover:bg-slate-900"
+                >
+                  <Heart className="h-5 w-5" />
+                  <span>{t('header.favorites')}</span>
+                </Link>
+              )}
 
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {!user ? (
                   <>
                     <button
@@ -436,7 +484,7 @@ const Header: React.FC = () => {
                     type="button"
                     onClick={handleLogout}
                     disabled={loading}
-                    className="col-span-2 rounded-lg bg-slate-800 py-3 text-sm font-medium text-white disabled:opacity-60"
+                    className="rounded-lg bg-slate-800 py-3 text-sm font-medium text-white disabled:opacity-60 sm:col-span-2"
                   >
                     {loading ? (
                       <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
@@ -449,7 +497,7 @@ const Header: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/register-dealer')}
-                className="mt-4 text-center text-xs font-medium text-slate-400 underline"
+                className="rounded-lg border border-white/10 px-3 py-3 text-center text-sm font-medium text-slate-200 transition hover:bg-white/5 hover:text-white"
               >
                 {t('header.becomeDealer')}
               </button>

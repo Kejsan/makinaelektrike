@@ -33,10 +33,12 @@ import {
 import {
   subscribeToDealers,
   subscribeToApprovedDealers,
+  subscribeToDealersForAccount,
   subscribeToModels,
   subscribeToBlogPosts,
   subscribeToPublishedBlogPosts,
   subscribeToDealerModels,
+  subscribeToDealerModelsForDealers,
   createDealer as apiCreateDealer,
   updateDealer as apiUpdateDealer,
   deleteDealer as apiDeleteDealer,
@@ -64,6 +66,7 @@ import { useToast } from './ToastContext';
 import type { FirestoreError, Unsubscribe } from 'firebase/firestore';
 import { FirebaseError } from 'firebase/app';
 import { addOfflineMutation } from '../services/offlineQueue';
+import { stripLocalePrefix } from '../utils/localizedRouting';
 
 type DealerInput = DealerDocument;
 type DealerUpdate = Partial<DealerDocument>;
@@ -226,8 +229,16 @@ const getRequiredCollections = (pathname: string): LoadedCollection[] => {
     return ['dealers', 'models', 'blogPosts', 'dealerModels', 'listings'];
   }
 
-  if (pathname.startsWith('/dealer/')) {
+  if (pathname === '/dealer/dashboard') {
     return ['dealers', 'models', 'dealerModels', 'listings', 'enquiries'];
+  }
+
+  if (pathname === '/dealer/listings') {
+    return ['dealers', 'listings'];
+  }
+
+  if (pathname.startsWith('/dealer/')) {
+    return ['dealers'];
   }
 
   return [];
@@ -477,7 +488,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const { t } = useTranslation();
   const location = useLocation();
   const userUid = user?.uid ?? null;
-  const pathname = location.pathname;
+  const pathname = stripLocalePrefix(location.pathname).pathname;
   const requiredCollections = useMemo(() => getRequiredCollections(pathname), [pathname]);
   const requiredCollectionSet = useMemo(
     () => new Set<LoadedCollection>(requiredCollections),
@@ -494,6 +505,16 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const isAdminWorkspaceRoute = pathname === '/admin';
   const isDealerWorkspaceRoute = pathname.startsWith('/dealer/');
   const isPrivilegedRoute = isAdminWorkspaceRoute || isDealerWorkspaceRoute;
+  const currentDealerIds = useMemo(() => {
+    if (role !== 'dealer' || !userUid) {
+      return [];
+    }
+
+    return dataState.dealers
+      .filter(dealer => dealer.id === userUid || dealer.ownerUid === userUid)
+      .map(dealer => dealer.id)
+      .filter(Boolean);
+  }, [dataState.dealers, role, userUid]);
 
   const handleSubscriptionError = useCallback(
     (resource: string) => (error: FirestoreError) => {
@@ -539,6 +560,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
     const unsubscribers: Unsubscribe[] = [];
     const isAdminDataRoute = role === 'admin' && isAdminWorkspaceRoute;
+    const isDealerDataRoute = role === 'dealer' && isDealerWorkspaceRoute && Boolean(userUid);
 
     if (requiresCollection('dealers')) {
       unsubscribers.push(
@@ -547,6 +569,13 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
               onData: dealers => dataDispatch({ type: 'SET_DEALERS', payload: dealers }),
               onError: handleSubscriptionError('dealers'),
             })
+          : isDealerDataRoute
+            ? subscribeToDealersForAccount(userUid!, {
+                onData: dealers => dataDispatch({ type: 'SET_DEALERS', payload: dealers }),
+                onError: permissionAwareErrorHandler('dealer profile', () =>
+                  dataDispatch({ type: 'SET_DEALERS', payload: [] }),
+                ),
+              })
           : subscribeToApprovedDealers({
               onData: dealers => dataDispatch({ type: 'SET_DEALERS', payload: dealers }),
               onError: permissionAwareErrorHandler('dealers', () => dataDispatch({ type: 'SET_DEALERS', payload: [] })),
@@ -568,7 +597,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       );
     }
 
-    if (requiresCollection('dealerModels')) {
+    if (requiresCollection('dealerModels') && !isDealerWorkspaceRoute) {
       unsubscribers.push(
         subscribeToDealerModels({
           onData: mappings => dataDispatch({ type: 'SET_DEALER_MODELS', payload: mappings }),
@@ -646,7 +675,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       return;
     }
 
-    const dealerIds = dataState.dealers.map(dealer => dealer.id);
+    const dealerIds = currentDealerIds;
 
     if (dealerIds.length === 0) {
       dataDispatch({ type: 'SET_LISTINGS', payload: [] });
@@ -674,14 +703,32 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     return () => {
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
-  }, [dataState.dealers, isDealerWorkspaceRoute, permissionAwareErrorHandler, requiresCollection, role]);
+  }, [currentDealerIds, isDealerWorkspaceRoute, permissionAwareErrorHandler, requiresCollection, role]);
+
+  useEffect(() => {
+    if (role !== 'dealer' || !isDealerWorkspaceRoute || !requiresCollection('dealerModels')) {
+      return;
+    }
+
+    if (currentDealerIds.length === 0) {
+      dataDispatch({ type: 'SET_DEALER_MODELS', payload: [] });
+      return;
+    }
+
+    return subscribeToDealerModelsForDealers(currentDealerIds, {
+      onData: mappings => dataDispatch({ type: 'SET_DEALER_MODELS', payload: mappings }),
+      onError: permissionAwareErrorHandler('dealer model relationships', () =>
+        dataDispatch({ type: 'SET_DEALER_MODELS', payload: [] }),
+      ),
+    });
+  }, [currentDealerIds, isDealerWorkspaceRoute, permissionAwareErrorHandler, requiresCollection, role]);
 
   useEffect(() => {
     if (role !== 'dealer' || !isDealerWorkspaceRoute || !requiresCollection('enquiries')) {
       return;
     }
 
-    const dealerIds = dataState.dealers.map(dealer => dealer.id).filter(Boolean);
+    const dealerIds = currentDealerIds;
 
     if (dealerIds.length === 0) {
       dataDispatch({ type: 'SET_ENQUIRIES', payload: [] });
@@ -709,7 +756,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     return () => {
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
-  }, [dataState.dealers, isDealerWorkspaceRoute, permissionAwareErrorHandler, requiresCollection, role]);
+  }, [currentDealerIds, isDealerWorkspaceRoute, permissionAwareErrorHandler, requiresCollection, role]);
 
   const runMutation = useCallback(
     async <T,>({

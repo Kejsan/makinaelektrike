@@ -11,7 +11,11 @@ import {
   PlusCircle, 
   LayoutDashboard,
   Clock,
-  User
+  User,
+  FilePlus2,
+  Images,
+  ListChecks,
+  ShieldCheck
 } from 'lucide-react';
 import { DataContext } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -125,6 +129,7 @@ const DealerDashboardPage: React.FC = () => {
     dealerMutations,
     modelMutations,
     enquiries,
+    listings,
     loading: dataLoading,
   } = useContext(DataContext);
   const { addToast } = useToast();
@@ -171,6 +176,38 @@ const DealerDashboardPage: React.FC = () => {
     () => (dealer ? enquiries.filter(enquiry => enquiry.dealerId === dealer.id) : []),
     [dealer, enquiries],
   );
+
+  const dealerListings = useMemo(
+    () => (dealer ? listings.filter(listing => listing.dealerId === dealer.id && listing.status !== 'deleted') : []),
+    [dealer, listings],
+  );
+
+  const activeDealerListings = useMemo(
+    () => dealerListings.filter(listing => listing.status === 'active' || listing.status === 'approved').length,
+    [dealerListings],
+  );
+
+  const pendingDealerListings = useMemo(
+    () => dealerListings.filter(listing => listing.status === 'pending').length,
+    [dealerListings],
+  );
+
+  const profileCompletion = useMemo(() => {
+    const fields = [
+      profileState.name,
+      profileState.contactName,
+      profileState.phone || profileState.email,
+      profileState.city,
+      profileState.address,
+      profileState.description,
+      profileState.brands,
+      profileState.languages,
+      profileState.typeOfCars,
+      profileState.imageUrl,
+    ];
+    const completed = fields.filter(value => value.trim().length > 0).length;
+    return Math.round((completed / fields.length) * 100);
+  }, [profileState]);
 
   const enquiryDateFormatter = useMemo(
     () =>
@@ -321,7 +358,10 @@ const DealerDashboardPage: React.FC = () => {
         description: profileState.description.trim() || undefined,
         brands: parseList(profileState.brands),
         languages: parseList(profileState.languages),
-        typeOfCars: profileState.typeOfCars.trim() || dealer.typeOfCars || 'Electric Vehicles',
+        typeOfCars:
+          profileState.typeOfCars.trim() ||
+          dealer.typeOfCars ||
+          t('dealerDashboardPage.fields.vehicleFocusDefault', { defaultValue: 'Electric vehicles' }),
         priceRange: profileState.priceRange.trim() || undefined,
         image_url: profileState.imageUrl.trim() || undefined,
         logo_url: profileState.imageUrl.trim() || undefined,
@@ -330,8 +370,20 @@ const DealerDashboardPage: React.FC = () => {
           : undefined,
         ownerUid: dealer.ownerUid ?? user?.uid,
       });
+      addToast(
+        t('dealerDashboardPage.toasts.profileSaved', {
+          defaultValue: 'Dealer profile saved successfully.',
+        }),
+        'success',
+      );
     } catch (error) {
       console.error('Failed to update dealer profile', error);
+      addToast(
+        t('dealerDashboardPage.toasts.profileSaveFailed', {
+          defaultValue: 'Dealer profile could not be saved. Please try again.',
+        }),
+        'error',
+      );
     } finally {
       setSavingProfile(false);
     }
@@ -616,8 +668,20 @@ const DealerDashboardPage: React.FC = () => {
       setNewModelState(defaultModelState);
       handleNewModelImageClear();
       resetNewModelGalleryDrafts();
+      addToast(
+        t('dealerDashboardPage.toasts.modelCreated', {
+          defaultValue: 'Model created and attached successfully.',
+        }),
+        'success',
+      );
     } catch (error) {
       console.error('Failed to create and attach model', error);
+      addToast(
+        t('dealerDashboardPage.toasts.modelCreateFailed', {
+          defaultValue: 'Model could not be created. Please try again.',
+        }),
+        'error',
+      );
     } finally {
       setCreatingModel(false);
     }
@@ -657,6 +721,32 @@ const DealerDashboardPage: React.FC = () => {
   const newModelGalleryLimit = 3;
   const newModelGalleryUploadDisabled = newModelGalleryDrafts.length >= newModelGalleryLimit;
   const dealerGallery = (dealer.imageGallery ?? []).filter(Boolean);
+  const dashboardStats = [
+    {
+      label: t('dealerDashboardPage.stats.listings', { defaultValue: 'Listings' }),
+      value: dealerListings.length.toLocaleString(i18n.language || 'sq'),
+      helper: t('dealerDashboardPage.stats.listingsHelper', {
+        active: activeDealerListings,
+        pending: pendingDealerListings,
+        defaultValue: '{{active}} active, {{pending}} pending review',
+      }),
+    },
+    {
+      label: t('dealerDashboardPage.stats.models', { defaultValue: 'Models represented' }),
+      value: assignedModels.length.toLocaleString(i18n.language || 'sq'),
+      helper: t('dealerDashboardPage.stats.modelsHelper', {
+        available: availableModels.length,
+        defaultValue: '{{available}} available to attach',
+      }),
+    },
+    {
+      label: t('dealerDashboardPage.stats.profile', { defaultValue: 'Profile completion' }),
+      value: `${profileCompletion}%`,
+      helper: t('dealerDashboardPage.stats.profileHelper', {
+        defaultValue: 'Complete profiles earn more buyer trust',
+      }),
+    },
+  ];
 
   return (
     <div className="py-16">
@@ -715,6 +805,84 @@ const DealerDashboardPage: React.FC = () => {
           </div>
         </div>
 
+        <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+          {dashboardStats.map(stat => (
+            <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">{stat.label}</p>
+              <p className="mt-2 text-3xl font-black text-white">{stat.value}</p>
+              <p className="mt-1 text-sm text-gray-400">{stat.helper}</p>
+            </div>
+          ))}
+        </div>
+
+        <section className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_1.6fr] lg:items-center">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-cyan">
+                {t('dealerDashboardPage.listingSubmissionLabel', { defaultValue: 'Vehicle listings' })}
+              </p>
+              <h2 className="mt-2 text-2xl font-bold">
+                {t('dealerDashboardPage.listingSubmissionTitle', { defaultValue: 'Submit vehicles for buyer discovery' })}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-gray-300">
+                {t('dealerDashboardPage.listingSubmissionDescription', {
+                  defaultValue:
+                    'Add complete listing details, pricing, EV specifications, location, and photos. New listings are saved for review so the public marketplace stays accurate and trustworthy.',
+                })}
+              </p>
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                <Link
+                  to="/dealer/listings?new=1"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-cyan px-4 py-2 text-sm font-semibold text-gray-900 transition hover:opacity-90"
+                >
+                  <FilePlus2 className="h-4 w-4" />
+                  {t('dealerDashboardPage.startListingSubmission', { defaultValue: 'Start a listing' })}
+                </Link>
+                <Link
+                  to="/dealer/listings"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                >
+                  <ListChecks className="h-4 w-4" />
+                  {t('dealerDashboardPage.manageListings', { defaultValue: 'Manage listings' })}
+                </Link>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                {
+                  icon: <ListChecks className="h-5 w-5" />,
+                  title: t('dealerDashboardPage.listingSteps.detailsTitle', { defaultValue: 'Vehicle details' }),
+                  description: t('dealerDashboardPage.listingSteps.detailsDescription', {
+                    defaultValue: 'Make, model, year, mileage, body style, battery, and range.',
+                  }),
+                },
+                {
+                  icon: <Images className="h-5 w-5" />,
+                  title: t('dealerDashboardPage.listingSteps.mediaTitle', { defaultValue: 'Images' }),
+                  description: t('dealerDashboardPage.listingSteps.mediaDescription', {
+                    defaultValue: 'Main photo plus supporting gallery images for buyer confidence.',
+                  }),
+                },
+                {
+                  icon: <ShieldCheck className="h-5 w-5" />,
+                  title: t('dealerDashboardPage.listingSteps.reviewTitle', { defaultValue: 'Review' }),
+                  description: t('dealerDashboardPage.listingSteps.reviewDescription', {
+                    defaultValue: 'Listings are checked before they are promoted publicly.',
+                  }),
+                },
+              ].map(step => (
+                <div key={step.title} className="rounded-xl border border-white/10 bg-gray-950/50 p-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/10 text-gray-cyan">
+                    {step.icon}
+                  </div>
+                  <h3 className="mt-3 text-sm font-semibold text-white">{step.title}</h3>
+                  <p className="mt-2 text-xs leading-5 text-gray-400">{step.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <div className="mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
             <h3 className="text-sm font-medium text-gray-400 mb-4 flex items-center gap-2">
@@ -723,7 +891,7 @@ const DealerDashboardPage: React.FC = () => {
             </h3>
             <div className="grid grid-cols-2 gap-3">
               <Link
-                to="/dealer/listings"
+                to="/dealer/listings?new=1"
                 className="flex flex-col items-center justify-center p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
               >
                 <PlusCircle className="h-6 w-6 text-gray-cyan mb-2 group-hover:scale-110 transition-transform" />

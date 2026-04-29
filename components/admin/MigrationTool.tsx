@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { collection, doc, getDocs, writeBatch, query, orderBy } from 'firebase/firestore';
+import { useTranslation } from 'react-i18next';
+import { collection, doc, getDocs, writeBatch, query } from 'firebase/firestore';
 import { firestore } from '../../services/firebase';
 import blogPosts from '../../data/blogPosts';
 import { chargingStationsData } from '../../data/chargingStationsData';
@@ -8,6 +9,7 @@ import * as XLSX from 'xlsx';
 import { Download, Database, FileJson, FileSpreadsheet, FileText, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export const MigrationTool: React.FC = () => {
+    const { t } = useTranslation();
     const [status, setStatus] = useState<{ message: string; type: 'info' | 'success' | 'error' | null }>({ message: '', type: null });
     const [loading, setLoading] = useState(false);
     const [exportLoading, setExportLoading] = useState<string | null>(null);
@@ -21,7 +23,7 @@ export const MigrationTool: React.FC = () => {
 
     const migrateBlogPosts = async () => {
         setLoading(true);
-        showStatus('Migrating blog posts...', 'info');
+        showStatus(t('admin.migration.migratingBlogPosts', { defaultValue: 'Migrating blog posts...' }), 'info');
         try {
             const batch = writeBatch(firestore);
             blogPosts.forEach((post) => {
@@ -29,16 +31,19 @@ export const MigrationTool: React.FC = () => {
                 batch.set(docRef, post);
             });
             await batch.commit();
-            showStatus('Blog posts migrated successfully!', 'success');
+            showStatus(t('admin.migration.blogPostsMigrated', { defaultValue: 'Blog posts migrated successfully.' }), 'success');
         } catch (error: any) {
-            showStatus('Error migrating blog posts: ' + error.message, 'error');
+            showStatus(t('admin.migration.blogPostsFailed', {
+                defaultValue: 'Error migrating blog posts: {{message}}',
+                message: error.message,
+            }), 'error');
         }
         setLoading(false);
     };
 
     const migrateChargingStations = async () => {
         setLoading(true);
-        showStatus('Migrating charging stations...', 'info');
+        showStatus(t('admin.migration.migratingChargingStations', { defaultValue: 'Migrating charging stations...' }), 'info');
         try {
             const batch = writeBatch(firestore);
             chargingStationsData.forEach((station) => {
@@ -46,11 +51,26 @@ export const MigrationTool: React.FC = () => {
                 batch.set(docRef, station);
             });
             await batch.commit();
-            showStatus('Charging stations migrated successfully!', 'success');
+            showStatus(t('admin.migration.chargingStationsMigrated', { defaultValue: 'Charging stations migrated successfully.' }), 'success');
         } catch (error: any) {
-            showStatus('Error migrating charging stations: ' + error.message, 'error');
+            showStatus(t('admin.migration.chargingStationsFailed', {
+                defaultValue: 'Error migrating charging stations: {{message}}',
+                message: error.message,
+            }), 'error');
         }
         setLoading(false);
+    };
+
+    const getExportLabel = (type: 'dealers' | 'models' | 'listings' | 'blogPosts' | 'charging_stations') => {
+        const labels = {
+            dealers: t('admin.migration.exportOptions.dealers', { defaultValue: 'Dealers' }),
+            models: t('admin.migration.exportOptions.models', { defaultValue: 'Models' }),
+            listings: t('admin.migration.exportOptions.listings', { defaultValue: 'Listings' }),
+            blogPosts: t('admin.migration.exportOptions.blogPosts', { defaultValue: 'Blog posts' }),
+            charging_stations: t('admin.migration.exportOptions.chargingStations', { defaultValue: 'Charging stations' }),
+        };
+
+        return labels[type];
     };
 
     const exportData = async (type: 'dealers' | 'models' | 'listings' | 'blogPosts' | 'charging_stations', format: 'json' | 'csv' | 'xlsx' | 'pdf') => {
@@ -64,7 +84,10 @@ export const MigrationTool: React.FC = () => {
             const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
             if (data.length === 0) {
-                showStatus(`No data found for ${type}`, 'error');
+                showStatus(t('admin.migration.noDataFound', {
+                    defaultValue: 'No data found for {{type}}.',
+                    type: getExportLabel(type),
+                }), 'error');
                 return;
             }
 
@@ -81,15 +104,22 @@ export const MigrationTool: React.FC = () => {
             } else if (format === 'xlsx') {
                 const worksheet = XLSX.utils.json_to_sheet(data);
                 const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+                XLSX.utils.book_append_sheet(workbook, worksheet, t('admin.migration.sheetName', { defaultValue: 'Data' }));
                 XLSX.writeFile(workbook, `${filename}.xlsx`);
             } else if (format === 'pdf') {
                 generatePDF(data, type);
             }
 
-            showStatus(`Exported ${data.length} items to ${format.toUpperCase()}`, 'success');
+            showStatus(t('admin.migration.exportSuccess', {
+                count: data.length,
+                format: format.toUpperCase(),
+                defaultValue: 'Exported {{count}} items to {{format}}.',
+            }), 'success');
         } catch (error: any) {
-            showStatus(`Export failed: ${error.message}`, 'error');
+            showStatus(t('admin.migration.exportFailed', {
+                defaultValue: 'Export failed: {{message}}',
+                message: error.message,
+            }), 'error');
         } finally {
             setExportLoading(null);
         }
@@ -125,19 +155,28 @@ export const MigrationTool: React.FC = () => {
         const html = `
             <html>
                 <head>
-                    <title>Export ${type}</title>
+                    <title>${escapeHtml(t('admin.migration.pdfTitle', {
+                        defaultValue: 'Export {{type}}',
+                        type: getExportLabel(type as any),
+                    }))}</title>
                     <style>
                         body { font-family: sans-serif; padding: 20px; }
                         h1 { color: #0b132b; text-transform: capitalize; }
                         table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 10px; }
                         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                        th { bg-color: #f2f2f2; }
+                        th { background-color: #f2f2f2; }
                         tr:nth-child(even) { background-color: #f9f9f9; }
                     </style>
                 </head>
                 <body>
-                    <h1>${escapeHtml(type.replace(/_/g, ' '))} Data Export</h1>
-                    <p>Generated on: ${escapeHtml(new Date().toLocaleString())}</p>
+                    <h1>${escapeHtml(t('admin.migration.pdfHeading', {
+                        defaultValue: '{{type}} data export',
+                        type: getExportLabel(type as any),
+                    }))}</h1>
+                    <p>${escapeHtml(t('admin.migration.generatedOn', {
+                        defaultValue: 'Generated on: {{date}}',
+                        date: new Date().toLocaleString(),
+                    }))}</p>
                     <table>
                         <thead>
                             <tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr>
@@ -158,18 +197,22 @@ export const MigrationTool: React.FC = () => {
     };
 
     const exportOptions = [
-        { id: 'dealers', label: 'Dealers', icon: <Database size={18} /> },
-        { id: 'models', label: 'Models', icon: <Database size={18} /> },
-        { id: 'listings', label: 'Listings', icon: <Database size={18} /> },
-        { id: 'blogPosts', label: 'Blog Posts', icon: <Database size={18} /> },
-        { id: 'charging_stations', label: 'Charging Stations', icon: <Database size={18} /> },
+        { id: 'dealers', label: getExportLabel('dealers'), icon: <Database size={18} /> },
+        { id: 'models', label: getExportLabel('models'), icon: <Database size={18} /> },
+        { id: 'listings', label: getExportLabel('listings'), icon: <Database size={18} /> },
+        { id: 'blogPosts', label: getExportLabel('blogPosts'), icon: <Database size={18} /> },
+        { id: 'charging_stations', label: getExportLabel('charging_stations'), icon: <Database size={18} /> },
     ] as const;
 
     return (
         <div className="p-4 sm:p-8 max-w-5xl mx-auto pb-20">
             <div className="mb-8">
-                <h1 className="text-3xl font-extrabold text-white mb-2">Data Management Center</h1>
-                <p className="text-gray-400">Manage database migrations and export platform data in multiple formats.</p>
+                <h1 className="text-3xl font-extrabold text-white mb-2">
+                    {t('admin.migration.title', { defaultValue: 'Data management center' })}
+                </h1>
+                <p className="text-gray-400">
+                    {t('admin.migration.subtitle', { defaultValue: 'Manage database migrations and export platform data in multiple formats.' })}
+                </p>
             </div>
 
             {status.message && (
@@ -191,10 +234,14 @@ export const MigrationTool: React.FC = () => {
                             <div className="p-2 bg-vivid-red/10 rounded-lg text-vivid-red">
                                 <Database size={20} />
                             </div>
-                            <h2 className="text-xl font-bold text-white">Initial Seed</h2>
+                            <h2 className="text-xl font-bold text-white">
+                                {t('admin.migration.seedTitle', { defaultValue: 'Initial seed' })}
+                            </h2>
                         </div>
                         <p className="text-sm text-gray-400 mb-6">
-                            Migrate hardcoded data from local files into your Firestore database. Use this for fresh installations.
+                            {t('admin.migration.seedDescription', {
+                                defaultValue: 'Migrate hardcoded data from local files into your Firestore database. Use this for fresh installations.',
+                            })}
                         </p>
                         
                         <div className="space-y-3">
@@ -204,7 +251,10 @@ export const MigrationTool: React.FC = () => {
                                 className="w-full py-3 px-4 bg-white/5 border border-white/10 text-white rounded-xl font-semibold hover:bg-white/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 {loading ? <Loader2 size={18} className="animate-spin" /> : null}
-                                Seed Blog Posts ({blogPosts.length})
+                                {t('admin.migration.seedBlogPosts', {
+                                    defaultValue: 'Seed blog posts ({{count}})',
+                                    count: blogPosts.length,
+                                })}
                             </button>
 
                             <button
@@ -213,7 +263,10 @@ export const MigrationTool: React.FC = () => {
                                 className="w-full py-3 px-4 bg-white/5 border border-white/10 text-white rounded-xl font-semibold hover:bg-white/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 {loading ? <Loader2 size={18} className="animate-spin" /> : null}
-                                Seed Charging Stations ({chargingStationsData.length})
+                                {t('admin.migration.seedChargingStations', {
+                                    defaultValue: 'Seed charging stations ({{count}})',
+                                    count: chargingStationsData.length,
+                                })}
                             </button>
                         </div>
                     </div>
@@ -226,7 +279,9 @@ export const MigrationTool: React.FC = () => {
                             <div className="p-2 bg-gray-cyan/10 rounded-lg text-gray-cyan">
                                 <Download size={20} />
                             </div>
-                            <h2 className="text-xl font-bold text-white">Export Platform Data</h2>
+                            <h2 className="text-xl font-bold text-white">
+                                {t('admin.migration.exportTitle', { defaultValue: 'Export platform data' })}
+                            </h2>
                         </div>
 
                         <div className="space-y-4">

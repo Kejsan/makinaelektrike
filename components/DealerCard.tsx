@@ -44,6 +44,7 @@ const DealerCard: React.FC<DealerCardProps> = ({ dealer, isLoading = false }) =>
   return (
     <div className="relative flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-lg backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-neon-cyan">
       <button
+        type="button"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -60,6 +61,7 @@ const DealerCard: React.FC<DealerCardProps> = ({ dealer, isLoading = false }) =>
             src={imageUrl}
             alt={dealer.name}
             fallbackSrc={DEALERSHIP_PLACEHOLDER_IMAGE}
+            sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
           {dealer.isFeatured && (
