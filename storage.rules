@@ -6,10 +6,58 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    function isAdmin() {
+    function hasUserRecord() {
       return isAuthenticated() &&
-        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserData() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasAdminRole(roleId) {
+      return hasUserRecord() &&
+        ('adminRoleIds' in getUserData()) &&
+        getUserData().adminRoleIds.hasAny([roleId]);
+    }
+
+    function hasDirectPermission(permission) {
+      return hasUserRecord() &&
+        ('directPermissions' in getUserData()) &&
+        getUserData().directPermissions[permission] == true;
+    }
+
+    function hasFullAdminAccess() {
+      return hasUserRecord() && (
+        getUserData().role == 'admin' ||
+        getUserData().accountType == 'admin' ||
+        getUserData().isMasterAdmin == true ||
+        hasAdminRole('master_admin')
+      );
+    }
+
+    function canManageDealers() {
+      return hasFullAdminAccess() ||
+        hasAdminRole('platform_ops_admin') ||
+        hasAdminRole('dealer_ops_admin') ||
+        hasDirectPermission('dealers.edit') ||
+        hasDirectPermission('dealers.approve');
+    }
+
+    function canModerateListings() {
+      return hasFullAdminAccess() ||
+        hasAdminRole('platform_ops_admin') ||
+        hasAdminRole('dealer_ops_admin') ||
+        hasDirectPermission('listings.moderate') ||
+        hasDirectPermission('listings.reassign');
+    }
+
+    function canManageModels() {
+      return hasFullAdminAccess() ||
+        hasAdminRole('platform_ops_admin') ||
+        hasAdminRole('catalog_admin') ||
+        hasDirectPermission('models.publish') ||
+        hasDirectPermission('models.merge');
     }
 
     function isDealerOwner(dealerId) {
@@ -36,17 +84,17 @@ service firebase.storage {
 
     match /listings/{dealerId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isSafeImageUpload() && (isAdmin() || isDealerOwner(dealerId));
+      allow write: if isSafeImageUpload() && (canModerateListings() || isDealerOwner(dealerId));
     }
 
     match /dealers/{dealerId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isSafeImageUpload() && (isAdmin() || isDealerOwner(dealerId));
+      allow write: if isSafeImageUpload() && (canManageDealers() || isDealerOwner(dealerId));
     }
 
     match /models/{modelId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isSafeImageUpload() && (isAdmin() || isModelOwner(modelId));
+      allow write: if isSafeImageUpload() && (canManageModels() || isModelOwner(modelId));
     }
 
     match /{allPaths=**} {

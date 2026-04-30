@@ -28,7 +28,17 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { DataContext } from '../contexts/DataContext';
-import { Dealer, DealerStatus, Model, BlogPost, ChargingStation } from '../types';
+import {
+  AccountStatus,
+  AdminRoleId,
+  Dealer,
+  DealerPlanId,
+  DealerStatus,
+  DealerSubscriptionStatus,
+  Model,
+  BlogPost,
+  ChargingStation,
+} from '../types';
 import DealerForm, { DealerFormValues } from '../components/admin/DealerForm';
 import type { ModelFormValues } from '../components/admin/ModelForm';
 import BlogPostForm, { BlogPostFormValues } from '../components/admin/BlogPostForm';
@@ -42,6 +52,12 @@ import {
   updateChargingStation,
   deleteChargingStation,
 } from '../services/chargingStations';
+import {
+  lookupAdminAccess,
+  updateAdminAccess,
+  type AdminAccessLookupResult,
+} from '../services/adminAccess';
+import { updateDealerPlan as updateDealerPlanAssignment } from '../services/adminDealerPlans';
 import { associateDealerWithAccount } from '../services/api';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
@@ -56,6 +72,7 @@ import {
   uploadModelHeroImage,
 } from '../services/storage';
 import ModalLayout from '../components/ModalLayout';
+import { ADMIN_ROLE_PRESETS } from '../utils/accessControl';
 
 const ModelForm = lazy(() => import('../components/admin/ModelForm'));
 const BulkImportModal = lazy(() => import('../components/admin/BulkImportModal'));
@@ -88,8 +105,21 @@ const AdminModal: React.FC<ModalProps> = ({ title, onClose, children }) => {
 
 type FormState<T> = { mode: 'create' | 'edit'; entity?: T } | null;
 
-type TabKey = 'dealers' | 'models' | 'listings' | 'blog' | 'stations' | 'migration';
+type TabKey = 'dealers' | 'models' | 'listings' | 'blog' | 'stations' | 'access' | 'migration';
 type DealerFilterKey = 'active' | 'inactive' | 'pending' | 'deleted';
+type DealerPlanDraft = {
+  planId: DealerPlanId;
+  subscriptionStatus: DealerSubscriptionStatus;
+};
+
+const DEALER_PLAN_IDS: DealerPlanId[] = ['free', 'paid'];
+const DEALER_SUBSCRIPTION_STATUSES: DealerSubscriptionStatus[] = [
+  'active',
+  'paused',
+  'expired',
+  'cancelled',
+];
+const ADMIN_ACCOUNT_STATUSES: AccountStatus[] = ['active', 'suspended', 'disabled', 'archived'];
 
 const formatDate = (value: Dealer['createdAt']) => {
   if (!value) {
@@ -112,7 +142,7 @@ const formatDate = (value: Dealer['createdAt']) => {
 };
 
 const AdminPage: React.FC = () => {
-  const { logout, user, role } = useAuth();
+  const { logout, user, role, hasPermission, isMasterAdmin } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -177,10 +207,20 @@ const AdminPage: React.FC = () => {
   const [stations, setStations] = useState<ChargingStation[]>([]);
   const [stationsLoading, setStationsLoading] = useState(false);
   const [stationsError, setStationsError] = useState<string | null>(null);
+  const [dealerPlanDrafts, setDealerPlanDrafts] = useState<Record<string, DealerPlanDraft>>({});
+  const [dealerPlanUpdatingId, setDealerPlanUpdatingId] = useState<string | null>(null);
+  const [adminAccessQuery, setAdminAccessQuery] = useState('');
+  const [adminAccessLookupLoading, setAdminAccessLookupLoading] = useState(false);
+  const [adminAccessSaving, setAdminAccessSaving] = useState(false);
+  const [adminAccessLookupError, setAdminAccessLookupError] = useState<string | null>(null);
+  const [adminAccessResult, setAdminAccessResult] = useState<AdminAccessLookupResult | null>(null);
+  const [adminAccessRoleDraftIds, setAdminAccessRoleDraftIds] = useState<AdminRoleId[]>([]);
+  const [adminAccessStatusDraft, setAdminAccessStatusDraft] = useState<AccountStatus>('active');
 
   // Search and Selection States
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const canManageAdminAccess = hasPermission('admins.assign_permissions');
 
   // Reset selection and search on tab/filter change
   useEffect(() => {
@@ -384,9 +424,17 @@ const AdminPage: React.FC = () => {
       { id: 'listings' as TabKey, label: t('admin.listingsTab', { defaultValue: 'Listings' }) },
       { id: 'blog' as TabKey, label: t('admin.manageBlog') },
       { id: 'stations' as TabKey, label: t('admin.manageStations', { defaultValue: 'Charging stations' }) },
+      ...(canManageAdminAccess
+        ? [
+            {
+              id: 'access' as TabKey,
+              label: t('admin.accessControlTab', { defaultValue: 'Access control' }),
+            },
+          ]
+        : []),
       { id: 'migration' as TabKey, label: t('admin.migrationTab', { defaultValue: 'Data migration' }) },
     ],
-    [t]
+    [canManageAdminAccess, t]
   );
 
   const handleLogout = async () => {
@@ -553,6 +601,43 @@ const AdminPage: React.FC = () => {
   }, [stations, searchQuery, stationFilter]);
 
   const isAdmin = role === 'admin';
+  const canAssignDealerPlans =
+    hasPermission('dealer_plans.assign') || hasPermission('dealer_plans.override');
+  const adminRoleOptions = useMemo(
+    () =>
+      (Object.entries(ADMIN_ROLE_PRESETS) as Array<
+        [AdminRoleId, (typeof ADMIN_ROLE_PRESETS)[AdminRoleId]]
+      >).filter(([roleId]) => isMasterAdmin || roleId !== 'master_admin'),
+    [isMasterAdmin],
+  );
+
+  useEffect(() => {
+    if (!canManageAdminAccess && activeTab === 'access') {
+      setActiveTab('dealers');
+    }
+  }, [activeTab, canManageAdminAccess]);
+
+  const getDealerPlanDraft = useCallback(
+    (dealer: Dealer): DealerPlanDraft => ({
+      planId: dealer.planId ?? 'free',
+      subscriptionStatus: dealer.subscriptionStatus ?? 'active',
+    }),
+    [],
+  );
+
+  const updateDealerPlanDraft = useCallback(
+    (dealer: Dealer, updates: Partial<DealerPlanDraft>) => {
+      setDealerPlanDrafts(prev => ({
+        ...prev,
+        [dealer.id]: {
+          ...getDealerPlanDraft(dealer),
+          ...prev[dealer.id],
+          ...updates,
+        },
+      }));
+    },
+    [getDealerPlanDraft],
+  );
 
   const structuredData = {
     '@context': 'https://schema.org',
@@ -578,6 +663,178 @@ const AdminPage: React.FC = () => {
       setDealerAction(null);
     }
   };
+
+  const handleDealerPlanUpdate = useCallback(
+    async (dealer: Dealer) => {
+      if (!canAssignDealerPlans) {
+        addToast(
+          t('admin.dealerPlanPermissionDenied', {
+            defaultValue: 'You do not have permission to assign dealer plans.',
+          }),
+          'error',
+        );
+        return;
+      }
+
+      const dealerPlanDraft = dealerPlanDrafts[dealer.id] ?? getDealerPlanDraft(dealer);
+      const currentPlanId = dealer.planId ?? 'free';
+      const currentSubscriptionStatus = dealer.subscriptionStatus ?? 'active';
+      const isDirty =
+        dealerPlanDraft.planId !== currentPlanId ||
+        dealerPlanDraft.subscriptionStatus !== currentSubscriptionStatus;
+
+      if (!isDirty) {
+        addToast(
+          t('admin.dealerPlanNoChanges', {
+            defaultValue: 'No dealer plan changes to save.',
+          }),
+          'info',
+        );
+        return;
+      }
+
+      setDealerPlanUpdatingId(dealer.id);
+      try {
+        await updateDealerPlanAssignment({
+          dealerId: dealer.id,
+          planId: dealerPlanDraft.planId,
+          subscriptionStatus: dealerPlanDraft.subscriptionStatus,
+        });
+        setDealerPlanDrafts(prev => {
+          const next = { ...prev };
+          delete next[dealer.id];
+          return next;
+        });
+        addToast(
+          t('admin.dealerPlanUpdated', {
+            defaultValue: 'Dealer plan updated successfully.',
+          }),
+          'success',
+        );
+      } catch (error) {
+        console.error('Failed to update dealer plan', error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : t('admin.dealerPlanUpdateFailed', {
+                defaultValue: 'Failed to update dealer plan.',
+              });
+        addToast(errorMessage, 'error');
+      } finally {
+        setDealerPlanUpdatingId(null);
+      }
+    },
+    [addToast, canAssignDealerPlans, dealerPlanDrafts, getDealerPlanDraft, t],
+  );
+
+  const hydrateAdminAccessDraft = useCallback((result: AdminAccessLookupResult) => {
+    setAdminAccessRoleDraftIds(result.adminRoleIds ?? []);
+    setAdminAccessStatusDraft(result.accountStatus ?? 'active');
+  }, []);
+
+  const handleAdminAccessLookup = useCallback(
+    async (event?: React.FormEvent) => {
+      event?.preventDefault();
+
+      if (!canManageAdminAccess) {
+        addToast(
+          t('admin.adminAccessPermissionDenied', {
+            defaultValue: 'You do not have permission to manage platform admin access.',
+          }),
+          'error',
+        );
+        return;
+      }
+
+      const query = adminAccessQuery.trim();
+      if (!query) {
+        setAdminAccessLookupError(
+          t('admin.adminAccessLookupRequired', {
+            defaultValue: 'Enter a user email or UID to continue.',
+          }),
+        );
+        setAdminAccessResult(null);
+        return;
+      }
+
+      setAdminAccessLookupLoading(true);
+      setAdminAccessLookupError(null);
+      try {
+        const result = await lookupAdminAccess(query);
+        setAdminAccessResult(result);
+        hydrateAdminAccessDraft(result);
+      } catch (error) {
+        console.error('Failed to look up admin access target', error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : t('admin.adminAccessLookupFailed', {
+                defaultValue: 'Failed to look up the requested account.',
+              });
+        setAdminAccessLookupError(errorMessage);
+        setAdminAccessResult(null);
+      } finally {
+        setAdminAccessLookupLoading(false);
+      }
+    },
+    [addToast, adminAccessQuery, canManageAdminAccess, hydrateAdminAccessDraft, t],
+  );
+
+  const toggleAdminAccessRoleDraft = useCallback(
+    (roleId: AdminRoleId) => {
+      if (roleId === 'master_admin' && !isMasterAdmin) {
+        return;
+      }
+
+      setAdminAccessRoleDraftIds(prev =>
+        prev.includes(roleId) ? prev.filter(id => id !== roleId) : [...prev, roleId],
+      );
+    },
+    [isMasterAdmin],
+  );
+
+  const handleAdminAccessSave = useCallback(async () => {
+    if (!canManageAdminAccess || !adminAccessResult) {
+      return;
+    }
+
+    setAdminAccessSaving(true);
+    try {
+      await updateAdminAccess({
+        uid: adminAccessResult.uid,
+        adminRoleIds: adminAccessRoleDraftIds,
+        accountStatus: adminAccessStatusDraft,
+      });
+      const refreshed = await lookupAdminAccess(adminAccessResult.uid);
+      setAdminAccessResult(refreshed);
+      hydrateAdminAccessDraft(refreshed);
+      addToast(
+        t('admin.adminAccessUpdated', {
+          defaultValue: 'Platform admin access updated successfully.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to update admin access', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.adminAccessUpdateFailed', {
+              defaultValue: 'Failed to update platform admin access.',
+            });
+      addToast(errorMessage, 'error');
+    } finally {
+      setAdminAccessSaving(false);
+    }
+  }, [
+    addToast,
+    adminAccessResult,
+    adminAccessRoleDraftIds,
+    adminAccessStatusDraft,
+    canManageAdminAccess,
+    hydrateAdminAccessDraft,
+    t,
+  ]);
 
   const handleActivateAccount = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -1099,6 +1356,14 @@ const AdminPage: React.FC = () => {
                     dealer.location || [dealer.address, dealer.city].filter(Boolean).join(', ');
                   const contactEmail = dealer.contact_email || dealer.email;
                   const contactPhone = dealer.contact_phone || dealer.phone;
+                  const currentPlanId = dealer.planId ?? 'free';
+                  const currentSubscriptionStatus = dealer.subscriptionStatus ?? 'active';
+                  const dealerPlanDraft =
+                    dealerPlanDrafts[dealer.id] ?? getDealerPlanDraft(dealer);
+                  const isDealerPlanDirty =
+                    dealerPlanDraft.planId !== currentPlanId ||
+                    dealerPlanDraft.subscriptionStatus !== currentSubscriptionStatus;
+                  const isDealerPlanUpdating = dealerPlanUpdatingId === dealer.id;
 
                   const statusLabel = isDeleted
                     ? t('admin.statusDeleted', { defaultValue: 'Deleted' })
@@ -1307,6 +1572,92 @@ const AdminPage: React.FC = () => {
                             {t('admin.updatedOn', { defaultValue: 'Updated on {{date}}', date: updatedAt })}
                           </p>
                         )}
+                        <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+                          <span className="inline-flex items-center rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-1 text-sky-100">
+                            {t('admin.dealerPlanBadge', {
+                              defaultValue: 'Plan: {{plan}}',
+                              plan: currentPlanId.toUpperCase(),
+                            })}
+                          </span>
+                          <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">
+                            {t('admin.dealerSubscriptionBadge', {
+                              defaultValue: 'Subscription: {{status}}',
+                              status: currentSubscriptionStatus,
+                            })}
+                          </span>
+                        </div>
+                        {canAssignDealerPlans && !isDeleted && (
+                          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                              <Key className="h-3.5 w-3.5 text-gray-cyan" />
+                              <span>
+                                {t('admin.dealerPlanControls', {
+                                  defaultValue: 'Dealer plan controls',
+                                })}
+                              </span>
+                            </div>
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                              <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
+                                <span>{t('admin.dealerPlanLabel', { defaultValue: 'Plan' })}</span>
+                                <select
+                                  value={dealerPlanDraft.planId}
+                                  onChange={event =>
+                                    updateDealerPlanDraft(dealer, {
+                                      planId: event.target.value as DealerPlanId,
+                                    })
+                                  }
+                                  disabled={isDealerPlanUpdating}
+                                  className="rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white focus:border-gray-cyan/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {DEALER_PLAN_IDS.map(planId => (
+                                    <option key={planId} value={planId}>
+                                      {planId.toUpperCase()}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
+                                <span>
+                                  {t('admin.dealerSubscriptionLabel', {
+                                    defaultValue: 'Subscription status',
+                                  })}
+                                </span>
+                                <select
+                                  value={dealerPlanDraft.subscriptionStatus}
+                                  onChange={event =>
+                                    updateDealerPlanDraft(dealer, {
+                                      subscriptionStatus:
+                                        event.target.value as DealerSubscriptionStatus,
+                                    })
+                                  }
+                                  disabled={isDealerPlanUpdating}
+                                  className="rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white focus:border-gray-cyan/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {DEALER_SUBSCRIPTION_STATUSES.map(subscriptionStatus => (
+                                    <option key={subscriptionStatus} value={subscriptionStatus}>
+                                      {subscriptionStatus}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => handleDealerPlanUpdate(dealer)}
+                                disabled={!isDealerPlanDirty || isDealerPlanUpdating}
+                                className="inline-flex items-center justify-center gap-1 rounded-lg bg-gray-cyan px-3 py-2 text-xs font-semibold text-white transition hover:bg-gray-cyan/90 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {isDealerPlanUpdating ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Key size={14} />
+                                )}
+                                <span>
+                                  {t('admin.saveDealerPlan', { defaultValue: 'Save plan' })}
+                                </span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center justify-end gap-2">
                         {showEditButton && (
@@ -1371,6 +1722,339 @@ const AdminPage: React.FC = () => {
       </div>
     );
   };
+
+  const renderAccessPanel = () => {
+    if (!canManageAdminAccess) {
+      return (
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
+            {renderEmptyState(
+              t('admin.accessControlUnavailable', {
+                defaultValue: 'You do not have permission to manage platform admin access.',
+              }),
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const directPermissionEntries = Object.entries(adminAccessResult?.directPermissions ?? {});
+    const initialRoleIds = adminAccessResult?.adminRoleIds ?? [];
+    const initialRoleSet = new Set(initialRoleIds);
+    const draftRoleSet = new Set(adminAccessRoleDraftIds);
+    const hasRoleDraftChanges =
+      initialRoleSet.size !== draftRoleSet.size ||
+      adminAccessRoleDraftIds.some(roleId => !initialRoleSet.has(roleId));
+    const initialStatus = adminAccessResult?.accountStatus ?? 'active';
+    const isDraftDirty = hasRoleDraftChanges || adminAccessStatusDraft !== initialStatus;
+    const isDealerLikeTarget =
+      adminAccessResult?.accountType === 'dealer' ||
+      adminAccessResult?.accountType === 'dealer_staff' ||
+      adminAccessResult?.role === 'dealer' ||
+      adminAccessResult?.role === 'pending';
+    const isProtectedMasterAdminTarget = Boolean(adminAccessResult?.isMasterAdmin && !isMasterAdmin);
+    const controlsDisabled =
+      !adminAccessResult ||
+      adminAccessSaving ||
+      adminAccessLookupLoading ||
+      isDealerLikeTarget ||
+      isProtectedMasterAdminTarget;
+
+    return (
+      <div className="space-y-6">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-white">
+                {t('admin.accessControlHeading', { defaultValue: 'Platform admin access control' })}
+              </h2>
+              <p className="max-w-3xl text-sm text-gray-400">
+                {t('admin.accessControlDescription', {
+                  defaultValue:
+                    'Search for an existing user account by email or UID, then assign scoped platform-admin roles. Dealer and pending accounts stay outside this flow.',
+                })}
+              </p>
+            </div>
+            <div className="rounded-xl border border-gray-cyan/20 bg-gray-cyan/10 px-4 py-3 text-xs text-gray-100">
+              {t('admin.accessControlNote', {
+                defaultValue:
+                  'Use separate platform-admin accounts. Do not repurpose dealer logins for platform operations.',
+              })}
+            </div>
+          </div>
+
+          <form
+            onSubmit={handleAdminAccessLookup}
+            className="mt-6 flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 lg:flex-row lg:items-end"
+          >
+            <label className="flex min-w-0 flex-1 flex-col gap-2 text-sm text-gray-300">
+              <span className="font-medium text-white">
+                {t('admin.accessLookupLabel', {
+                  defaultValue: 'User email or UID',
+                })}
+              </span>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="text"
+                  value={adminAccessQuery}
+                  onChange={event => setAdminAccessQuery(event.target.value)}
+                  placeholder={t('admin.accessLookupPlaceholder', {
+                    defaultValue: 'name@example.com or Firebase UID',
+                  })}
+                  className="w-full rounded-xl border border-white/10 bg-black/40 py-3 pl-10 pr-4 text-sm text-white focus:border-gray-cyan/50 focus:outline-none"
+                />
+              </div>
+            </label>
+            <button
+              type="submit"
+              disabled={adminAccessLookupLoading}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-cyan/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {adminAccessLookupLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search size={16} />
+              )}
+              <span>{t('admin.accessLookupButton', { defaultValue: 'Find account' })}</span>
+            </button>
+          </form>
+
+          {adminAccessLookupError && (
+            <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+              {adminAccessLookupError}
+            </div>
+          )}
+        </div>
+
+        {adminAccessResult && (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
+            <div className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-semibold text-white">
+                    {adminAccessResult.displayName ||
+                      adminAccessResult.email ||
+                      t('admin.accessControlUnnamedUser', { defaultValue: 'Unnamed account' })}
+                  </h3>
+                  <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-medium text-gray-300">
+                    UID: {adminAccessResult.uid}
+                  </span>
+                  {adminAccessResult.isMasterAdmin && (
+                    <span className="inline-flex items-center rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-amber-100">
+                      {t('admin.masterAdminBadge', { defaultValue: 'Master admin' })}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+                  <span className="inline-flex items-center rounded-full border border-gray-cyan/30 bg-gray-cyan/10 px-2 py-1 text-gray-100">
+                    {t('admin.accessRoleBadge', {
+                      defaultValue: 'Role: {{role}}',
+                      role: adminAccessResult.role,
+                    })}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">
+                    {t('admin.accessAccountTypeBadge', {
+                      defaultValue: 'Type: {{type}}',
+                      type: adminAccessResult.accountType ?? 'user',
+                    })}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">
+                    {t('admin.accessAccountStatusBadge', {
+                      defaultValue: 'Status: {{status}}',
+                      status: adminAccessResult.accountStatus ?? 'active',
+                    })}
+                  </span>
+                </div>
+                <div className="space-y-1 text-sm text-gray-400">
+                  <p>{adminAccessResult.email ?? t('admin.missingEmail', { defaultValue: 'No email on file' })}</p>
+                  {adminAccessResult.dealerPlanId && (
+                    <p>
+                      {t('admin.dealerPlanContext', {
+                        defaultValue: 'Dealer plan context: {{plan}} / {{status}}',
+                        plan: adminAccessResult.dealerPlanId,
+                        status: adminAccessResult.dealerSubscriptionStatus ?? 'active',
+                      })}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-gray-300">
+                <p className="font-semibold uppercase tracking-wide text-white/80">
+                  {t('admin.currentAdminPresets', { defaultValue: 'Current admin presets' })}
+                </p>
+                <div className="mt-2 flex max-w-md flex-wrap gap-2">
+                  {initialRoleIds.length > 0 ? (
+                    initialRoleIds.map(roleId => (
+                      <span
+                        key={roleId}
+                        className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-medium text-gray-200"
+                      >
+                        {ADMIN_ROLE_PRESETS[roleId]?.label ?? roleId}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-500">
+                      {t('admin.noAdminPresets', { defaultValue: 'No platform-admin access assigned.' })}
+                    </span>
+                  )}
+                </div>
+                {directPermissionEntries.length > 0 && (
+                  <div className="mt-3 border-t border-white/10 pt-3">
+                    <p className="font-semibold uppercase tracking-wide text-white/80">
+                      {t('admin.directPermissionOverrides', {
+                        defaultValue: 'Direct permission overrides',
+                      })}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {directPermissionEntries.map(([permission, value]) => (
+                        <span
+                          key={permission}
+                          className={`inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-medium ${
+                            value === true
+                              ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100'
+                              : 'border-red-400/30 bg-red-500/10 text-red-100'
+                          }`}
+                        >
+                          {permission}: {String(value)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {isDealerLikeTarget && (
+              <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                {t('admin.dealerAccountAdminWarning', {
+                  defaultValue:
+                    'This account is still mapped as a dealer or pending account. Use a separate user account for platform-admin access.',
+                })}
+              </div>
+            )}
+
+            {isProtectedMasterAdminTarget && (
+              <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                {t('admin.masterAdminEditWarning', {
+                  defaultValue:
+                    'Only a master admin can modify another master-admin account or grant the master-admin role.',
+                })}
+              </div>
+            )}
+
+            <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_340px]">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-4 flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-gray-cyan" />
+                  <h4 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                    {t('admin.assignAdminPresets', { defaultValue: 'Assign admin presets' })}
+                  </h4>
+                </div>
+                <div className="space-y-3">
+                  {adminRoleOptions.map(([roleId, preset]) => {
+                    const checked = adminAccessRoleDraftIds.includes(roleId);
+                    const disabled = controlsDisabled || (roleId === 'master_admin' && !isMasterAdmin);
+
+                    return (
+                      <label
+                        key={roleId}
+                        className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition ${
+                          checked
+                            ? 'border-gray-cyan/40 bg-gray-cyan/10'
+                            : 'border-white/10 bg-white/5 hover:bg-white/10'
+                        } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleAdminAccessRoleDraft(roleId)}
+                          disabled={disabled}
+                          className="mt-1 h-4 w-4 rounded border-white/20 bg-white/5 text-gray-cyan focus:ring-gray-cyan/50"
+                        />
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-white">{preset.label}</span>
+                            {roleId === 'master_admin' && (
+                              <span className="rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-100">
+                                {t('admin.highPrivilege', { defaultValue: 'High privilege' })}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-400">{preset.description}</p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-4 flex items-center gap-2">
+                  <Key className="h-4 w-4 text-gray-cyan" />
+                  <h4 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                    {t('admin.accessControls', { defaultValue: 'Access controls' })}
+                  </h4>
+                </div>
+
+                <label className="flex flex-col gap-2 text-sm text-gray-300">
+                  <span className="font-medium text-white">
+                    {t('admin.adminAccountStatusLabel', { defaultValue: 'Admin account status' })}
+                  </span>
+                  <select
+                    value={adminAccessStatusDraft}
+                    onChange={event => setAdminAccessStatusDraft(event.target.value as AccountStatus)}
+                    disabled={controlsDisabled}
+                    className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white focus:border-gray-cyan/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {ADMIN_ACCOUNT_STATUSES.map(status => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="mt-6 space-y-3">
+                  <button
+                    type="button"
+                    onClick={handleAdminAccessSave}
+                    disabled={!isDraftDirty || controlsDisabled}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-cyan/90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {adminAccessSaving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle size={16} />
+                    )}
+                    <span>{t('admin.saveAdminAccess', { defaultValue: 'Save access changes' })}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => adminAccessResult && hydrateAdminAccessDraft(adminAccessResult)}
+                    disabled={!isDraftDirty || adminAccessSaving}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <RefreshCcw size={16} />
+                    <span>{t('admin.resetAdminAccessDraft', { defaultValue: 'Reset changes' })}</span>
+                  </button>
+                </div>
+
+                <div className="mt-6 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-gray-400">
+                  {t('admin.removeAdminAccessHint', {
+                    defaultValue:
+                      'To remove platform-admin access entirely, clear all role presets and save.',
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderModelsPanel = () => {
     const modelUpdateLoading = modelMutations.update.loading;
     const modelDeleteLoading = modelMutations.delete.loading;
@@ -2145,6 +2829,7 @@ const AdminPage: React.FC = () => {
           {activeTab === 'listings' && renderListingsPanel()}
           {activeTab === 'blog' && renderBlogPanel()}
           {activeTab === 'stations' && renderStationsPanel()}
+          {activeTab === 'access' && renderAccessPanel()}
           {activeTab === 'migration' && (
             <div className="mt-6">
               <Suspense

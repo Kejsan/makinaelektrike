@@ -2,6 +2,92 @@
 import type { Timestamp } from 'firebase/firestore';
 
 export type UserRole = 'admin' | 'dealer' | 'user' | 'pending';
+export type AccountType = 'admin' | 'dealer' | 'dealer_staff' | 'user' | 'pending';
+export type AccountStatus =
+  | 'active'
+  | 'pending'
+  | 'approved'
+  | 'suspended'
+  | 'disabled'
+  | 'archived'
+  | 'rejected';
+export type AdminRoleId =
+  | 'master_admin'
+  | 'platform_ops_admin'
+  | 'dealer_ops_admin'
+  | 'user_support_admin'
+  | 'catalog_admin'
+  | 'charging_admin'
+  | 'content_admin'
+  | 'analyst';
+export type DealerPlanId = 'free' | 'paid';
+export type DealerSubscriptionStatus = 'active' | 'paused' | 'expired' | 'cancelled';
+export type PermissionKey =
+  | 'users.read'
+  | 'users.edit'
+  | 'users.suspend'
+  | 'users.reactivate'
+  | 'dealers.read'
+  | 'dealers.edit'
+  | 'dealers.approve'
+  | 'dealers.manage_staff'
+  | 'dealer_plans.read'
+  | 'dealer_plans.assign'
+  | 'dealer_plans.override'
+  | 'listings.read'
+  | 'listings.moderate'
+  | 'listings.reassign'
+  | 'models.read'
+  | 'models.publish'
+  | 'models.merge'
+  | 'stations.read'
+  | 'stations.edit'
+  | 'stations.merge'
+  | 'blog.read'
+  | 'blog.publish'
+  | 'blog.schedule'
+  | 'placements.read'
+  | 'placements.create'
+  | 'placements.edit'
+  | 'placements.assign'
+  | 'placements.publish'
+  | 'placements.pause'
+  | 'placements.override'
+  | 'placements.analytics_read'
+  | 'placements.billing_read'
+  | 'enquiries.read'
+  | 'admins.invite'
+  | 'admins.assign_permissions'
+  | 'audit.view'
+  | 'reports.read'
+  | 'reports.export';
+
+export interface PermissionScope {
+  type: 'global' | 'dealer' | 'locale' | 'entity';
+  value?: string;
+  entityType?: string;
+}
+
+export type PermissionOverrides = Partial<Record<PermissionKey, boolean>>;
+
+export interface DealerPlanEntitlements {
+  maxActiveListings: number | null;
+  maxStaffAccounts: number;
+  richProfileEnabled: boolean;
+  richMediaEnabled: boolean;
+  videoEnabled: boolean;
+  advancedAnalyticsEnabled: boolean;
+  promotionEligibility: boolean;
+  campaignPurchaseEligibility: boolean;
+  prioritySupport: boolean;
+}
+
+export interface DealerPlanDefinition {
+  id: DealerPlanId;
+  name: string;
+  description: string;
+  entitlements: DealerPlanEntitlements;
+}
 
 export interface AuthenticatedUser {
   uid: string;
@@ -11,7 +97,15 @@ export interface AuthenticatedUser {
 
 export interface UserProfile extends AuthenticatedUser {
   displayName?: string | null;
-  status?: 'pending' | 'approved';
+  status?: AccountStatus;
+  accountType?: AccountType;
+  accountStatus?: AccountStatus;
+  adminRoleIds?: AdminRoleId[];
+  directPermissions?: PermissionOverrides;
+  permissionScopes?: PermissionScope[];
+  isMasterAdmin?: boolean;
+  dealerPlanId?: DealerPlanId | null;
+  dealerSubscriptionStatus?: DealerSubscriptionStatus | null;
   [key: string]: unknown;
 }
 
@@ -52,6 +146,8 @@ interface DealerCore {
   deletedAt?: Timestamp | null;
   isFeatured?: boolean;
   imageGallery?: string[];
+  planId?: DealerPlanId;
+  subscriptionStatus?: DealerSubscriptionStatus;
 }
 
 export interface DealerDocument extends DealerCore, FirestoreTimestamps {

@@ -4,6 +4,7 @@ interface FetchFunctionOptions<TBody> {
   method?: 'GET' | 'POST';
   query?: Record<string, Primitive | Primitive[] | undefined | null>;
   body?: TBody;
+  headers?: Record<string, string>;
   signal?: AbortSignal;
 }
 
@@ -48,11 +49,14 @@ export async function fetchFunctionJson<TResponse, TBody = unknown>(
   const method = options.method ?? 'GET';
   const response = await fetch(buildFunctionUrl(functionName, options.query), {
     method,
-    headers: options.body
-      ? {
-          'Content-Type': 'application/json',
-        }
-      : undefined,
+    headers: {
+      ...(options.body
+        ? {
+            'Content-Type': 'application/json',
+          }
+        : {}),
+      ...(options.headers ?? {}),
+    },
     body: options.body ? JSON.stringify(options.body) : undefined,
     signal: options.signal,
   });

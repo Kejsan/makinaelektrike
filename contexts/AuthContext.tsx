@@ -22,13 +22,39 @@ import {
   type DocumentData,
 } from 'firebase/firestore';
 import { auth, firestore } from '../services/firebase';
-import type { UserProfile, UserRole } from '../types';
+import type {
+  AccountStatus,
+  AccountType,
+  AdminRoleId,
+  DealerPlanDefinition,
+  DealerPlanEntitlements,
+  DealerPlanId,
+  PermissionKey,
+  UserProfile,
+  UserRole,
+} from '../types';
 import i18n from '../i18n/config';
+import {
+  getDealerPlanDefinition,
+  getDealerPlanEntitlements,
+  hasPermission as hasProfilePermission,
+  isAdminProfile,
+  isMasterAdminProfile,
+  normalizeUserProfile,
+} from '../utils/accessControl';
 
 interface AuthContextType {
   user: User | null;
   role: UserRole | null;
   profile: UserProfile | null;
+  accountType: AccountType | null;
+  accountStatus: AccountStatus | null;
+  adminRoleIds: AdminRoleId[];
+  dealerPlanId: DealerPlanId | null;
+  dealerPlan: DealerPlanDefinition | null;
+  dealerEntitlements: DealerPlanEntitlements | null;
+  isAdmin: boolean;
+  isMasterAdmin: boolean;
   loading: boolean;
   initializing: boolean;
   error: string | null;
@@ -44,22 +70,13 @@ interface AuthContextType {
   ) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  hasPermission: (permission: PermissionKey) => boolean;
   refreshProfile: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-type FirestoreUser = DocumentData & { role?: UserRole };
-
-const deriveRole = (role?: UserRole | string | null): UserRole | null => {
-  if (!role) {
-    return null;
-  }
-  if (role === 'admin' || role === 'dealer' || role === 'user' || role === 'pending') {
-    return role;
-  }
-  return null;
-};
+type FirestoreUser = DocumentData & Partial<UserProfile>;
 
 export const mapErrorToMessage = (error: any): string => {
   if (typeof error === 'string') {
@@ -108,23 +125,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (snapshot.exists()) {
           const data = snapshot.data() as FirestoreUser;
-          const resolvedRole = deriveRole(data.role) ?? 'user';
-          const mergedProfile: UserProfile = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            role: resolvedRole,
-            ...data,
-          };
+          const mergedProfile = normalizeUserProfile(
+            { uid: firebaseUser.uid, email: firebaseUser.email },
+            data,
+          );
           setProfile(mergedProfile);
-          setRole(resolvedRole);
+          setRole(mergedProfile.role);
         } else {
-          const fallbackProfile: UserProfile = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            role: 'user',
-          };
+          const fallbackProfile = normalizeUserProfile(
+            { uid: firebaseUser.uid, email: firebaseUser.email },
+            {
+              role: 'user',
+              accountType: 'user',
+              accountStatus: 'active',
+            },
+          );
           await setDoc(userRef, {
+            uid: firebaseUser.uid,
             role: 'user',
+            accountType: 'user',
+            accountStatus: 'active',
+            status: 'active',
             email: firebaseUser.email,
             createdAt: serverTimestamp(),
           });
@@ -165,6 +186,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         uid: credential.user.uid,
         email: credential.user.email,
         role: 'user',
+        accountType: 'user',
+        accountStatus: 'active',
+        status: 'active',
         createdAt: serverTimestamp(),
         ...profileData,
       });
@@ -193,7 +217,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         uid: userUid,
         email: credential.user.email,
         role: 'pending',
+        accountType: 'dealer',
+        accountStatus: 'pending',
         status: 'pending',
+        dealerPlanId: 'free',
+        dealerSubscriptionStatus: 'active',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         ...profileData,
@@ -232,6 +260,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         status: 'pending',
         isActive: false,
         isDeleted: false,
+        planId: 'free',
+        subscriptionStatus: 'active',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -283,11 +313,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await loadProfile(auth.currentUser);
   }, [loadProfile]);
 
+  const accountType = profile?.accountType ?? null;
+  const accountStatus = profile?.accountStatus ?? null;
+  const adminRoleIds = profile?.adminRoleIds ?? [];
+  const dealerPlanId = profile?.dealerPlanId ?? null;
+  const dealerPlan = useMemo(() => getDealerPlanDefinition(dealerPlanId), [dealerPlanId]);
+  const dealerEntitlements = useMemo(
+    () => getDealerPlanEntitlements(dealerPlanId),
+    [dealerPlanId],
+  );
+  const isAdmin = useMemo(() => isAdminProfile(profile), [profile]);
+  const isMasterAdmin = useMemo(() => isMasterAdminProfile(profile), [profile]);
+  const hasPermission = useCallback(
+    (permission: PermissionKey) => hasProfilePermission(profile, permission),
+    [profile],
+  );
+
   const value = useMemo<AuthContextType>(
     () => ({
       user,
       role,
       profile,
+      accountType,
+      accountStatus,
+      adminRoleIds,
+      dealerPlanId,
+      dealerPlan,
+      dealerEntitlements,
+      isAdmin,
+      isMasterAdmin,
       loading,
       initializing,
       error,
@@ -295,9 +349,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       registerDealer,
       login,
       logout,
+      hasPermission,
       refreshProfile,
     }),
-    [error, initializing, loading, login, logout, profile, registerDealer, registerUser, refreshProfile, role, user]
+    [
+      accountStatus,
+      accountType,
+      adminRoleIds,
+      dealerEntitlements,
+      dealerPlan,
+      dealerPlanId,
+      error,
+      hasPermission,
+      initializing,
+      isAdmin,
+      isMasterAdmin,
+      loading,
+      login,
+      logout,
+      profile,
+      registerDealer,
+      registerUser,
+      refreshProfile,
+      role,
+      user,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

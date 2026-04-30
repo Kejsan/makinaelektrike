@@ -180,14 +180,23 @@ export const associateDealerWithAccount = async (
       uid: userUid,
       email: email,
       role: 'dealer',
+      accountType: 'dealer',
+      accountStatus: 'active',
       status: 'active',
+      dealerPlanId: 'free',
+      dealerSubscriptionStatus: 'active',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
   } else {
+    const existingData = userSnapshot.data() as Record<string, unknown>;
     await updateDoc(userRef, {
       role: 'dealer',
+      accountType: 'dealer',
+      accountStatus: 'active',
       status: 'active',
+      ...(existingData.dealerPlanId ? {} : { dealerPlanId: 'free' }),
+      ...(existingData.dealerSubscriptionStatus ? {} : { dealerSubscriptionStatus: 'active' }),
       updatedAt: serverTimestamp(),
     });
   }
@@ -204,6 +213,8 @@ export const createDealer = async (payload: DealerDocument): Promise<Dealer> => 
     approved: derivedApproved,
     isActive: derivedIsActive,
     status: derivedStatus,
+    planId: payload.planId ?? 'free',
+    subscriptionStatus: payload.subscriptionStatus ?? 'active',
     isDeleted: payload.isDeleted ?? false,
     deletedAt: payload.deletedAt ?? null,
     createdAt: serverTimestamp(),
@@ -252,9 +263,14 @@ export const approveDealerStatus = async (id: string): Promise<Dealer> => {
   // 2. Update User Document to grant dealer access
   const userSnapshot = await getDoc(userRef);
   if (userSnapshot.exists()) {
+    const existingData = userSnapshot.data() as Record<string, unknown>;
     await updateDoc(userRef, {
       role: 'dealer',
+      accountType: 'dealer',
+      accountStatus: 'approved',
       status: 'approved',
+      ...(existingData.dealerPlanId ? {} : { dealerPlanId: 'free' }),
+      ...(existingData.dealerSubscriptionStatus ? {} : { dealerSubscriptionStatus: 'active' }),
       updatedAt: serverTimestamp(),
     });
   }
@@ -281,6 +297,8 @@ export const rejectDealerStatus = async (id: string): Promise<Dealer> => {
   const userSnapshot = await getDoc(userRef);
   if (userSnapshot.exists()) {
     await updateDoc(userRef, {
+      accountType: 'dealer',
+      accountStatus: 'rejected',
       status: 'rejected',
       updatedAt: serverTimestamp(),
     });

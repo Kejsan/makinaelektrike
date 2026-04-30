@@ -10,14 +10,113 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function hasUserRecord() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    function isAdmin() {
-      return isAuthenticated() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        getUserData().role == 'admin';
+    function hasAdminRole(roleId) {
+      return hasUserRecord() &&
+        ('adminRoleIds' in getUserData()) &&
+        getUserData().adminRoleIds.hasAny([roleId]);
+    }
+
+    function hasAnyScopedAdminRole() {
+      return hasUserRecord() &&
+        ('adminRoleIds' in getUserData()) &&
+        getUserData().adminRoleIds.size() > 0;
+    }
+
+    function hasDirectPermission(permission) {
+      return hasUserRecord() &&
+        ('directPermissions' in getUserData()) &&
+        getUserData().directPermissions[permission] == true;
+    }
+
+    function hasFullAdminAccess() {
+      return hasUserRecord() && (
+        getUserData().role == 'admin' ||
+        getUserData().accountType == 'admin' ||
+        getUserData().isMasterAdmin == true ||
+        hasAdminRole('master_admin')
+      );
+    }
+
+    function canManageUsers() {
+      return hasFullAdminAccess() ||
+        hasAdminRole('platform_ops_admin') ||
+        hasAdminRole('user_support_admin') ||
+        hasDirectPermission('users.edit') ||
+        hasDirectPermission('users.suspend') ||
+        hasDirectPermission('users.reactivate');
+    }
+
+    function canReadUsers() {
+      return canManageUsers() || hasDirectPermission('users.read');
+    }
+
+    function canManageDealers() {
+      return hasFullAdminAccess() ||
+        hasAdminRole('platform_ops_admin') ||
+        hasAdminRole('dealer_ops_admin') ||
+        hasDirectPermission('dealers.edit') ||
+        hasDirectPermission('dealers.approve');
+    }
+
+    function canReadDealersAdmin() {
+      return canManageDealers() ||
+        hasAdminRole('user_support_admin') ||
+        hasDirectPermission('dealers.read');
+    }
+
+    function canManageDealerPlans() {
+      return hasFullAdminAccess() ||
+        hasAdminRole('platform_ops_admin') ||
+        hasAdminRole('dealer_ops_admin') ||
+        hasDirectPermission('dealer_plans.assign') ||
+        hasDirectPermission('dealer_plans.override');
+    }
+
+    function canModerateListings() {
+      return hasFullAdminAccess() ||
+        hasAdminRole('platform_ops_admin') ||
+        hasAdminRole('dealer_ops_admin') ||
+        hasDirectPermission('listings.moderate') ||
+        hasDirectPermission('listings.reassign');
+    }
+
+    function canManageModels() {
+      return hasFullAdminAccess() ||
+        hasAdminRole('platform_ops_admin') ||
+        hasAdminRole('catalog_admin') ||
+        hasDirectPermission('models.publish') ||
+        hasDirectPermission('models.merge');
+    }
+
+    function canManageStations() {
+      return hasFullAdminAccess() ||
+        hasAdminRole('platform_ops_admin') ||
+        hasAdminRole('charging_admin') ||
+        hasDirectPermission('stations.edit') ||
+        hasDirectPermission('stations.merge');
+    }
+
+    function canManageBlog() {
+      return hasFullAdminAccess() ||
+        hasAdminRole('platform_ops_admin') ||
+        hasAdminRole('content_admin') ||
+        hasDirectPermission('blog.publish') ||
+        hasDirectPermission('blog.schedule');
+    }
+
+    function canReadEnquiriesAdmin() {
+      return canModerateListings() ||
+        hasAdminRole('user_support_admin') ||
+        hasDirectPermission('enquiries.read');
     }
 
     function isDealerOwnerById(dealerId) {
@@ -52,7 +151,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isAuthenticated() && (isUser(userId) || isAdmin());
+      allow read: if isAuthenticated() && (isUser(userId) || canReadUsers());
 
       allow create: if isUser(userId) &&
         !exists(/databases/$(database)/documents/users/$(userId)) &&
@@ -63,18 +162,57 @@ service cloud.firestore {
           request.resource.data.role == 'pending'
         ) &&
         (
-          !('status' in request.resource.data) ||
-          request.resource.data.status == 'pending'
-        );
+          (request.resource.data.role == 'user' &&
+            (!('status' in request.resource.data) || request.resource.data.status == 'active')
+          ) ||
+          (request.resource.data.role == 'pending' &&
+            request.resource.data.status == 'pending'
+          )
+        ) &&
+        (
+          !('accountType' in request.resource.data) ||
+          (request.resource.data.role == 'user' && request.resource.data.accountType == 'user') ||
+          (request.resource.data.role == 'pending' &&
+            (
+              request.resource.data.accountType == 'dealer' ||
+              request.resource.data.accountType == 'pending'
+            )
+          )
+        ) &&
+        (
+          !('accountStatus' in request.resource.data) ||
+          (request.resource.data.role == 'user' && request.resource.data.accountStatus == 'active') ||
+          (request.resource.data.role == 'pending' && request.resource.data.accountStatus == 'pending')
+        ) &&
+        (
+          !('dealerPlanId' in request.resource.data) ||
+          request.resource.data.dealerPlanId == 'free'
+        ) &&
+        (
+          !('dealerSubscriptionStatus' in request.resource.data) ||
+          request.resource.data.dealerSubscriptionStatus == 'active'
+        ) &&
+        !('adminRoleIds' in request.resource.data) &&
+        !('directPermissions' in request.resource.data) &&
+        !('permissionScopes' in request.resource.data) &&
+        !('isMasterAdmin' in request.resource.data);
 
       allow update: if isUser(userId) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'role',
           'status',
           'uid',
+          'accountType',
+          'accountStatus',
+          'adminRoleIds',
+          'directPermissions',
+          'permissionScopes',
+          'isMasterAdmin',
+          'dealerPlanId',
+          'dealerSubscriptionStatus',
         ]);
 
-      allow delete: if isAdmin();
+      allow delete: if canManageUsers();
 
       match /favourites/{favId} {
         allow read, write: if isUser(userId);
@@ -82,18 +220,26 @@ service cloud.firestore {
     }
 
     match /dealers/{dealerId} {
-      allow read: if isAdmin() || isDealerOwner(resource.data) || isPublicDealer(resource.data);
+      allow read: if canReadDealersAdmin() || isDealerOwner(resource.data) || isPublicDealer(resource.data);
 
-      allow create: if isAdmin() || (
+      allow create: if canManageDealers() || (
         isAuthenticated() &&
         request.resource.data.ownerUid == request.auth.uid &&
         request.resource.data.approved != true &&
         request.resource.data.isActive != true &&
         request.resource.data.isDeleted != true &&
-        request.resource.data.status == 'pending'
+        request.resource.data.status == 'pending' &&
+        (
+          !('planId' in request.resource.data) ||
+          request.resource.data.planId == 'free'
+        ) &&
+        (
+          !('subscriptionStatus' in request.resource.data) ||
+          request.resource.data.subscriptionStatus == 'active'
+        )
       );
 
-      allow update: if isAdmin() || (
+      allow update: if canManageDealers() || canManageDealerPlans() || (
         isDealerOwner(resource.data) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'approved',
@@ -106,23 +252,25 @@ service cloud.firestore {
           'status',
           'ownerUid',
           'createdBy',
+          'planId',
+          'subscriptionStatus',
         ])
       );
 
-      allow delete: if isAdmin();
+      allow delete: if canManageDealers();
     }
 
     match /listings/{listingId} {
-      allow read: if isAdmin() || isListingOwner(resource.data) || isPublicListing(resource.data);
+      allow read: if canModerateListings() || isListingOwner(resource.data) || isPublicListing(resource.data);
 
-      allow create: if isAdmin() || (
+      allow create: if canModerateListings() || (
         isAuthenticated() &&
         request.resource.data.ownerUid == request.auth.uid &&
         isDealerOwnerById(request.resource.data.dealerId) &&
         request.resource.data.status == 'pending'
       );
 
-      allow update: if isAdmin() || (
+      allow update: if canModerateListings() || (
         isListingOwner(resource.data) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'status',
@@ -134,30 +282,29 @@ service cloud.firestore {
         ])
       );
 
-      allow delete: if isAdmin();
+      allow delete: if canModerateListings();
     }
 
     match /enquiries/{enquiryId} {
-      allow create: if isAdmin();
-
-      allow read: if isAdmin() || isDealerOwnerById(resource.data.dealerId);
+      allow create: if hasFullAdminAccess();
+      allow read: if canReadEnquiriesAdmin() || isDealerOwnerById(resource.data.dealerId);
     }
 
     match /models/{modelId} {
       allow read: if true;
 
-      allow create: if isAdmin() || (
+      allow create: if canManageModels() || (
         isAuthenticated() &&
         request.resource.data.ownerUid == request.auth.uid
       );
 
-      allow update: if isAdmin() || (
+      allow update: if canManageModels() || (
         isAuthenticated() &&
         resource.data.ownerUid == request.auth.uid &&
         request.resource.data.ownerUid == resource.data.ownerUid
       );
 
-      allow delete: if isAdmin() || (
+      allow delete: if canManageModels() || (
         isAuthenticated() &&
         resource.data.ownerUid == request.auth.uid
       );
@@ -166,17 +313,17 @@ service cloud.firestore {
     match /dealerModels/{modelId} {
       allow read: if true;
 
-      allow create: if isAdmin() || (
+      allow create: if canManageModels() || canManageDealers() || (
         isAuthenticated() &&
         isDealerOwnerById(request.resource.data.dealer_id)
       );
 
-      allow update: if isAdmin() || (
+      allow update: if canManageModels() || canManageDealers() || (
         isAuthenticated() &&
         isDealerOwnerById(resource.data.dealer_id)
       );
 
-      allow delete: if isAdmin() || (
+      allow delete: if canManageModels() || canManageDealers() || (
         isAuthenticated() &&
         isDealerOwnerById(resource.data.dealer_id)
       );
@@ -184,12 +331,12 @@ service cloud.firestore {
 
     match /blogPosts/{postId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if canManageBlog();
     }
 
     match /charging_stations/{stationId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if canManageStations();
     }
   }
 }

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
 interface ServiceAccountShape {
@@ -79,3 +80,4 @@ const getAdminApp = () => {
 };
 
 export const getAdminFirestore = () => getFirestore(getAdminApp());
+export const getAdminAuth = () => getAuth(getAdminApp());

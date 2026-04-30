@@ -1,8 +1,8 @@
 # Master Admin Control Center Plan
 
 Status: Draft  
-Last updated: 2026-04-28  
-Scope: Platform-wide admin architecture, access control, moderation, analytics, and operational tooling
+Last updated: 2026-04-30  
+Scope: Platform-wide admin architecture, access control, moderation, analytics, monetization controls, and operational tooling
 
 ## Purpose
 
@@ -10,7 +10,9 @@ This document defines the plan for evolving Makina Elektrike from its current si
 
 - a true `master_admin` capability
 - granular admin roles and scoped permissions
+- a structured dealer monetization model with `Free` and `Paid` dealer tiers
 - full control over users, dealers, listings, EV models, charging stations, blog content, and support flows
+- full control over dynamic promotional inventory and paid placement visibility throughout the platform
 - safer backend authority for privileged operations
 - auditability, restoreability, and operational visibility
 
@@ -29,13 +31,17 @@ The main limitations are:
 - there is no audit log, revision history, or internal notes system
 - data visualization is limited to counts and filtered lists
 - canonical catalog data and dealer-controlled data are not separated strongly enough
+- there is no formal dealer plan model separating free and paid participation
+- there is no dynamic monetization or sponsored-placement control layer
 
 The target outcome is:
 
 - one `master_admin` tier with full control over the entire platform
 - multiple lower admin tiers such as content-only, catalog-only, dealer/user-ops, charging-only, and analyst
+- a clean commercial split between `Free` dealers, `Paid` dealers, and optional sponsored placement products
 - a proper access-control panel for adding admins and controlling what they can do
 - entity-level and action-level control across users, dealers, listings, models, stations, blog posts, and enquiries
+- master-admin-controlled promotional inventory across dynamic placement zones on key frontend pages
 - a safer server-driven permission model backed by audit logs
 - a more scalable admin UI with routed modules instead of one oversized tabbed page
 
@@ -205,6 +211,24 @@ Assessment:
 - data visualization maturity: low
 - admin operability maturity: medium-low
 
+### 7. Current Monetization and Placement Control
+
+There is currently no internal control system for selling, scheduling, rotating, or governing paid promotional placements across the platform.
+
+What is missing:
+
+- placement zones defined at the platform level
+- sponsored inventory management
+- paid-vs-organic visibility rules
+- scheduling, prioritization, and fallback content
+- placement analytics such as impressions, clicks, and fill rate
+- admin control over where dealers, models, listings, or services are highlighted
+- a non-static frontend rendering model for promotions
+
+Implication:
+
+if monetization is added later without being integrated into the master-admin plan, it will create a second control system and a second layer of page logic. That would be the wrong architecture.
+
 ## Design Principles
 
 The redesign should follow these principles:
@@ -217,6 +241,7 @@ The redesign should follow these principles:
 6. Soft-delete and restore should be preferred over permanent destructive actions.
 7. Admin UX should scale from one operator to a team without becoming a monolithic page.
 8. Granularity should be practical: resource + action + scope, with selected field groups where needed.
+9. Promotional and monetized placements should be config-driven and admin-controlled, not hardcoded into page layouts.
 
 ## Target Operating Model
 
@@ -328,6 +353,138 @@ For regular users and dealers, the control center should also manage:
 
 This gives master admin meaningful control over how users and dealers behave on the platform without turning them into admins.
 
+### 4. Dealer Plan Model and Commercial Entitlements
+
+The recommended commercial model for dealers is:
+
+- `Free Dealer`
+- `Paid Dealer`
+- optional sponsored-placement add-ons layered on top of `Paid Dealer`
+
+Reason:
+
+- it keeps entry friction low for marketplace growth
+- it makes the paid tier clearly about business performance, not basic legitimacy
+- it separates subscription value from promotional inventory value
+- it keeps master admin in control of all promoted visibility
+
+Recommended `Free Dealer` baseline:
+
+- one owner account
+- a basic public dealer profile
+- a limited active listing quota
+- standard enquiry handling
+- basic photo/media limits
+- standard organic visibility only
+- basic reporting such as profile views, listing views, and enquiries
+
+Recommended `Paid Dealer` baseline:
+
+- higher or unlimited listing capacity
+- richer dealer profile presentation
+- richer media support such as larger galleries and video
+- more advanced lead-handling tools
+- more detailed analytics and performance reporting
+- multiple dealer staff accounts
+- stronger operational tooling and potentially faster support
+- eligibility to purchase sponsored placements
+
+Important rule:
+
+`Paid Dealer` should create eligibility for premium placement products, but should not guarantee permanent or static visibility in high-value zones. Final visibility must remain governed by master-admin rules, placement assignments, schedules, and policy constraints.
+
+Recommended commercial distinction:
+
+- `dealer_plan`: subscription-style entitlement layer
+- `promotion_product`: optional exposure or sponsorship add-on
+
+Examples of promotion products:
+
+- featured dealer spot
+- featured listing spot
+- featured EV model spot
+- sponsored blog placement
+- sponsored services placement
+- charging-page promotional block
+
+Recommended plan-related dealer entitlements:
+
+- max active listings
+- max staff accounts
+- richer profile modules enabled or disabled
+- richer media limits
+- advanced analytics access
+- featured-placement eligibility
+- campaign-purchase eligibility
+
+What should not be sold:
+
+- approval bypass
+- moderation bypass
+- false trust signals
+- permanent hardcoded homepage placement
+- immunity from quality rules or ranking policy
+
+### 5. Monetization and Placement Governance
+
+This should remain part of the main master-admin operating model, not a disconnected plan.
+
+Reason:
+
+- the same master-admin and permission model must govern placements
+- the same audit layer must record promo changes
+- the same routed admin UI should expose placement control
+- the same frontend should render dynamic zones instead of hardcoded highlighted blocks
+
+Recommended first-class concepts:
+
+- `dealer_plans`: free vs paid plan definitions and entitlements
+- `dealer_subscriptions`: which plan a dealer currently has and when it applies
+- `placement_zones`: named areas on the site where promotional content may appear
+- `promotional_campaigns`: the sponsored or house-promo units being scheduled
+- `placement_assignments`: which campaign is eligible for which zone and when
+- `sponsorship_products`: optional internal definitions for paid packages such as homepage highlight, listing-page promo, or blog-article sponsor slot
+
+Placement zones should exist for surfaces such as:
+
+- listings index pages
+- dealers index pages
+- models index pages
+- single model pages
+- blog index pages
+- blog article pages
+- charging stations pages
+- any services or support pages where promotions are commercially appropriate
+
+The master admin should be able to:
+
+- assign, upgrade, downgrade, pause, or expire dealer plans
+- control which plans are eligible for which sponsorship products
+- create, rename, enable, disable, and retire placement zones
+- decide which entity types are allowed in each zone
+- decide whether a zone supports paid promos, house promos, or both
+- manually pin or unpin specific dealers, models, listings, or services
+- schedule campaigns with start and end times
+- pause or override campaigns instantly
+- set priority, rotation behavior, and fallback content
+- control geographic, locale, or page-context targeting where needed
+- see exactly where and why a promo is visible
+
+Recommended placement permissions:
+
+- `dealer_plans.read`
+- `dealer_plans.assign`
+- `dealer_plans.override`
+- `placements.read`
+- `placements.create`
+- `placements.edit`
+- `placements.assign`
+- `placements.publish`
+- `placements.pause`
+- `placements.override`
+- `placements.analytics_read`
+- `placements.billing_read`
+
 ## Entity Governance Model
 
 ### 1. Users
@@ -356,6 +513,8 @@ Authorized admins should be able to:
 - inspect linked listings, linked models, and enquiries
 - inspect notes and history
 - control dealer entitlements
+- assign and change dealer plan tier
+- control plan-related limits and overrides
 
 ### 3. Listings
 
@@ -419,6 +578,31 @@ Master admin should be able to:
 - inspect effective permissions
 - inspect admin activity history
 
+### 8. Promotional Placements and Sponsored Inventory
+
+Authorized admins, and always the master admin, should be able to:
+
+- define every monetizable placement zone on the platform
+- choose whether a zone highlights dealers, listings, models, blog content, services, or house campaigns
+- promote specific records manually
+- attach promotions to schedules and visibility windows
+- pause placements globally or per page/zone
+- decide the fallback state when no paid placement is active
+- preview how placements render across page types
+- inspect performance and delivery metrics
+
+Recommended business distinction:
+
+- `house_promotion`: internal platform promotion controlled by admins
+- `sponsored_promotion`: paid placement sold to dealers or partners
+
+Recommended policy distinction:
+
+- `Paid Dealer` status allows a dealer or listing to be eligible for sponsored inventory
+- actual assignment into a zone remains controlled by placement logic and master-admin overrides
+
+This distinction allows the same rendering system to support both monetization and internal merchandising without hardcoded page exceptions.
+
 ## Target Admin UI Architecture
 
 Do not continue scaling everything inside the current single [pages/AdminPage.tsx](pages/AdminPage.tsx).
@@ -433,6 +617,7 @@ Recommended route structure:
 - `/admin/stations`
 - `/admin/blog`
 - `/admin/enquiries`
+- `/admin/placements`
 - `/admin/access`
 - `/admin/audit`
 - `/admin/reports`
@@ -446,6 +631,14 @@ Recommended page structure:
 - saved filters and queue views
 - list pages with bulk actions
 - entity detail pages or drawers with consistent tabs
+
+Recommended placement-management surfaces:
+
+- zone directory
+- campaign directory
+- assignment calendar or schedule view
+- promo preview surface by page type
+- analytics view for impressions, clicks, and fill rate
 
 Recommended entity detail tabs:
 
@@ -517,6 +710,22 @@ Recommended reports:
 - blog posts missing metadata
 - suspended or anomalous accounts
 
+### 5. Monetization and Promo Performance
+
+Recommended placement reports:
+
+- dealers by plan tier
+- active paid subscriptions
+- dealers eligible for sponsored placements but not currently assigned
+- active sponsored campaigns
+- zones with no fallback configured
+- zones with low fill rate
+- impressions by zone
+- clicks by campaign
+- click-through rate by campaign
+- promoted dealer/listing/model visibility distribution
+- expired campaigns still assigned anywhere
+
 ## Technical Architecture Plan
 
 ### 1. Identity and Access Data Model
@@ -536,6 +745,8 @@ Recommended new collections:
 - `permissionSets`
 - `adminInvites`
 - `dealerMemberships`
+- `dealerPlans`
+- `dealerSubscriptions`
 - `auditLogs`
 - `adminNotes`
 - `dashboardStats`
@@ -561,6 +772,8 @@ Likely new backend responsibilities:
 - accept admin invite
 - assign admin permissions
 - revoke admin access
+- assign dealer plans
+- activate, pause, or expire plan entitlements
 - approve/reject/suspend dealers
 - activate dealer owner accounts
 - disable/reactivate users
@@ -573,6 +786,7 @@ Recommended file areas:
 - `netlify/functions/admin-invite-create.ts`
 - `netlify/functions/admin-invite-accept.ts`
 - `netlify/functions/admin-assign-permissions.ts`
+- `netlify/functions/admin-dealer-plan-update.ts`
 - `netlify/functions/admin-user-update.ts`
 - `netlify/functions/admin-dealer-update.ts`
 - `netlify/functions/admin-listing-moderate.ts`
@@ -616,10 +830,12 @@ Likely files/modules to introduce:
 - `pages/admin/AdminOverviewPage.tsx`
 - `pages/admin/AdminUsersPage.tsx`
 - `pages/admin/AdminDealersPage.tsx`
+- `pages/admin/AdminDealerPlansPage.tsx`
 - `pages/admin/AdminListingsPage.tsx`
 - `pages/admin/AdminModelsPage.tsx`
 - `pages/admin/AdminStationsPage.tsx`
 - `pages/admin/AdminBlogPage.tsx`
+- `pages/admin/AdminPlacementsPage.tsx`
 - `pages/admin/AdminAccessPage.tsx`
 - `pages/admin/AdminAuditPage.tsx`
 
@@ -627,10 +843,12 @@ Likely supporting component areas:
 
 - `components/admin/users/*`
 - `components/admin/dealers/*`
+- `components/admin/dealer-plans/*`
 - `components/admin/listings/*`
 - `components/admin/models/*`
 - `components/admin/stations/*`
 - `components/admin/blog/*`
+- `components/admin/placements/*`
 - `components/admin/access/*`
 - `components/admin/audit/*`
 
@@ -638,6 +856,55 @@ Likely supporting service areas:
 
 - `services/admin/*`
 - `hooks/admin/*`
+
+### 6. Promotional Inventory Architecture
+
+Recommended promo-related collections:
+
+- `dealerPlans`
+- `dealerSubscriptions`
+- `sponsorshipProducts`
+- `placementZones`
+- `promotionalCampaigns`
+- `placementAssignments`
+- `placementAnalyticsDaily`
+
+Recommended campaign fields:
+
+- name
+- status
+- promotion type
+- eligibility rules
+- sponsored entity type
+- sponsored entity ID
+- target zones
+- start and end dates
+- priority
+- rotation settings
+- locale targeting
+- page-context targeting
+- fallback behavior
+- createdBy
+- updatedBy
+- createdAt
+- updatedAt
+
+Recommended backend responsibilities:
+
+- validate dealer-plan eligibility for paid inventory
+- validate zone/campaign compatibility
+- enforce scheduling rules
+- compute active campaign resolution
+- pause/resume campaigns immediately
+- record audit events for visibility changes
+- optionally record impression and click events for reporting
+
+Recommended frontend approach:
+
+- page-level promo slots should resolve dynamically from placement-zone configuration
+- highlighted dealers/models/listings/services should be queried by placement assignment, not hardcoded in page markup
+- every major page type should be able to render zero, one, or multiple placement zones without manual code branching per sponsor
+- subscription tier alone should not hardcode promoted visibility into any page
 
 ## Phased Implementation Plan
 
@@ -710,13 +977,16 @@ Acceptance criteria:
 Goals:
 
 - add full user and dealer operational control
+- establish dealer plan and entitlement management
 
 Deliverables:
 
 - `/admin/users`
 - `/admin/dealers`
+- `/admin/dealer-plans`
 - user detail view
 - dealer detail view
+- dealer plan assignment and override controls
 - internal notes
 - audit history
 - account suspension/reactivation
@@ -726,6 +996,7 @@ Acceptance criteria:
 
 - master admin can open and edit any user or dealer profile
 - authorized admins can manage access and status safely
+- dealer tiers can be managed without manual data editing
 
 ### Phase 4: Listings and Enquiries Operations
 
@@ -764,7 +1035,34 @@ Acceptance criteria:
 - admins can control every EV model, station, and blog post
 - dealer-originated changes no longer bypass governance for canonical data
 
-### Phase 6: Analytics, Reporting, and Admin Activity Visibility
+### Phase 6: Monetization and Promotional Placement Control
+
+Goals:
+
+- introduce the `Free` vs `Paid` dealer model
+- make promotional inventory a governed, monetizable, and fully admin-controlled platform capability
+
+Deliverables:
+
+- dealer plan definitions
+- dealer subscription / entitlement layer
+- `/admin/placements`
+- placement-zone model
+- sponsorship product model
+- promotional campaign model
+- dynamic assignment and scheduling
+- frontend placement rendering on major page types
+- master-admin overrides and pause controls
+
+Acceptance criteria:
+
+- free vs paid dealer entitlements are enforced consistently
+- paid dealers can be marked eligible for premium inventory without receiving guaranteed static placement
+- the platform can promote dealers, listings, models, blog content, and services dynamically
+- promoted visibility is fully under master-admin control
+- no page depends on hardcoded sponsored placement content
+
+### Phase 7: Analytics, Reporting, and Admin Activity Visibility
 
 Goals:
 
@@ -784,7 +1082,7 @@ Acceptance criteria:
 
 - leadership and operators can understand platform health without manually inspecting collections
 
-### Phase 7: Migration, Rollout, and Hardening
+### Phase 8: Migration, Rollout, and Hardening
 
 Goals:
 
@@ -870,6 +1168,8 @@ The first release should prioritize:
 3. Implement the permission foundation and backend mediation first.
 4. Build `/admin/access` and `/admin/users` before adding more charts.
 5. Refactor the admin area into routed modules instead of extending the current single page indefinitely.
+6. Treat paid placements as dynamic admin-governed inventory, not static frontend content.
+7. Separate dealer subscription value from promotional placement value from the start.
 
 ## Summary
 
@@ -880,7 +1180,9 @@ The path forward is:
 - normalize identity and permissions
 - move sensitive authority server-side
 - build a true access-control layer
+- add a structured `Free` vs `Paid` dealer plan model
 - expand entity management across users, dealers, listings, models, stations, blog, and admins
+- add dynamic monetization and sponsored-placement control under master-admin authority
 - add auditability and analytics as first-class admin features
 
 If implemented in this order, the result will be a scalable and governable admin control center rather than a larger version of the current tabbed dashboard.

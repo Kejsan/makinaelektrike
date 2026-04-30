@@ -33,6 +33,9 @@ export const json = (
 });
 
 export const badRequest = (error: string) => json(400, { error });
+export const unauthorized = (error = 'Authentication is required.') => json(401, { error });
+export const forbidden = (error = 'You do not have permission to perform this action.') =>
+  json(403, { error });
 
 export const methodNotAllowed = (allowedMethods: string[]) =>
   json(
