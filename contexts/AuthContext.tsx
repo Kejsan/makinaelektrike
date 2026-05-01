@@ -94,6 +94,10 @@ export const mapErrorToMessage = (error: any): string => {
     case 'auth/user-not-found':
     case 'auth/wrong-password':
       return i18n.t('auth.errors.invalidCredentials');
+    case 'auth/user-disabled':
+      return i18n.exists('auth.errors.accountDisabled')
+        ? i18n.t('auth.errors.accountDisabled')
+        : 'This account has been disabled. Contact support.';
     case 'auth/too-many-requests':
       return i18n.t('auth.errors.tooManyRequests');
     case 'auth/network-request-failed':

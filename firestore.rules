@@ -6,8 +6,38 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isBlockedAccountData(userData) {
+      return (
+        ('accountStatus' in userData) &&
+        (
+          userData.accountStatus == 'suspended' ||
+          userData.accountStatus == 'disabled' ||
+          userData.accountStatus == 'archived'
+        )
+      ) || (
+        !('accountStatus' in userData) &&
+        ('status' in userData) &&
+        (
+          userData.status == 'suspended' ||
+          userData.status == 'disabled' ||
+          userData.status == 'archived'
+        )
+      );
+    }
+
+    function hasActiveUserRecord() {
+      return hasUserRecord() && !isBlockedAccountData(getUserData());
+    }
+
+    function isSignedInAndNotBlocked() {
+      return isAuthenticated() && (
+        !hasUserRecord() ||
+        hasActiveUserRecord()
+      );
+    }
+
     function isUser(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return isSignedInAndNotBlocked() && request.auth.uid == userId;
     }
 
     function hasUserRecord() {
@@ -20,25 +50,25 @@ service cloud.firestore {
     }
 
     function hasAdminRole(roleId) {
-      return hasUserRecord() &&
+      return hasActiveUserRecord() &&
         ('adminRoleIds' in getUserData()) &&
         getUserData().adminRoleIds.hasAny([roleId]);
     }
 
     function hasAnyScopedAdminRole() {
-      return hasUserRecord() &&
+      return hasActiveUserRecord() &&
         ('adminRoleIds' in getUserData()) &&
         getUserData().adminRoleIds.size() > 0;
     }
 
     function hasDirectPermission(permission) {
-      return hasUserRecord() &&
+      return hasActiveUserRecord() &&
         ('directPermissions' in getUserData()) &&
         getUserData().directPermissions[permission] == true;
     }
 
     function hasFullAdminAccess() {
-      return hasUserRecord() && (
+      return hasActiveUserRecord() && (
         getUserData().role == 'admin' ||
         getUserData().accountType == 'admin' ||
         getUserData().isMasterAdmin == true ||
@@ -120,7 +150,7 @@ service cloud.firestore {
     }
 
     function isDealerOwnerById(dealerId) {
-      return isAuthenticated() && (
+      return isSignedInAndNotBlocked() && (
         dealerId == request.auth.uid ||
         (
           exists(/databases/$(database)/documents/dealers/$(dealerId)) &&
@@ -130,7 +160,7 @@ service cloud.firestore {
     }
 
     function isDealerOwner(dealerData) {
-      return isAuthenticated() && dealerData.ownerUid == request.auth.uid;
+      return isSignedInAndNotBlocked() && dealerData.ownerUid == request.auth.uid;
     }
 
     function isPublicDealer(dealerData) {
@@ -144,7 +174,7 @@ service cloud.firestore {
     }
 
     function isListingOwner(listingData) {
-      return isAuthenticated() && (
+      return isSignedInAndNotBlocked() && (
         listingData.ownerUid == request.auth.uid ||
         isDealerOwnerById(listingData.dealerId)
       );

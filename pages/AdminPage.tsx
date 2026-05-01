@@ -29,6 +29,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { DataContext } from '../contexts/DataContext';
 import {
+  AdminAuditLog,
   AccountStatus,
   AdminRoleId,
   Dealer,
@@ -48,15 +49,25 @@ import BlogTextImportModal from '../components/admin/BlogTextImportModal';
 import OfflineQueuePanel from '../components/admin/OfflineQueuePanel';
 import {
   fetchChargingStations,
-  createChargingStation,
-  updateChargingStation,
-  deleteChargingStation,
 } from '../services/chargingStations';
 import {
   lookupAdminAccess,
   updateAdminAccess,
   type AdminAccessLookupResult,
 } from '../services/adminAccess';
+import { listAdminAuditLogs } from '../services/adminAudit';
+import {
+  lookupAdminUser,
+  updateAdminUserStatus,
+  type AdminUserLookupResult,
+} from '../services/adminUsers';
+import {
+  updateAdminBlog,
+  updateAdminDealerStatus,
+  updateAdminListing,
+  updateAdminModel,
+  updateAdminStation,
+} from '../services/adminModeration';
 import { updateDealerPlan as updateDealerPlanAssignment } from '../services/adminDealerPlans';
 import { associateDealerWithAccount } from '../services/api';
 import { initializeApp, deleteApp } from 'firebase/app';
@@ -105,7 +116,7 @@ const AdminModal: React.FC<ModalProps> = ({ title, onClose, children }) => {
 
 type FormState<T> = { mode: 'create' | 'edit'; entity?: T } | null;
 
-type TabKey = 'dealers' | 'models' | 'listings' | 'blog' | 'stations' | 'access' | 'migration';
+type TabKey = 'dealers' | 'users' | 'models' | 'listings' | 'blog' | 'stations' | 'access' | 'audit' | 'migration';
 type DealerFilterKey = 'active' | 'inactive' | 'pending' | 'deleted';
 type DealerPlanDraft = {
   planId: DealerPlanId;
@@ -141,6 +152,32 @@ const formatDate = (value: Dealer['createdAt']) => {
   return null;
 };
 
+const formatDateTime = (value: string | null | undefined) => {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleString();
+};
+
+const formatJsonBlock = (value: Record<string, unknown> | null | undefined) => {
+  if (!value || Object.keys(value).length === 0) {
+    return null;
+  }
+
+  return JSON.stringify(value, null, 2);
+};
+
+const formatAuditActionLabel = (action: string) =>
+  action
+    .replace(/[._]/g, ' ')
+    .replace(/\b\w/g, character => character.toUpperCase());
+
 const AdminPage: React.FC = () => {
   const { logout, user, role, hasPermission, isMasterAdmin } = useAuth();
   const { addToast } = useToast();
@@ -165,21 +202,12 @@ const AdminPage: React.FC = () => {
     blogPostMutations,
     addDealer,
     updateDealer,
-    deleteDealer,
-    deactivateDealer,
-    reactivateDealer,
-    approveDealer,
-    rejectDealer,
     addModel,
     updateModel,
-    deleteModel,
-    updateListing,
-    deleteListing,
     linkModelToDealer,
     unlinkModelFromDealer,
     addBlogPost,
     updateBlogPost,
-    deleteBlogPost,
   } = useContext(DataContext);
 
   const [activeTab, setActiveTab] = useState<TabKey>('dealers');
@@ -194,7 +222,16 @@ const AdminPage: React.FC = () => {
   const [blogTextImportOpen, setBlogTextImportOpen] = useState(false);
   const [stationSubmitting, setStationSubmitting] = useState(false);
   const [dealerAction, setDealerAction] = useState<
-    { id: string; type: 'approve' | 'reject' | 'deactivate' | 'reactivate' } | null
+    { id: string; type: 'approve' | 'reject' | 'deactivate' | 'reactivate' | 'delete' } | null
+  >(null);
+  const [modelAction, setModelAction] = useState<
+    { id: string; type: 'toggleVisibility' | 'delete' } | null
+  >(null);
+  const [blogAction, setBlogAction] = useState<
+    { id: string; type: 'toggleStatus' | 'delete' } | null
+  >(null);
+  const [stationAction, setStationAction] = useState<
+    { id: string; type: 'toggleVisibility' | 'delete' } | null
   >(null);
   const [dealerFilter, setDealerFilter] = useState<DealerFilterKey>('pending');
   const [modelFilter, setModelFilter] = useState<'all' | 'featured' | 'visible' | 'hidden'>('all');
@@ -216,11 +253,24 @@ const AdminPage: React.FC = () => {
   const [adminAccessResult, setAdminAccessResult] = useState<AdminAccessLookupResult | null>(null);
   const [adminAccessRoleDraftIds, setAdminAccessRoleDraftIds] = useState<AdminRoleId[]>([]);
   const [adminAccessStatusDraft, setAdminAccessStatusDraft] = useState<AccountStatus>('active');
+  const [userAdminQuery, setUserAdminQuery] = useState('');
+  const [userAdminLookupLoading, setUserAdminLookupLoading] = useState(false);
+  const [userAdminActionLoading, setUserAdminActionLoading] = useState(false);
+  const [userAdminLookupError, setUserAdminLookupError] = useState<string | null>(null);
+  const [userAdminResult, setUserAdminResult] = useState<AdminUserLookupResult | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditLoaded, setAuditLoaded] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
 
   // Search and Selection States
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const canManageAdminAccess = hasPermission('admins.assign_permissions');
+  const canReadUsers = hasPermission('users.read') || hasPermission('users.edit') || hasPermission('users.suspend') || hasPermission('users.reactivate');
+  const canSuspendUsers = hasPermission('users.suspend');
+  const canReactivateUsers = hasPermission('users.reactivate');
+  const canViewAudit = hasPermission('audit.view');
 
   // Reset selection and search on tab/filter change
   useEffect(() => {
@@ -274,13 +324,20 @@ const AdminPage: React.FC = () => {
 
     showBulkActionToast('processing');
     try {
-      await Promise.all(selectedIds.map(id => {
-        if (action === 'approve') return approveDealer(id);
-        if (action === 'deactivate') return deactivateDealer(id);
-        if (action === 'delete') return deleteDealer(id);
-        if (action === 'reactivate') return reactivateDealer(id);
-        return Promise.resolve();
-      }));
+      await Promise.all(
+        selectedIds.map(id =>
+          updateAdminDealerStatus(
+            id,
+            action === 'approve'
+              ? 'approve'
+              : action === 'deactivate'
+                ? 'deactivate'
+                : action === 'delete'
+                  ? 'delete'
+                  : 'reactivate',
+          ),
+        ),
+      );
       showBulkActionToast('success');
       setSelectedIds([]);
     } catch (error) {
@@ -301,17 +358,17 @@ const AdminPage: React.FC = () => {
     showBulkActionToast('processing');
     try {
       await Promise.all(selectedIds.map(id => {
-        if (action === 'delete') return deleteModel(id);
+        if (action === 'delete') return updateAdminModel({ modelId: id, delete: true });
         const model = models.find(m => m.id === id);
         if (!model) return Promise.resolve();
         
         if (action === 'toggleFeatured') {
-          return updateModel(id, { isFeatured: !model.isFeatured });
+          return updateAdminModel({ modelId: id, isFeatured: !model.isFeatured });
         }
         if (action === 'toggleVisibility') {
           // Explicitly set based on current filter state if possible, or just toggle
           const targetVisibility = modelFilter === 'hidden' ? true : (modelFilter === 'visible' ? false : !model.isActive);
-          return updateModel(id, { isActive: targetVisibility });
+          return updateAdminModel({ modelId: id, isActive: targetVisibility });
         }
         return Promise.resolve();
       }));
@@ -330,10 +387,10 @@ const AdminPage: React.FC = () => {
     showBulkActionToast('processing');
     try {
       await Promise.all(selectedIds.map(id => {
-        if (action === 'delete') return deleteListing(id);
-        if (action === 'approve') return updateListing(id, { status: 'active' });
-        if (action === 'reject') return updateListing(id, { status: 'rejected' });
-        if (action === 'hide') return updateListing(id, { status: 'inactive' });
+        if (action === 'delete') return updateAdminListing({ listingId: id, status: 'deleted' });
+        if (action === 'approve') return updateAdminListing({ listingId: id, status: 'active' });
+        if (action === 'reject') return updateAdminListing({ listingId: id, status: 'rejected' });
+        if (action === 'hide') return updateAdminListing({ listingId: id, status: 'inactive' });
         return Promise.resolve();
       }));
       showBulkActionToast('success');
@@ -351,9 +408,9 @@ const AdminPage: React.FC = () => {
     showBulkActionToast('processing');
     try {
       await Promise.all(selectedIds.map(id => {
-        if (action === 'delete') return deleteBlogPost(id);
+        if (action === 'delete') return updateAdminBlog({ postId: id, delete: true });
         if (action === 'publish' || action === 'draft') {
-          return updateBlogPost(id, { status: action === 'publish' ? 'published' : 'draft' });
+          return updateAdminBlog({ postId: id, status: action === 'publish' ? 'published' : 'draft' });
         }
         return Promise.resolve();
       }));
@@ -377,20 +434,26 @@ const AdminPage: React.FC = () => {
     try {
       await Promise.all(selectedIds.map(async (id) => {
         const station = stations.find(s => s.id === id);
-        if (action === 'delete') return deleteChargingStation(id);
+        if (action === 'delete') {
+          return updateAdminStation({ action: 'delete', stationId: id });
+        }
         if (action === 'toggleActive' && station) {
           const targetVisibility = stationFilter === 'inactive' ? true : (stationFilter === 'active' ? false : !station.isActive);
-          return updateChargingStation(id, {
-            address: station.address,
-            plugTypes: station.plugTypes,
-            chargingSpeedKw: station.chargingSpeedKw,
-            operator: station.operator || '',
-            pricingDetails: station.pricingDetails || '',
-            googleMapsLink: station.googleMapsLink || '',
-            latitude: station.latitude ?? '',
-            longitude: station.longitude ?? '',
-            isActive: targetVisibility,
-          }, user!.uid);
+          return updateAdminStation({
+            action: 'update',
+            stationId: id,
+            values: {
+              address: station.address,
+              plugTypes: station.plugTypes,
+              chargingSpeedKw: station.chargingSpeedKw,
+              operator: station.operator || '',
+              pricingDetails: station.pricingDetails || '',
+              googleMapsLink: station.googleMapsLink || '',
+              latitude: station.latitude ?? '',
+              longitude: station.longitude ?? '',
+              isActive: targetVisibility,
+            },
+          });
         }
         return Promise.resolve();
       }));
@@ -420,6 +483,9 @@ const AdminPage: React.FC = () => {
   const tabs = useMemo(
     () => [
       { id: 'dealers' as TabKey, label: t('admin.manageDealers') },
+      ...(canReadUsers
+        ? [{ id: 'users' as TabKey, label: t('admin.manageUsers', { defaultValue: 'Users' }) }]
+        : []),
       { id: 'models' as TabKey, label: t('admin.manageModels') },
       { id: 'listings' as TabKey, label: t('admin.listingsTab', { defaultValue: 'Listings' }) },
       { id: 'blog' as TabKey, label: t('admin.manageBlog') },
@@ -432,9 +498,17 @@ const AdminPage: React.FC = () => {
             },
           ]
         : []),
+      ...(canViewAudit
+        ? [
+            {
+              id: 'audit' as TabKey,
+              label: t('admin.auditLogTab', { defaultValue: 'Audit log' }),
+            },
+          ]
+        : []),
       { id: 'migration' as TabKey, label: t('admin.migrationTab', { defaultValue: 'Data migration' }) },
     ],
-    [canManageAdminAccess, t]
+    [canManageAdminAccess, canReadUsers, canViewAudit, t]
   );
 
   const handleLogout = async () => {
@@ -612,10 +686,22 @@ const AdminPage: React.FC = () => {
   );
 
   useEffect(() => {
+    if (!canReadUsers && activeTab === 'users') {
+      setActiveTab('dealers');
+    }
+  }, [activeTab, canReadUsers]);
+
+  useEffect(() => {
     if (!canManageAdminAccess && activeTab === 'access') {
       setActiveTab('dealers');
     }
   }, [activeTab, canManageAdminAccess]);
+
+  useEffect(() => {
+    if (!canViewAudit && activeTab === 'audit') {
+      setActiveTab('dealers');
+    }
+  }, [activeTab, canViewAudit]);
 
   const getDealerPlanDraft = useCallback(
     (dealer: Dealer): DealerPlanDraft => ({
@@ -649,19 +735,33 @@ const AdminPage: React.FC = () => {
     url: `${BASE_URL}/admin/`,
   };
 
-  const handleApproveDealer = async (dealerId: string) => {
+  const handleDealerStatusAction = async (
+    dealerId: string,
+    action: 'approve' | 'reject' | 'deactivate' | 'reactivate' | 'delete',
+  ) => {
     if (!isAdmin) {
       return;
     }
 
-    setDealerAction({ id: dealerId, type: 'approve' });
+    setDealerAction({ id: dealerId, type: action });
     try {
-      await approveDealer(dealerId);
+      await updateAdminDealerStatus(dealerId, action);
     } catch (error) {
-      console.error('Failed to approve dealer', error);
+      console.error(`Failed to ${action} dealer`, error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.dealerStatusUpdateFailed', {
+              defaultValue: 'Failed to update dealer status.',
+            });
+      addToast(errorMessage, 'error');
     } finally {
       setDealerAction(null);
     }
+  };
+
+  const handleApproveDealer = async (dealerId: string) => {
+    await handleDealerStatusAction(dealerId, 'approve');
   };
 
   const handleDealerPlanUpdate = useCallback(
@@ -726,6 +826,156 @@ const AdminPage: React.FC = () => {
     },
     [addToast, canAssignDealerPlans, dealerPlanDrafts, getDealerPlanDraft, t],
   );
+
+  const handleUserAdminLookup = useCallback(
+    async (event?: React.FormEvent) => {
+      event?.preventDefault();
+
+      if (!canReadUsers) {
+        addToast(
+          t('admin.userLookupPermissionDenied', {
+            defaultValue: 'You do not have permission to read user accounts.',
+          }),
+          'error',
+        );
+        return;
+      }
+
+      const query = userAdminQuery.trim();
+      if (!query) {
+        setUserAdminLookupError(
+          t('admin.userLookupRequired', {
+            defaultValue: 'Enter a user email or UID to continue.',
+          }),
+        );
+        setUserAdminResult(null);
+        return;
+      }
+
+      setUserAdminLookupLoading(true);
+      setUserAdminLookupError(null);
+      try {
+        const result = await lookupAdminUser(query);
+        setUserAdminResult(result);
+      } catch (error) {
+        console.error('Failed to look up user account', error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : t('admin.userLookupFailed', {
+                defaultValue: 'Failed to look up the requested user account.',
+              });
+        setUserAdminLookupError(errorMessage);
+        setUserAdminResult(null);
+      } finally {
+        setUserAdminLookupLoading(false);
+      }
+    },
+    [addToast, canReadUsers, t, userAdminQuery],
+  );
+
+  const refreshUserAdminResult = useCallback(
+    async (uid: string) => {
+      const refreshed = await lookupAdminUser(uid);
+      setUserAdminResult(refreshed);
+      return refreshed;
+    },
+    [],
+  );
+
+  const handleUserStatusChange = useCallback(
+    async (accountStatus: 'active' | 'suspended') => {
+      if (!userAdminResult) {
+        return;
+      }
+
+      const permissionAllowed =
+        accountStatus === 'suspended' ? canSuspendUsers : canReactivateUsers;
+      if (!permissionAllowed) {
+        addToast(
+          t('admin.userStatusPermissionDenied', {
+            defaultValue: 'You do not have permission to change this account status.',
+          }),
+          'error',
+        );
+        return;
+      }
+
+      setUserAdminActionLoading(true);
+      try {
+        await updateAdminUserStatus(userAdminResult.uid, accountStatus);
+        await refreshUserAdminResult(userAdminResult.uid);
+        addToast(
+          t(
+            accountStatus === 'suspended'
+              ? 'admin.userSuspended'
+              : 'admin.userReactivated',
+            {
+              defaultValue:
+                accountStatus === 'suspended'
+                  ? 'User account suspended successfully.'
+                  : 'User account reactivated successfully.',
+            },
+          ),
+          'success',
+        );
+      } catch (error) {
+        console.error('Failed to update user status', error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : t('admin.userStatusUpdateFailed', {
+                defaultValue: 'Failed to update the account status.',
+              });
+        addToast(errorMessage, 'error');
+      } finally {
+        setUserAdminActionLoading(false);
+      }
+    },
+    [addToast, canReactivateUsers, canSuspendUsers, refreshUserAdminResult, t, userAdminResult],
+  );
+
+  const loadAuditLogs = useCallback(
+    async (force = false) => {
+      if (!canViewAudit) {
+        return;
+      }
+
+      if (auditLoading) {
+        return;
+      }
+
+      if (auditLoaded && !force) {
+        return;
+      }
+
+      setAuditLoading(true);
+      setAuditError(null);
+      try {
+        const logs = await listAdminAuditLogs(50);
+        setAuditLogs(logs);
+        setAuditLoaded(true);
+      } catch (error) {
+        console.error('Failed to load admin audit logs', error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : t('admin.auditLogLoadFailed', {
+                defaultValue: 'Failed to load the audit log.',
+              });
+        setAuditError(errorMessage);
+      } finally {
+        setAuditLoading(false);
+      }
+    },
+    [auditLoaded, auditLoading, canViewAudit, t],
+  );
+
+  useEffect(() => {
+    if (activeTab === 'audit' && canViewAudit) {
+      void loadAuditLogs();
+    }
+  }, [activeTab, canViewAudit, loadAuditLogs]);
 
   const hydrateAdminAccessDraft = useCallback((result: AdminAccessLookupResult) => {
     setAdminAccessRoleDraftIds(result.adminRoleIds ?? []);
@@ -900,48 +1150,19 @@ const AdminPage: React.FC = () => {
   };
 
   const handleRejectDealer = async (dealerId: string) => {
-    if (!isAdmin) {
-      return;
-    }
-
-    setDealerAction({ id: dealerId, type: 'reject' });
-    try {
-      await rejectDealer(dealerId);
-    } catch (error) {
-      console.error('Failed to reject dealer', error);
-    } finally {
-      setDealerAction(null);
-    }
+    await handleDealerStatusAction(dealerId, 'reject');
   };
 
   const handleDeactivateDealer = async (dealerId: string) => {
-    if (!isAdmin) {
-      return;
-    }
-
-    setDealerAction({ id: dealerId, type: 'deactivate' });
-    try {
-      await deactivateDealer(dealerId);
-    } catch (error) {
-      console.error('Failed to deactivate dealer', error);
-    } finally {
-      setDealerAction(null);
-    }
+    await handleDealerStatusAction(dealerId, 'deactivate');
   };
 
   const handleReactivateDealer = async (dealerId: string) => {
-    if (!isAdmin) {
-      return;
-    }
+    await handleDealerStatusAction(dealerId, 'reactivate');
+  };
 
-    setDealerAction({ id: dealerId, type: 'reactivate' });
-    try {
-      await reactivateDealer(dealerId);
-    } catch (error) {
-      console.error('Failed to reactivate dealer', error);
-    } finally {
-      setDealerAction(null);
-    }
+  const handleDeleteDealer = async (dealerId: string) => {
+    await handleDealerStatusAction(dealerId, 'delete');
   };
 
   const handleDealerSubmit = async (values: DealerFormValues) => {
@@ -1104,29 +1325,181 @@ const AdminPage: React.FC = () => {
     setStationSubmitting(true);
     try {
       if (stationFormState?.mode === 'edit' && stationFormState.entity) {
-        await updateChargingStation(stationFormState.entity.id, values, user.uid);
+        await updateAdminStation({
+          action: 'update',
+          stationId: stationFormState.entity.id,
+          values,
+        });
       } else {
-        await createChargingStation(values, user.uid);
+        await updateAdminStation({
+          action: 'create',
+          values,
+        });
       }
       closeAllModals();
-      // Refetch stations
       const updatedStations = await fetchChargingStations();
       setStations(updatedStations);
     } catch (error) {
       console.error('Failed to save charging station:', error);
+      addToast(
+        error instanceof Error
+          ? error.message
+          : t('admin.stationSaveFailed', {
+              defaultValue: 'Failed to save the charging station.',
+            }),
+        'error',
+      );
     } finally {
       setStationSubmitting(false);
     }
   };
 
+  const buildStationFormValues = (station: ChargingStation): ChargingStationFormValues => ({
+    address: station.address,
+    plugTypes: station.plugTypes,
+    chargingSpeedKw: station.chargingSpeedKw,
+    operator: station.operator || '',
+    pricingDetails: station.pricingDetails || '',
+    googleMapsLink: station.googleMapsLink || '',
+    latitude: station.latitude ?? '',
+    longitude: station.longitude ?? '',
+    isActive: station.isActive !== false,
+  });
+
   const handleDeleteStation = async (stationId: string) => {
+    setStationAction({ id: stationId, type: 'delete' });
     try {
-      await deleteChargingStation(stationId);
-      // Refetch stations
+      await updateAdminStation({ action: 'delete', stationId });
       const updatedStations = await fetchChargingStations();
       setStations(updatedStations);
     } catch (error) {
       console.error('Failed to delete charging station:', error);
+      addToast(
+        error instanceof Error
+          ? error.message
+          : t('admin.stationDeleteFailed', {
+              defaultValue: 'Failed to delete the charging station.',
+            }),
+        'error',
+      );
+    } finally {
+      setStationAction(null);
+    }
+  };
+
+  const handleToggleStationVisibility = async (station: ChargingStation) => {
+    setStationAction({ id: station.id, type: 'toggleVisibility' });
+    try {
+      await updateAdminStation({
+        action: 'update',
+        stationId: station.id,
+        values: {
+          ...buildStationFormValues(station),
+          isActive: station.isActive === false,
+        },
+      });
+      const updatedStations = await fetchChargingStations();
+      setStations(updatedStations);
+    } catch (error) {
+      console.error('Failed to update charging station visibility:', error);
+      addToast(
+        error instanceof Error
+          ? error.message
+          : t('admin.stationVisibilityUpdateFailed', {
+              defaultValue: 'Failed to update charging station visibility.',
+            }),
+        'error',
+      );
+    } finally {
+      setStationAction(null);
+    }
+  };
+
+  const handleToggleModelVisibility = async (model: Model) => {
+    setModelAction({ id: model.id, type: 'toggleVisibility' });
+    try {
+      await updateAdminModel({
+        modelId: model.id,
+        isActive: model.isActive === false,
+      });
+    } catch (error) {
+      console.error('Failed to update model visibility:', error);
+      addToast(
+        error instanceof Error
+          ? error.message
+          : t('admin.modelVisibilityUpdateFailed', {
+              defaultValue: 'Failed to update model visibility.',
+            }),
+        'error',
+      );
+    } finally {
+      setModelAction(null);
+    }
+  };
+
+  const handleDeleteModel = async (modelId: string) => {
+    setModelAction({ id: modelId, type: 'delete' });
+    try {
+      await updateAdminModel({
+        modelId,
+        delete: true,
+      });
+    } catch (error) {
+      console.error('Failed to delete model:', error);
+      addToast(
+        error instanceof Error
+          ? error.message
+          : t('admin.modelDeleteFailed', {
+              defaultValue: 'Failed to delete the model.',
+            }),
+        'error',
+      );
+    } finally {
+      setModelAction(null);
+    }
+  };
+
+  const handleToggleBlogStatus = async (post: BlogPost) => {
+    setBlogAction({ id: post.id, type: 'toggleStatus' });
+    try {
+      await updateAdminBlog({
+        postId: post.id,
+        status: post.status === 'published' ? 'draft' : 'published',
+      });
+    } catch (error) {
+      console.error('Failed to update blog post status:', error);
+      addToast(
+        error instanceof Error
+          ? error.message
+          : t('admin.blogStatusUpdateFailed', {
+              defaultValue: 'Failed to update the blog post status.',
+            }),
+        'error',
+      );
+    } finally {
+      setBlogAction(null);
+    }
+  };
+
+  const handleDeleteBlogPost = async (postId: string) => {
+    setBlogAction({ id: postId, type: 'delete' });
+    try {
+      await updateAdminBlog({
+        postId,
+        delete: true,
+      });
+    } catch (error) {
+      console.error('Failed to delete blog post:', error);
+      addToast(
+        error instanceof Error
+          ? error.message
+          : t('admin.blogDeleteFailed', {
+              defaultValue: 'Failed to delete the blog post.',
+            }),
+        'error',
+      );
+    } finally {
+      setBlogAction(null);
     }
   };
 
@@ -1188,8 +1561,9 @@ const AdminPage: React.FC = () => {
   );
 
   const renderDealersPanel = () => {
-    const dealerUpdateLoading = dealerMutations.update.loading;
-    const dealerDeleteLoading = dealerMutations.delete.loading;
+    const dealerUpdateLoading = dealerMutations.update.loading || dealerAction !== null;
+    const dealerDeleteLoading =
+      dealerMutations.delete.loading || dealerAction?.type === 'delete';
 
     const filterOptions: Array<{
       key: DealerFilterKey;
@@ -1389,7 +1763,7 @@ const AdminPage: React.FC = () => {
                   const showDeleteButton = dealerFilter !== 'deleted';
 
                   const renderPrimaryAction = () => {
-                    const isProcessing = dealerUpdateLoading && dealerAction?.id === dealer.id;
+                    const isProcessing = dealerAction?.id === dealer.id;
                     const hasDashboard = !!dealer.ownerUid;
 
                     const actionButtons = [];
@@ -1675,12 +2049,16 @@ const AdminPage: React.FC = () => {
 
                         {showDeleteButton && (
                           <button
-                            onClick={() => confirmAndDelete(() => deleteDealer(dealer.id))}
+                            onClick={() => confirmAndDelete(() => handleDeleteDealer(dealer.id))}
                             disabled={!isAdmin || dealerDeleteLoading}
                             className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/30 hover:text-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                             aria-label={t('admin.delete')}
                           >
-                            {dealerDeleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 size={14} />}
+                            {dealerAction?.id === dealer.id && dealerAction?.type === 'delete' ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 size={14} />
+                            )}
                             <span>{t('admin.delete')}</span>
                           </button>
                         )}
@@ -1719,6 +2097,551 @@ const AdminPage: React.FC = () => {
         </div>
 
         {content}
+      </div>
+    );
+  };
+
+  const renderUsersPanel = () => {
+    if (!canReadUsers) {
+      return (
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
+            {renderEmptyState(
+              t('admin.usersUnavailable', {
+                defaultValue: 'You do not have permission to manage user accounts.',
+              }),
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const isSuspended =
+      userAdminResult?.accountStatus === 'suspended' || userAdminResult?.authDisabled === true;
+    const isDealerLikeTarget = userAdminResult?.relationships.hasDealerAccount === true;
+    const isPlatformAdminTarget = userAdminResult?.relationships.isPlatformAdmin === true;
+    const isOwnAccount = userAdminResult?.uid === user?.uid;
+    const isProtectedAdminTarget = Boolean(isPlatformAdminTarget && !isMasterAdmin);
+    const canSuspendTarget =
+      Boolean(
+        userAdminResult &&
+          !isSuspended &&
+          !isDealerLikeTarget &&
+          !isOwnAccount &&
+          !isProtectedAdminTarget &&
+          canSuspendUsers,
+      );
+    const canReactivateTarget =
+      Boolean(
+        userAdminResult &&
+          isSuspended &&
+          !isDealerLikeTarget &&
+          !isOwnAccount &&
+          !isProtectedAdminTarget &&
+          canReactivateUsers,
+      );
+    const createdAt = formatDateTime(userAdminResult?.createdAt);
+    const lastSignInAt = formatDateTime(userAdminResult?.lastSignInAt);
+    const linkedDealers = userAdminResult?.relationships.linkedDealers ?? [];
+    const listingCounts = userAdminResult?.relationships.listingCounts;
+
+    return (
+      <div className="space-y-6">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-white">
+                {t('admin.manageUsers', { defaultValue: 'Users' })}
+              </h2>
+              <p className="max-w-3xl text-sm text-gray-400">
+                {t('admin.usersDescription', {
+                  defaultValue:
+                    'Look up a user by email or UID, inspect linked dealer and inventory relationships, then suspend or reactivate normal user accounts.',
+                })}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-gray-300">
+              {t('admin.usersNote', {
+                defaultValue:
+                  'Dealer and platform-admin accounts stay protected by their own management workflows.',
+              })}
+            </div>
+          </div>
+
+          <form
+            onSubmit={handleUserAdminLookup}
+            className="mt-6 flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 lg:flex-row lg:items-end"
+          >
+            <label className="flex min-w-0 flex-1 flex-col gap-2 text-sm text-gray-300">
+              <span className="font-medium text-white">
+                {t('admin.userLookupLabel', { defaultValue: 'User email or UID' })}
+              </span>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="text"
+                  value={userAdminQuery}
+                  onChange={event => setUserAdminQuery(event.target.value)}
+                  placeholder={t('admin.userLookupPlaceholder', {
+                    defaultValue: 'name@example.com or Firebase UID',
+                  })}
+                  className="w-full rounded-xl border border-white/10 bg-black/40 py-3 pl-10 pr-4 text-sm text-white focus:border-gray-cyan/50 focus:outline-none"
+                />
+              </div>
+            </label>
+            <button
+              type="submit"
+              disabled={userAdminLookupLoading}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-cyan/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {userAdminLookupLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search size={16} />
+              )}
+              <span>{t('admin.findUser', { defaultValue: 'Find user' })}</span>
+            </button>
+          </form>
+
+          {userAdminLookupError && (
+            <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+              {userAdminLookupError}
+            </div>
+          )}
+        </div>
+
+        {userAdminResult && (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
+            <div className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-semibold text-white">
+                    {userAdminResult.displayName ||
+                      userAdminResult.email ||
+                      t('admin.unnamedUser', { defaultValue: 'Unnamed user' })}
+                  </h3>
+                  <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-medium text-gray-300">
+                    UID: {userAdminResult.uid}
+                  </span>
+                  {isSuspended && (
+                    <span className="inline-flex items-center rounded-full border border-red-400/30 bg-red-500/10 px-2 py-1 text-[11px] font-semibold text-red-100">
+                      {t('admin.userSuspendedBadge', { defaultValue: 'Suspended' })}
+                    </span>
+                  )}
+                  {userAdminResult.emailVerified && (
+                    <span className="inline-flex items-center rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-100">
+                      {t('admin.emailVerifiedBadge', { defaultValue: 'Email verified' })}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+                  <span className="inline-flex items-center rounded-full border border-gray-cyan/30 bg-gray-cyan/10 px-2 py-1 text-gray-100">
+                    {t('admin.userRoleBadge', {
+                      defaultValue: 'Role: {{role}}',
+                      role: userAdminResult.role,
+                    })}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">
+                    {t('admin.userTypeBadge', {
+                      defaultValue: 'Type: {{type}}',
+                      type: userAdminResult.accountType ?? 'user',
+                    })}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-1 text-gray-300">
+                    {t('admin.userStatusBadge', {
+                      defaultValue: 'Status: {{status}}',
+                      status: userAdminResult.accountStatus ?? 'active',
+                    })}
+                  </span>
+                </div>
+                <div className="space-y-1 text-sm text-gray-400">
+                  <p>{userAdminResult.email ?? t('admin.missingEmail', { defaultValue: 'No email on file' })}</p>
+                  {createdAt && (
+                    <p>
+                      {t('admin.userCreatedAt', {
+                        defaultValue: 'Created: {{date}}',
+                        date: createdAt,
+                      })}
+                    </p>
+                  )}
+                  {lastSignInAt && (
+                    <p>
+                      {t('admin.userLastSignInAt', {
+                        defaultValue: 'Last sign-in: {{date}}',
+                        date: lastSignInAt,
+                      })}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-gray-300">
+                <p className="font-semibold uppercase tracking-wide text-white/80">
+                  {t('admin.userRelationshipSummary', { defaultValue: 'Relationship summary' })}
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                      {t('admin.linkedDealersCount', { defaultValue: 'Dealers' })}
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-white">{linkedDealers.length}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                      {t('admin.userListingsCount', { defaultValue: 'Listings' })}
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-white">{listingCounts?.total ?? 0}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                      {t('admin.userModelsCount', { defaultValue: 'Models' })}
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-white">
+                      {userAdminResult.relationships.modelCount}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                      {t('admin.userFavouritesCount', { defaultValue: 'Favourites' })}
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-white">
+                      {userAdminResult.relationships.favouriteCount}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                      {t('admin.userEnquiriesCount', { defaultValue: 'Enquiries' })}
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-white">
+                      {userAdminResult.relationships.enquiryCount}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                      {t('admin.platformAdminFlag', { defaultValue: 'Platform admin' })}
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-white">
+                      {userAdminResult.relationships.isPlatformAdmin ? 'Yes' : 'No'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {(isDealerLikeTarget || isPlatformAdminTarget || isOwnAccount) && (
+              <div className="mt-5 space-y-3">
+                {isDealerLikeTarget && (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                    {t('admin.userDealerWorkflowWarning', {
+                      defaultValue:
+                        'This account is linked to dealer operations. Manage approvals, activation, or suspension through the dealer workflow.',
+                    })}
+                  </div>
+                )}
+                {isPlatformAdminTarget && !isMasterAdmin && (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                    {t('admin.userAdminWorkflowWarning', {
+                      defaultValue:
+                        'This account has platform-admin access. Only a master admin can suspend or reactivate it here.',
+                    })}
+                  </div>
+                )}
+                {isOwnAccount && (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                    {t('admin.selfStatusChangeWarning', {
+                      defaultValue:
+                        'Self-suspension is blocked through this panel. Use a separate admin account for account recovery operations.',
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_340px]">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-4 flex items-center gap-2">
+                  <UserPlus className="h-4 w-4 text-gray-cyan" />
+                  <h4 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                    {t('admin.userRelationships', { defaultValue: 'Linked relationships' })}
+                  </h4>
+                </div>
+
+                <div className="space-y-3">
+                  {linkedDealers.length > 0 ? (
+                    linkedDealers.map(dealer => (
+                      <div
+                        key={dealer.id}
+                        className="rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-white">{dealer.name}</p>
+                          <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                            {dealer.status ?? 'unknown'}
+                          </span>
+                          {dealer.planId && (
+                            <span className="inline-flex items-center rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-100">
+                              {dealer.planId}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-400">
+                          <span>ID: {dealer.id}</span>
+                          <span>{dealer.isActive ? 'Active' : 'Inactive'}</span>
+                          <span>{dealer.isDeleted ? 'Deleted' : 'Visible'}</span>
+                          {dealer.subscriptionStatus && <span>{dealer.subscriptionStatus}</span>}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-gray-400">
+                      {t('admin.noLinkedDealers', {
+                        defaultValue: 'No linked dealer records were found for this account.',
+                      })}
+                    </div>
+                  )}
+
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-sm font-semibold text-white">
+                      {t('admin.userInventoryBreakdown', { defaultValue: 'Inventory breakdown' })}
+                    </p>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      {[
+                        ['Total', listingCounts?.total ?? 0],
+                        ['Pending', listingCounts?.pending ?? 0],
+                        ['Approved', listingCounts?.approved ?? 0],
+                        ['Active', listingCounts?.active ?? 0],
+                        ['Inactive', listingCounts?.inactive ?? 0],
+                        ['Rejected', listingCounts?.rejected ?? 0],
+                        ['Deleted', listingCounts?.deleted ?? 0],
+                      ].map(([label, value]) => (
+                        <div key={label} className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">{label}</p>
+                          <p className="mt-1 text-base font-semibold text-white">{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-4 flex items-center gap-2">
+                  <Power className="h-4 w-4 text-gray-cyan" />
+                  <h4 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                    {t('admin.userAccountActions', { defaultValue: 'Account actions' })}
+                  </h4>
+                </div>
+
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => handleUserStatusChange('suspended')}
+                    disabled={!canSuspendTarget || userAdminActionLoading}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-500/20 px-4 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {userAdminActionLoading && !canReactivateTarget ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Power size={16} />
+                    )}
+                    <span>{t('admin.suspendUser', { defaultValue: 'Suspend user' })}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUserStatusChange('active')}
+                    disabled={!canReactivateTarget || userAdminActionLoading}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500/20 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {userAdminActionLoading && !canSuspendTarget ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCcw size={16} />
+                    )}
+                    <span>{t('admin.reactivateUser', { defaultValue: 'Reactivate user' })}</span>
+                  </button>
+                </div>
+
+                <div className="mt-6 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-gray-400">
+                  {t('admin.userActionsHint', {
+                    defaultValue:
+                      'Suspension disables Firebase Auth sign-in and marks the profile as suspended. Reactivation restores sign-in for normal user accounts.',
+                  })}
+                </div>
+
+                {userAdminResult.adminRoleIds.length > 0 && (
+                  <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-gray-400">
+                    <p className="font-semibold uppercase tracking-wide text-white/80">
+                      {t('admin.userAdminRoles', { defaultValue: 'Admin presets' })}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {userAdminResult.adminRoleIds.map(roleId => (
+                        <span
+                          key={roleId}
+                          className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[11px] font-medium text-gray-200"
+                        >
+                          {ADMIN_ROLE_PRESETS[roleId]?.label ?? roleId}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderAuditPanel = () => {
+    if (!canViewAudit) {
+      return (
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
+            {renderEmptyState(
+              t('admin.auditLogUnavailable', {
+                defaultValue: 'You do not have permission to view the audit log.',
+              }),
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-white">
+                {t('admin.auditLogTab', { defaultValue: 'Audit log' })}
+              </h2>
+              <p className="max-w-3xl text-sm text-gray-400">
+                {t('admin.auditLogDescription', {
+                  defaultValue:
+                    'Review recent privileged platform actions, including dealer-plan assignments, admin-access changes, and user status updates.',
+                })}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadAuditLogs(true)}
+              disabled={auditLoading}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {auditLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw size={16} />}
+              <span>{t('admin.refreshAuditLog', { defaultValue: 'Refresh audit log' })}</span>
+            </button>
+          </div>
+
+          {auditError && (
+            <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+              {auditError}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
+          {auditLoading && !auditLoaded ? (
+            renderLoadingState()
+          ) : auditLogs.length === 0 ? (
+            renderEmptyState(
+              t('admin.auditLogEmpty', {
+                defaultValue: 'No privileged audit entries have been recorded yet.',
+              }),
+            )
+          ) : (
+            <div className="space-y-4">
+              {auditLogs.map(log => {
+                const beforeBlock = formatJsonBlock(log.before ?? null);
+                const afterBlock = formatJsonBlock(log.after ?? null);
+                const metadataBlock = formatJsonBlock(log.metadata ?? null);
+                const createdAt = typeof log.createdAt === 'string' ? formatDateTime(log.createdAt) : null;
+
+                return (
+                  <article
+                    key={log.id}
+                    className="rounded-2xl border border-white/10 bg-black/20 p-4"
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center rounded-full border border-gray-cyan/30 bg-gray-cyan/10 px-2 py-1 text-[11px] font-semibold text-gray-100">
+                            {formatAuditActionLabel(log.action)}
+                          </span>
+                          <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-medium text-gray-300">
+                            {log.entityType}:{log.entityId}
+                          </span>
+                          {createdAt && (
+                            <span className="text-xs text-gray-500">{createdAt}</span>
+                          )}
+                        </div>
+                        <p className="text-sm font-semibold text-white">{log.summary}</p>
+                        <div className="flex flex-wrap gap-4 text-xs text-gray-400">
+                          <span>
+                            {t('admin.auditActorLabel', { defaultValue: 'Actor' })}: {log.actorEmail || log.actorUid}
+                          </span>
+                          {log.targetUid && (
+                            <span>
+                              {t('admin.auditTargetLabel', { defaultValue: 'Target' })}: {log.targetEmail || log.targetUid}
+                            </span>
+                          )}
+                        </div>
+                        {Array.isArray(log.actorAdminRoleIds) && log.actorAdminRoleIds.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {log.actorAdminRoleIds.map(roleId => (
+                              <span
+                                key={`${log.id}-${roleId}`}
+                                className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-medium text-gray-300"
+                              >
+                                {ADMIN_ROLE_PRESETS[roleId]?.label ?? roleId}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {(beforeBlock || afterBlock || metadataBlock) && (
+                      <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                        {beforeBlock && (
+                          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                              {t('admin.auditBefore', { defaultValue: 'Before' })}
+                            </p>
+                            <pre className="mt-2 whitespace-pre-wrap break-all text-xs text-gray-300">
+                              {beforeBlock}
+                            </pre>
+                          </div>
+                        )}
+                        {afterBlock && (
+                          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                              {t('admin.auditAfter', { defaultValue: 'After' })}
+                            </p>
+                            <pre className="mt-2 whitespace-pre-wrap break-all text-xs text-gray-300">
+                              {afterBlock}
+                            </pre>
+                          </div>
+                        )}
+                        {metadataBlock && (
+                          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                              {t('admin.auditMetadata', { defaultValue: 'Metadata' })}
+                            </p>
+                            <pre className="mt-2 whitespace-pre-wrap break-all text-xs text-gray-300">
+                              {metadataBlock}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -2056,8 +2979,10 @@ const AdminPage: React.FC = () => {
   };
 
   const renderModelsPanel = () => {
-    const modelUpdateLoading = modelMutations.update.loading;
-    const modelDeleteLoading = modelMutations.delete.loading;
+    const modelUpdateLoading =
+      modelMutations.update.loading || modelAction?.type === 'toggleVisibility';
+    const modelDeleteLoading =
+      modelMutations.delete.loading || modelAction?.type === 'delete';
     let content: React.ReactNode;
     if (loadError) {
       content = renderErrorState();
@@ -2189,7 +3114,7 @@ const AdminPage: React.FC = () => {
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       <button
-                        onClick={() => updateModel(model.id, { isActive: model.isActive === false })}
+                        onClick={() => handleToggleModelVisibility(model)}
                         disabled={modelUpdateLoading}
                         className={`inline-flex items-center gap-1 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                           model.isActive === false 
@@ -2211,12 +3136,16 @@ const AdminPage: React.FC = () => {
                         <span>{t('admin.edit')}</span>
                       </button>
                       <button
-                        onClick={() => confirmAndDelete(() => deleteModel(model.id))}
+                        onClick={() => confirmAndDelete(() => handleDeleteModel(model.id))}
                         disabled={modelDeleteLoading}
                         className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/30 hover:text-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                         aria-label={t('admin.delete')}
                       >
-                        {modelDeleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 size={14} />}
+                        {modelAction?.id === model.id && modelAction?.type === 'delete' ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 size={14} />
+                        )}
                         <span>{t('admin.delete')}</span>
                       </button>
                     </div>
@@ -2279,8 +3208,12 @@ const AdminPage: React.FC = () => {
           <AdminListingsTab
             listings={listings}
             dealers={dealers}
-            onUpdateStatus={(id, status) => updateListing(id, { status })}
-            onDelete={deleteListing}
+            onUpdateStatus={async (id, status) => {
+              await updateAdminListing({ listingId: id, status });
+            }}
+            onDelete={async (id) => {
+              await updateAdminListing({ listingId: id, status: 'deleted' });
+            }}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
             onSelectAll={toggleSelectAll}
@@ -2292,8 +3225,10 @@ const AdminPage: React.FC = () => {
   };
 
   const renderBlogPanel = () => {
-    const blogUpdateLoading = blogPostMutations.update.loading;
-    const blogDeleteLoading = blogPostMutations.delete.loading;
+    const blogUpdateLoading =
+      blogPostMutations.update.loading || blogAction?.type === 'toggleStatus';
+    const blogDeleteLoading =
+      blogPostMutations.delete.loading || blogAction?.type === 'delete';
     let content: React.ReactNode;
     if (loadError) {
       content = renderErrorState();
@@ -2413,7 +3348,7 @@ const AdminPage: React.FC = () => {
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       <button
-                        onClick={() => updateBlogPost(post.id, { status: post.status === 'published' ? 'draft' : 'published' })}
+                        onClick={() => handleToggleBlogStatus(post)}
                         disabled={blogUpdateLoading}
                         className={`inline-flex items-center gap-1 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                           post.status !== 'published' 
@@ -2435,12 +3370,16 @@ const AdminPage: React.FC = () => {
                         <span>{t('admin.edit')}</span>
                       </button>
                       <button
-                        onClick={() => confirmAndDelete(() => deleteBlogPost(post.id))}
+                        onClick={() => confirmAndDelete(() => handleDeleteBlogPost(post.id))}
                         disabled={blogDeleteLoading}
                         className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/30 hover:text-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                         aria-label={t('admin.delete')}
                       >
-                        {blogDeleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 size={14} />}
+                        {blogAction?.id === post.id && blogAction?.type === 'delete' ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 size={14} />
+                        )}
                         <span>{t('admin.delete')}</span>
                       </button>
                     </div>
@@ -2637,24 +3576,22 @@ const AdminPage: React.FC = () => {
                           </a>
                         )}
                         <button
-                          onClick={() => updateChargingStation(station.id, {
-                            address: station.address,
-                            plugTypes: station.plugTypes,
-                            chargingSpeedKw: station.chargingSpeedKw,
-                            operator: station.operator || '',
-                            pricingDetails: station.pricingDetails || '',
-                            googleMapsLink: station.googleMapsLink || '',
-                            latitude: station.latitude ?? '',
-                            longitude: station.longitude ?? '',
-                            isActive: station.isActive === false,
-                          }, user!.uid)}
+                          onClick={() => handleToggleStationVisibility(station)}
+                          disabled={stationAction !== null}
                           className={`inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[10px] font-semibold transition ${
                             station.isActive === false 
                               ? 'bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30' 
                               : 'bg-amber-500/20 text-amber-200 hover:bg-amber-500/30'
                           }`}
                         >
-                          {station.isActive === false ? <Eye size={10} /> : <EyeOff size={10} />}
+                          {stationAction?.id === station.id &&
+                          stationAction?.type === 'toggleVisibility' ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : station.isActive === false ? (
+                            <Eye size={10} />
+                          ) : (
+                            <EyeOff size={10} />
+                          )}
                           {station.isActive === false ? t('admin.show') : t('admin.hide')}
                         </button>
                         <button
@@ -2666,9 +3603,14 @@ const AdminPage: React.FC = () => {
                         </button>
                         <button
                           onClick={() => confirmAndDelete(() => handleDeleteStation(station.id))}
+                          disabled={stationAction !== null}
                           className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-red-500/20 px-2 py-1 text-[10px] font-semibold text-red-200 transition hover:bg-red-500/30"
                         >
-                          <Trash2 size={10} />
+                          {stationAction?.id === station.id && stationAction?.type === 'delete' ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Trash2 size={10} />
+                          )}
                           {t('admin.delete')}
                         </button>
                       </div>
@@ -2825,11 +3767,13 @@ const AdminPage: React.FC = () => {
         {/* Content Panel */}
         <div className="flex-1 p-4 md:p-8 overflow-auto">
           {activeTab === 'dealers' && renderDealersPanel()}
+          {activeTab === 'users' && renderUsersPanel()}
           {activeTab === 'models' && renderModelsPanel()}
           {activeTab === 'listings' && renderListingsPanel()}
           {activeTab === 'blog' && renderBlogPanel()}
           {activeTab === 'stations' && renderStationsPanel()}
           {activeTab === 'access' && renderAccessPanel()}
+          {activeTab === 'audit' && renderAuditPanel()}
           {activeTab === 'migration' && (
             <div className="mt-6">
               <Suspense

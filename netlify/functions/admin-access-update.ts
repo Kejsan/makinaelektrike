@@ -12,6 +12,7 @@ import {
 import { getOptionalString, getRequiredEmail, getEnumValue } from './_lib/validation';
 import { requireAdminPermission } from './_lib/adminAccess';
 import { getAdminAuth, getAdminFirestore } from './_lib/firebaseAdmin';
+import { buildAuditActor, writeAdminAuditLog } from './_lib/auditLog';
 import type { AccountStatus, AdminRoleId, PermissionOverrides } from '../../types';
 import { normalizePermissionOverrides, normalizeUserProfile } from '../../utils/accessControl';
 
@@ -214,13 +215,15 @@ export const handler = async (event: FunctionEvent) => {
     const nextDirectPermissions =
       directPermissions ?? (adminRoleIds.length > 0 ? existingProfile.directPermissions ?? {} : {});
     const isMasterAdmin = adminRoleIds.includes('master_admin');
+    const nextRole = adminRoleIds.length > 0 ? 'admin' : 'user';
+    const nextAccountType = adminRoleIds.length > 0 ? 'admin' : 'user';
 
     await userRef.set(
       {
         uid: targetUid,
         email: targetEmail ?? null,
-        role: adminRoleIds.length > 0 ? 'admin' : 'user',
-        accountType: adminRoleIds.length > 0 ? 'admin' : 'user',
+        role: nextRole,
+        accountType: nextAccountType,
         accountStatus: nextAccountStatus,
         status: nextAccountStatus,
         adminRoleIds,
@@ -232,11 +235,46 @@ export const handler = async (event: FunctionEvent) => {
       { merge: true },
     );
 
+    await writeAdminAuditLog({
+      actor: buildAuditActor(profile),
+      action: 'admin_access.updated',
+      entityType: 'user',
+      entityId: targetUid,
+      target: {
+        uid: targetUid,
+        email: targetEmail ?? null,
+      },
+      summary:
+        adminRoleIds.length > 0
+          ? `Updated platform admin access for ${targetEmail ?? targetUid}.`
+          : `Removed platform admin access for ${targetEmail ?? targetUid}.`,
+      before: {
+        role: existingProfile.role,
+        accountType: existingProfile.accountType ?? null,
+        accountStatus: existingProfile.accountStatus ?? null,
+        adminRoleIds: existingProfile.adminRoleIds ?? [],
+        directPermissions: existingProfile.directPermissions ?? {},
+        isMasterAdmin: existingProfile.isMasterAdmin ?? false,
+      },
+      after: {
+        role: nextRole,
+        accountType: nextAccountType,
+        accountStatus: nextAccountStatus,
+        adminRoleIds,
+        directPermissions: nextDirectPermissions,
+        isMasterAdmin,
+      },
+      metadata: {
+        targetWasPlatformAdmin: (existingProfile.adminRoleIds?.length ?? 0) > 0,
+        directPermissionsChanged: directPermissions !== undefined,
+      },
+    });
+
     return json(200, {
       ok: true,
       uid: targetUid,
       email: targetEmail ?? null,
-      role: adminRoleIds.length > 0 ? 'admin' : 'user',
+      role: nextRole,
       accountStatus: nextAccountStatus,
       adminRoleIds,
       directPermissions: nextDirectPermissions,

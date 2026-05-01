@@ -22,6 +22,22 @@ export type AdminRoleId =
   | 'analyst';
 export type DealerPlanId = 'free' | 'paid';
 export type DealerSubscriptionStatus = 'active' | 'paused' | 'expired' | 'cancelled';
+export type AuditAction =
+  | 'dealer_plan.updated'
+  | 'dealer_status.updated'
+  | 'admin_access.updated'
+  | 'user_status.updated'
+  | 'listing.updated'
+  | 'model.updated'
+  | 'charging_station.updated'
+  | 'blog_post.updated';
+export type AuditEntityType =
+  | 'dealer'
+  | 'user'
+  | 'listing'
+  | 'model'
+  | 'charging_station'
+  | 'blog_post';
 export type PermissionKey =
   | 'users.read'
   | 'users.edit'
@@ -87,6 +103,23 @@ export interface DealerPlanDefinition {
   name: string;
   description: string;
   entitlements: DealerPlanEntitlements;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  action: AuditAction;
+  entityType: AuditEntityType;
+  entityId: string;
+  actorUid: string;
+  actorEmail?: string | null;
+  actorAdminRoleIds?: AdminRoleId[];
+  targetUid?: string | null;
+  targetEmail?: string | null;
+  summary: string;
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt?: Timestamp | string | null;
 }
 
 export interface AuthenticatedUser {

@@ -6,6 +6,37 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function isBlockedAccountData(userData) {
+      return (
+        ('accountStatus' in userData) &&
+        (
+          userData.accountStatus == 'suspended' ||
+          userData.accountStatus == 'disabled' ||
+          userData.accountStatus == 'archived'
+        )
+      ) || (
+        !('accountStatus' in userData) &&
+        ('status' in userData) &&
+        (
+          userData.status == 'suspended' ||
+          userData.status == 'disabled' ||
+          userData.status == 'archived'
+        )
+      );
+    }
+
+    function hasActiveUserRecord() {
+      return hasUserRecord() &&
+        !isBlockedAccountData(getUserData());
+    }
+
+    function isSignedInAndNotBlocked() {
+      return isAuthenticated() && (
+        !hasUserRecord() ||
+        hasActiveUserRecord()
+      );
+    }
+
     function hasUserRecord() {
       return isAuthenticated() &&
         firestore.exists(/databases/(default)/documents/users/$(request.auth.uid));
@@ -16,19 +47,19 @@ service firebase.storage {
     }
 
     function hasAdminRole(roleId) {
-      return hasUserRecord() &&
+      return hasActiveUserRecord() &&
         ('adminRoleIds' in getUserData()) &&
         getUserData().adminRoleIds.hasAny([roleId]);
     }
 
     function hasDirectPermission(permission) {
-      return hasUserRecord() &&
+      return hasActiveUserRecord() &&
         ('directPermissions' in getUserData()) &&
         getUserData().directPermissions[permission] == true;
     }
 
     function hasFullAdminAccess() {
-      return hasUserRecord() && (
+      return hasActiveUserRecord() && (
         getUserData().role == 'admin' ||
         getUserData().accountType == 'admin' ||
         getUserData().isMasterAdmin == true ||
@@ -61,7 +92,7 @@ service firebase.storage {
     }
 
     function isDealerOwner(dealerId) {
-      return isAuthenticated() && (
+      return isSignedInAndNotBlocked() && (
         dealerId == request.auth.uid ||
         (
           firestore.exists(/databases/(default)/documents/dealers/$(dealerId)) &&
@@ -71,7 +102,7 @@ service firebase.storage {
     }
 
     function isModelOwner(modelId) {
-      return isAuthenticated() &&
+      return isSignedInAndNotBlocked() &&
         firestore.exists(/databases/(default)/documents/models/$(modelId)) &&
         firestore.get(/databases/(default)/documents/models/$(modelId)).data.ownerUid == request.auth.uid;
     }

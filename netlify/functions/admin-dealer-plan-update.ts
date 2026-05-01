@@ -12,6 +12,7 @@ import {
 import { getEnumValue, getRequiredString } from './_lib/validation';
 import { requireAdminPermission } from './_lib/adminAccess';
 import { getAdminFirestore } from './_lib/firebaseAdmin';
+import { buildAuditActor, writeAdminAuditLog } from './_lib/auditLog';
 import type { DealerPlanId, DealerSubscriptionStatus } from '../../types';
 
 interface DealerPlanUpdateBody {
@@ -51,6 +52,12 @@ export const handler = async (event: FunctionEvent) => {
     }
 
     const dealerData = dealerSnapshot.data() as Record<string, unknown>;
+    const previousPlanId =
+      typeof dealerData.planId === 'string' ? (dealerData.planId as DealerPlanId) : 'free';
+    const previousSubscriptionStatus =
+      typeof dealerData.subscriptionStatus === 'string'
+        ? (dealerData.subscriptionStatus as DealerSubscriptionStatus)
+        : 'active';
     const candidateUserIds = Array.from(
       new Set(
         [dealerData.ownerUid, dealerData.uid, dealerId].filter(
@@ -81,6 +88,34 @@ export const handler = async (event: FunctionEvent) => {
         });
       }),
     );
+
+    await writeAdminAuditLog({
+      actor: buildAuditActor(profile),
+      action: 'dealer_plan.updated',
+      entityType: 'dealer',
+      entityId: dealerId,
+      target: {
+        uid:
+          typeof dealerData.ownerUid === 'string'
+            ? dealerData.ownerUid
+            : typeof dealerData.uid === 'string'
+              ? dealerData.uid
+              : null,
+      },
+      summary: `Updated dealer plan from ${previousPlanId}/${previousSubscriptionStatus} to ${planId}/${subscriptionStatus}.`,
+      before: {
+        planId: previousPlanId,
+        subscriptionStatus: previousSubscriptionStatus,
+      },
+      after: {
+        planId,
+        subscriptionStatus,
+      },
+      metadata: {
+        candidateUserIds,
+        dealerStatus: typeof dealerData.status === 'string' ? dealerData.status : null,
+      },
+    });
 
     return json(200, {
       ok: true,
