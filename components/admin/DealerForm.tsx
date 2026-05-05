@@ -17,6 +17,7 @@ export interface DealerFormValues extends Omit<Dealer, 'id'> {
 interface DealerFormProps {
   initialValues?: Dealer;
   onSubmit: (values: DealerFormValues) => void | Promise<void>;
+  onCreateModel?: (values: Pick<Model, 'brand' | 'model_name'>) => Promise<Model>;
   onCancel: () => void;
   isSubmitting?: boolean;
   canManageModels?: boolean;
@@ -86,7 +87,14 @@ const isValidEmail = (value: string) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 };
 
-const DealerForm: React.FC<DealerFormProps> = ({ initialValues, onSubmit, onCancel, isSubmitting, canManageModels = true }) => {
+const DealerForm: React.FC<DealerFormProps> = ({
+  initialValues,
+  onSubmit,
+  onCreateModel,
+  onCancel,
+  isSubmitting,
+  canManageModels = true,
+}) => {
   const { t } = useTranslation();
   const { isLoaded: isMapsApiLoaded } = useGoogleMapsApi();
   const { models, addModel, getModelsForDealer } = useContext(DataContext);
@@ -556,7 +564,9 @@ const DealerForm: React.FC<DealerFormProps> = ({ initialValues, onSubmit, onCanc
 
     setIsCreatingModel(true);
     try {
-      const createdModel = await addModel({ brand, model_name: modelName });
+      const createdModel = onCreateModel
+        ? await onCreateModel({ brand, model_name: modelName })
+        : await addModel({ brand, model_name: modelName });
       setSelectedModels(prev => [...prev, createdModel]);
       setNewModelBrand('');
       setNewModelName('');

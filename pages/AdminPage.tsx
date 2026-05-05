@@ -68,10 +68,13 @@ import {
   updateAdminModel,
   updateAdminStation,
 } from '../services/adminModeration';
+import {
+  saveAdminBlogPost,
+  saveAdminDealer,
+  saveAdminModel,
+} from '../services/adminContent';
+import { activateAdminDealerAccount } from '../services/adminDealerAccounts';
 import { updateDealerPlan as updateDealerPlanAssignment } from '../services/adminDealerPlans';
-import { associateDealerWithAccount } from '../services/api';
-import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import type { ChargingStationFormValues } from '../types';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
@@ -193,21 +196,12 @@ const AdminPage: React.FC = () => {
     dealers,
     models,
     listings,
-    getModelsForDealer,
     blogPosts,
     loading,
     loadError,
     dealerMutations,
     modelMutations,
     blogPostMutations,
-    addDealer,
-    updateDealer,
-    addModel,
-    updateModel,
-    linkModelToDealer,
-    unlinkModelFromDealer,
-    addBlogPost,
-    updateBlogPost,
   } = useContext(DataContext);
 
   const [activeTab, setActiveTab] = useState<TabKey>('dealers');
@@ -1090,6 +1084,14 @@ const AdminPage: React.FC = () => {
     event.preventDefault();
     if (!activationModalDealer) return;
 
+    const normalizedEmail = activationEmail.trim();
+    if (!normalizedEmail) {
+      setActivationError(
+        t('admin.emailRequired', { defaultValue: 'Email is required.' }),
+      );
+      return;
+    }
+
     if (activationPassword.length < 6) {
       setActivationError(t('admin.passwordTooShort', { defaultValue: 'Password must be at least 6 characters' }));
       return;
@@ -1098,52 +1100,27 @@ const AdminPage: React.FC = () => {
     setIsActivating(true);
     setActivationError(null);
 
-    let secondaryApp;
     try {
-      const secondaryConfig = {
-        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-        appId: import.meta.env.VITE_FIREBASE_APP_ID,
-      };
-      
-      const appName = `Activation-${activationModalDealer.id}-${Date.now()}`;
-      secondaryApp = initializeApp(secondaryConfig, appName);
-      const secondaryAuth = getAuth(secondaryApp);
-      
-      const userCredential = await createUserWithEmailAndPassword(
-        secondaryAuth,
-        activationEmail,
-        activationPassword
-      );
-      
-      const newUser = userCredential.user;
-      
-      await associateDealerWithAccount(
-        activationModalDealer.id,
-        newUser.uid,
-        activationEmail
-      );
-      
-      await signOut(secondaryAuth);
-      await deleteApp(secondaryApp);
-      
+      await activateAdminDealerAccount({
+        dealerId: activationModalDealer.id,
+        email: normalizedEmail,
+        password: activationPassword,
+      });
+
       addToast(t('admin.activationSuccess', { defaultValue: 'Account activated successfully!' }), 'success');
       setActivationModalDealer(null);
       setActivationPassword('');
       setActivationEmail('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to activate dealer account:', error);
-      let errorMsg = error.message || 'Failed to create account. Please try again.';
-      if (error.code === 'auth/email-already-in-use') {
+      let errorMsg =
+        error instanceof Error
+          ? error.message
+          : 'Failed to create account. Please try again.';
+      if (error instanceof Error && error.message.includes('already registered')) {
         errorMsg = t('admin.emailAlreadyInUse', { defaultValue: 'This email is already registered.' });
       }
       setActivationError(errorMsg);
-      if (secondaryApp) {
-        try { await deleteApp(secondaryApp); } catch(e) {}
-      }
     } finally {
       setIsActivating(false);
     }
@@ -1176,68 +1153,50 @@ const AdminPage: React.FC = () => {
         ? imageGallery.filter(Boolean).slice(0, 3)
         : [];
       const normalizedRest = { ...restValues, imageGallery: baseGallery };
+      const { id: _ignoredDealerId, ...dealerValues } = normalizedRest;
+      const dealerResponse = await saveAdminDealer({
+        dealerId: dealerFormState?.mode === 'edit' && dealerFormState.entity
+          ? dealerFormState.entity.id
+          : undefined,
+        values: {
+          ...dealerValues,
+          modelIds,
+        },
+      });
 
-      const syncModelsForDealer = async (dealerId: string, desiredIds: string[]) => {
-        const currentIds = new Set(getModelsForDealer(dealerId).map(model => model.id));
-        const desiredSet = new Set(desiredIds.filter(Boolean));
+      const dealerId = dealerResponse.dealerId;
+      const followUpValues: Record<string, unknown> = {};
 
-        const toAdd = desiredIds.filter(id => !currentIds.has(id));
-        const toRemove = [...currentIds].filter((id): id is string => typeof id === 'string' && !desiredSet.has(id));
+      if (imageFile) {
+        const heroUrl = await uploadDealerHeroImage(dealerId, imageFile);
+        followUpValues.image_url = heroUrl;
+        followUpValues.logo_url = heroUrl;
+      }
 
-        for (const modelId of toAdd) {
-          await linkModelToDealer(dealerId, modelId);
-        }
+      if (galleryFiles.length > 0) {
+        const uploadedGallery = await Promise.all(
+          galleryFiles.map(file => uploadDealerGalleryImage(dealerId, file)),
+        );
+        followUpValues.imageGallery = mergeGallery(baseGallery, uploadedGallery);
+      }
 
-        for (const modelId of toRemove) {
-          await unlinkModelFromDealer(dealerId, modelId);
-        }
-      };
-
-      if (dealerFormState?.mode === 'edit' && dealerFormState.entity) {
-        const { id, ...rest } = normalizedRest;
-        const dealerId = dealerFormState.entity.id;
-        await updateDealer(dealerId, rest);
-
-        if (imageFile) {
-          const heroUrl = await uploadDealerHeroImage(dealerId, imageFile);
-          await updateDealer(dealerId, { image_url: heroUrl });
-        }
-
-        if (galleryFiles.length > 0) {
-          const uploadedGallery = await Promise.all(
-            galleryFiles.map(file => uploadDealerGalleryImage(dealerId, file)),
-          );
-          const nextGallery = mergeGallery(baseGallery, uploadedGallery);
-          await updateDealer(dealerId, { imageGallery: nextGallery });
-        }
-
-        await syncModelsForDealer(dealerId, modelIds);
-      } else {
-        const { id: _omit, ...rest } = normalizedRest;
-        const createdDealer = await addDealer(rest);
-
-        if (createdDealer?.id) {
-          let nextGallery = baseGallery;
-
-          if (imageFile) {
-            const heroUrl = await uploadDealerHeroImage(createdDealer.id, imageFile);
-            await updateDealer(createdDealer.id, { image_url: heroUrl });
-          }
-
-          if (galleryFiles.length > 0) {
-            const uploadedGallery = await Promise.all(
-              galleryFiles.map(file => uploadDealerGalleryImage(createdDealer.id, file)),
-            );
-            nextGallery = mergeGallery(nextGallery, uploadedGallery);
-            await updateDealer(createdDealer.id, { imageGallery: nextGallery });
-          }
-
-          await syncModelsForDealer(createdDealer.id, modelIds);
-        }
+      if (Object.keys(followUpValues).length > 0) {
+        await saveAdminDealer({
+          dealerId,
+          values: followUpValues,
+        });
       }
       closeAllModals();
     } catch (error) {
       console.error(error);
+      addToast(
+        error instanceof Error
+          ? error.message
+          : t('admin.dealerSaveFailed', {
+              defaultValue: 'Failed to save the dealer profile.',
+            }),
+        'error',
+      );
     } finally {
       setDealerSubmitting(false);
     }
@@ -1254,48 +1213,46 @@ const AdminPage: React.FC = () => {
         ? imageGallery.filter(Boolean).slice(0, 3)
         : [];
       const normalizedRest = { ...restValues, imageGallery: baseGallery };
+      const { id: _ignoredModelId, ...modelValues } = normalizedRest;
+      const modelResponse = await saveAdminModel({
+        modelId: modelFormState?.mode === 'edit' && modelFormState.entity
+          ? modelFormState.entity.id
+          : undefined,
+        values: modelValues,
+      });
 
-      if (modelFormState?.mode === 'edit' && modelFormState.entity) {
-        const { id, ...rest } = normalizedRest;
-        const modelId = modelFormState.entity.id;
-        await updateModel(modelId, rest);
+      const modelId = modelResponse.modelId;
+      const followUpValues: Record<string, unknown> = {};
 
-        if (imageFile) {
-          const heroUrl = await uploadModelHeroImage(modelId, imageFile);
-          await updateModel(modelId, { image_url: heroUrl });
-        }
+      if (imageFile) {
+        const heroUrl = await uploadModelHeroImage(modelId, imageFile);
+        followUpValues.image_url = heroUrl;
+      }
 
-        if (galleryFiles.length > 0) {
-          const uploadedGallery = await Promise.all(
-            galleryFiles.map(file => uploadModelGalleryImage(modelId, file)),
-          );
-          const nextGallery = mergeGallery(baseGallery, uploadedGallery);
-          await updateModel(modelId, { imageGallery: nextGallery });
-        }
-      } else {
-        const { id: _omit, ...rest } = normalizedRest;
-        const createdModel = await addModel(rest);
+      if (galleryFiles.length > 0) {
+        const uploadedGallery = await Promise.all(
+          galleryFiles.map(file => uploadModelGalleryImage(modelId, file)),
+        );
+        followUpValues.imageGallery = mergeGallery(baseGallery, uploadedGallery);
+      }
 
-        if (createdModel?.id) {
-          let nextGallery = baseGallery;
-
-          if (imageFile) {
-            const heroUrl = await uploadModelHeroImage(createdModel.id, imageFile);
-            await updateModel(createdModel.id, { image_url: heroUrl });
-          }
-
-          if (galleryFiles.length > 0) {
-            const uploadedGallery = await Promise.all(
-              galleryFiles.map(file => uploadModelGalleryImage(createdModel.id, file)),
-            );
-            nextGallery = mergeGallery(nextGallery, uploadedGallery);
-            await updateModel(createdModel.id, { imageGallery: nextGallery });
-          }
-        }
+      if (Object.keys(followUpValues).length > 0) {
+        await saveAdminModel({
+          modelId,
+          values: followUpValues,
+        });
       }
       closeAllModals();
     } catch (error) {
       console.error(error);
+      addToast(
+        error instanceof Error
+          ? error.message
+          : t('admin.modelSaveFailed', {
+              defaultValue: 'Failed to save the EV model.',
+            }),
+        'error',
+      );
     } finally {
       setModelSubmitting(false);
     }
@@ -1304,20 +1261,38 @@ const AdminPage: React.FC = () => {
   const handleBlogSubmit = async (values: BlogPostFormValues) => {
     setBlogSubmitting(true);
     try {
-      if (blogFormState?.mode === 'edit' && blogFormState.entity) {
-        const { id, ...rest } = values;
-        await updateBlogPost(blogFormState.entity.id, rest);
-      } else {
-        const { id: _omit, ...rest } = values;
-        await addBlogPost(rest);
-      }
+      const { id: _ignoredPostId, ...postValues } = values;
+      await saveAdminBlogPost({
+        postId: blogFormState?.mode === 'edit' && blogFormState.entity
+          ? blogFormState.entity.id
+          : undefined,
+        values: postValues as unknown as Record<string, unknown>,
+      });
       closeAllModals();
     } catch (error) {
       console.error(error);
+      addToast(
+        error instanceof Error
+          ? error.message
+          : t('admin.blogSaveFailed', {
+              defaultValue: 'Failed to save the blog post.',
+            }),
+        'error',
+      );
     } finally {
       setBlogSubmitting(false);
     }
   };
+
+  const handleCreateDealerModel = useCallback(
+    async (values: Pick<Model, 'brand' | 'model_name'>) => {
+      const response = await saveAdminModel({
+        values: values as unknown as Record<string, unknown>,
+      });
+      return response.model;
+    },
+    [],
+  );
 
   const handleStationSubmit = async (values: ChargingStationFormValues) => {
     if (!user?.uid) return;
@@ -3799,6 +3774,7 @@ const AdminPage: React.FC = () => {
           <DealerForm
             initialValues={dealerFormState.entity}
             onSubmit={handleDealerSubmit}
+            onCreateModel={handleCreateDealerModel}
             onCancel={closeAllModals}
             isSubmitting={dealerSubmitting}
             canManageModels={isAdmin}

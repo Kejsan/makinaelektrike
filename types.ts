@@ -24,6 +24,8 @@ export type DealerPlanId = 'free' | 'paid';
 export type DealerSubscriptionStatus = 'active' | 'paused' | 'expired' | 'cancelled';
 export type AuditAction =
   | 'dealer_plan.updated'
+  | 'dealer.updated'
+  | 'dealer_account.updated'
   | 'dealer_status.updated'
   | 'admin_access.updated'
   | 'user_status.updated'
