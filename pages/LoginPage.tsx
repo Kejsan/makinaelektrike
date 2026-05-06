@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UserRound, Store, ShieldCheck, ArrowRight } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import SEO from '../components/SEO';
 import { useAuth } from '../contexts/AuthContext';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
@@ -13,11 +14,20 @@ type AccountType = 'user' | 'dealer';
 const LoginPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useLocalizedNavigate();
+  const [searchParams] = useSearchParams();
   const { login, loading, error, user, role, initializing } = useAuth();
-  const [email, setEmail] = useState('');
+  const redirectTarget = searchParams.get('redirect');
+  const prefilledEmail = searchParams.get('email') ?? '';
+  const [email, setEmail] = useState(prefilledEmail);
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [accountType, setAccountType] = useState<AccountType>('user');
+
+  useEffect(() => {
+    if (prefilledEmail && !email) {
+      setEmail(prefilledEmail);
+    }
+  }, [email, prefilledEmail]);
 
   const accountOptions = useMemo(
     () => [
@@ -49,6 +59,10 @@ const LoginPage: React.FC = () => {
     return <LocalizedNavigate to="/awaiting-approval" replace />;
   }
 
+  if (user && redirectTarget) {
+    return <LocalizedNavigate to={redirectTarget} replace />;
+  }
+
   if (user && role === 'dealer') {
     return <LocalizedNavigate to="/dealer/dashboard" replace />;
   }
@@ -69,6 +83,10 @@ const LoginPage: React.FC = () => {
 
     try {
       await login(email, password);
+      if (redirectTarget) {
+        navigate(redirectTarget);
+        return;
+      }
       if (accountType === 'dealer') {
         navigate('/dealer/dashboard');
       } else {

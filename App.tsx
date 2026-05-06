@@ -34,6 +34,7 @@ const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
 const AwaitingApprovalPage = lazy(() => import('./pages/AwaitingApprovalPage'));
 const DealerDashboardPage = lazy(() => import('./pages/DealerDashboardPage'));
 const DealerListingsPage = lazy(() => import('./pages/DealerListingsPage'));
+const AcceptInvitePage = lazy(() => import('./pages/AcceptInvitePage'));
 const ListingsPage = lazy(() => import('./pages/ListingsPage'));
 const ListingDetailPage = lazy(() => import('./pages/ListingDetailPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -59,6 +60,7 @@ const PUBLIC_ROUTE_DEFINITIONS: Array<{ path: string; element: React.ReactElemen
   { path: '/contact', element: <ContactPage /> },
   { path: '/favorites', element: <FavoritesPage /> },
   { path: '/awaiting-approval', element: <AwaitingApprovalPage /> },
+  { path: '/accept-invite', element: <AcceptInvitePage /> },
   { path: '/register', element: <RegisterUserPage /> },
   { path: '/register-dealer', element: <RegisterDealerPage /> },
   { path: '/login', element: <LoginPage /> },
@@ -120,15 +122,26 @@ const AdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) =>
 };
 
 const DealerRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
-  const { user, role, loading: authLoading, initializing } = useAuth();
+  const { user, role, profile, loading: authLoading, initializing } = useAuth();
   const { dealers, loading: dataLoading } = useContext(DataContext);
 
   const dealerRecord = useMemo(() => {
     if (!user) {
       return null;
     }
-    return dealers.find(dealer => dealer.id === user.uid || dealer.ownerUid === user.uid) ?? null;
-  }, [dealers, user]);
+    const dealerStaffDealerId =
+      profile?.accountType === 'dealer_staff' && typeof profile.dealerId === 'string'
+        ? profile.dealerId
+        : null;
+    return (
+      dealers.find(
+        dealer =>
+          dealer.id === user.uid ||
+          dealer.ownerUid === user.uid ||
+          (dealerStaffDealerId ? dealer.id === dealerStaffDealerId : false),
+      ) ?? null
+    );
+  }, [dealers, profile, user]);
 
   if (initializing || authLoading || dataLoading) {
     return <LoadingScreen />;

@@ -28,7 +28,7 @@ import Link from '../components/LocalizedLink';
 const DealerListingsPage: React.FC = () => {
     const { t } = useTranslation();
     const [searchParams, setSearchParams] = useSearchParams();
-    const { user } = useContext(AuthContext);
+    const { user, profile } = useContext(AuthContext);
     const { listings, dealers, models, getModelsForDealer, addListing, updateListing, deleteListing } = useContext(DataContext);
     const { addToast } = useContext(ToastContext);
 
@@ -40,11 +40,16 @@ const DealerListingsPage: React.FC = () => {
 
     const dealer = useMemo(() => {
         if (!user) return undefined;
+        const dealerStaffDealerId =
+            profile?.accountType === 'dealer_staff' && typeof profile.dealerId === 'string'
+                ? profile.dealerId
+                : null;
         return (
             dealers.find(entry => entry.ownerUid === user.uid) ||
-            dealers.find(entry => entry.id === user.uid)
+            dealers.find(entry => entry.id === user.uid) ||
+            (dealerStaffDealerId ? dealers.find(entry => entry.id === dealerStaffDealerId) : undefined)
         );
-    }, [dealers, user]);
+    }, [dealers, profile, user]);
 
     const availableListingModels: Model[] = useMemo(() => {
         const sortByName = (entries: Model[]) =>

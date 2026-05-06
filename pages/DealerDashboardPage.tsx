@@ -15,7 +15,10 @@ import {
   FilePlus2,
   Images,
   ListChecks,
-  ShieldCheck
+  ShieldCheck,
+  UserPlus,
+  Users,
+  Copy
 } from 'lucide-react';
 import { DataContext } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,7 +29,15 @@ import {
   uploadModelGalleryImage,
   uploadModelHeroImage,
 } from '../services/storage';
-import type { Dealer, Model } from '../types';
+import {
+  createDealerStaffInvite,
+  listDealerStaff,
+  removeDealerStaffMember,
+  revokeDealerStaffInvite,
+  type DealerStaffMember,
+  type DealerTeamCapacity,
+} from '../services/dealerStaff';
+import type { AccessInvite, Dealer, DealerStaffRole, Model } from '../types';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import { DEALERSHIP_PLACEHOLDER_IMAGE, MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
@@ -116,7 +127,7 @@ const parseNumericField = (value: string) => {
 
 const DealerDashboardPage: React.FC = () => {
   const { t, i18n } = useTranslation();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const {
     dealers,
     models,
@@ -147,15 +158,35 @@ const DealerDashboardPage: React.FC = () => {
   const [galleryRemoving, setGalleryRemoving] = useState<string | null>(null);
   const [newModelGalleryDrafts, setNewModelGalleryDrafts] = useState<GalleryDraft[]>([]);
   const newModelGalleryDraftsRef = useRef<GalleryDraft[]>([]);
+  const [teamInviteEmail, setTeamInviteEmail] = useState('');
+  const [teamInviteRole, setTeamInviteRole] = useState<Extract<DealerStaffRole, 'manager' | 'editor'>>('manager');
+  const [teamMembers, setTeamMembers] = useState<DealerStaffMember[]>([]);
+  const [teamInvites, setTeamInvites] = useState<AccessInvite[]>([]);
+  const [teamCapacity, setTeamCapacity] = useState<DealerTeamCapacity | null>(null);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [teamLoaded, setTeamLoaded] = useState(false);
+  const [teamError, setTeamError] = useState<string | null>(null);
+  const [teamInviteSubmitting, setTeamInviteSubmitting] = useState(false);
+  const [teamInviteRevokingId, setTeamInviteRevokingId] = useState<string | null>(null);
+  const [teamMemberRemovingId, setTeamMemberRemovingId] = useState<string | null>(null);
 
   const dealer: Dealer | null = useMemo(() => {
     if (!user) {
       return null;
     }
+    const dealerStaffDealerId =
+      profile?.accountType === 'dealer_staff' && typeof profile.dealerId === 'string'
+        ? profile.dealerId
+        : null;
     return (
-      dealers.find(entry => entry.id === user.uid || entry.ownerUid === user.uid) ?? null
+      dealers.find(
+        entry =>
+          entry.id === user.uid ||
+          entry.ownerUid === user.uid ||
+          (dealerStaffDealerId ? entry.id === dealerStaffDealerId : false),
+      ) ?? null
     );
-  }, [dealers, user]);
+  }, [dealers, profile, user]);
 
   const assignedModels: Model[] = useMemo(() => {
     if (!dealer) {
@@ -687,6 +718,221 @@ const DealerDashboardPage: React.FC = () => {
     }
   };
 
+  const dealerStaffRole =
+    profile?.accountType === 'dealer_staff' && typeof profile.dealerStaffRole === 'string'
+      ? profile.dealerStaffRole
+      : null;
+  const canViewDealerTeam = Boolean(
+    dealer &&
+      (
+        profile?.accountType !== 'dealer_staff' ||
+        dealerStaffRole === 'owner' ||
+        dealerStaffRole === 'manager' ||
+        dealerStaffRole === 'editor'
+      ),
+  );
+  const canManageDealerTeam = Boolean(
+    dealer &&
+      (
+        profile?.accountType !== 'dealer_staff' ||
+        dealerStaffRole === 'owner' ||
+        dealerStaffRole === 'manager'
+      ),
+  );
+
+  useEffect(() => {
+    setTeamMembers([]);
+    setTeamInvites([]);
+    setTeamCapacity(null);
+    setTeamLoaded(false);
+    setTeamError(null);
+  }, [dealer?.id]);
+
+  useEffect(() => {
+    if (!dealer || !canViewDealerTeam || teamLoading || teamLoaded) {
+      return;
+    }
+
+    let cancelled = false;
+    setTeamLoading(true);
+    setTeamError(null);
+
+    void listDealerStaff(dealer.id)
+      .then(result => {
+        if (cancelled) {
+          return;
+        }
+        setTeamMembers(result.staffMembers);
+        setTeamInvites(result.invites);
+        setTeamCapacity(result.capacity);
+        setTeamLoaded(true);
+      })
+      .catch(error => {
+        if (cancelled) {
+          return;
+        }
+        console.error('Failed to load dealer team access', error);
+        setTeamError(
+          error instanceof Error
+            ? error.message
+            : t('dealerDashboardPage.teamLoadFailed', {
+                defaultValue: 'Dealer team access could not be loaded.',
+              }),
+        );
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setTeamLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canViewDealerTeam, dealer, t, teamLoaded, teamLoading]);
+
+  const handleCreateTeamInvite = async () => {
+    if (!dealer || !canManageDealerTeam) {
+      return;
+    }
+
+    const email = teamInviteEmail.trim();
+    if (!email) {
+      setTeamError(
+        t('dealerDashboardPage.teamInviteEmailRequired', {
+          defaultValue: 'Enter an email address to invite a team member.',
+        }),
+      );
+      return;
+    }
+
+    setTeamInviteSubmitting(true);
+    setTeamError(null);
+    try {
+      const result = await createDealerStaffInvite({
+        dealerId: dealer.id,
+        email,
+        dealerStaffRole: teamInviteRole,
+      });
+      setTeamInvites(prev => [result.invite, ...prev.filter(invite => invite.id !== result.invite.id)]);
+      setTeamCapacity(result.capacity);
+      setTeamInviteEmail('');
+      setTeamInviteRole('manager');
+      addToast(
+        t('dealerDashboardPage.teamInviteCreated', {
+          defaultValue: 'Team invite created successfully.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to create dealer staff invite', error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : t('dealerDashboardPage.teamInviteCreateFailed', {
+              defaultValue: 'The dealer team invite could not be created.',
+            });
+      setTeamError(message);
+      addToast(message, 'error');
+    } finally {
+      setTeamInviteSubmitting(false);
+    }
+  };
+
+  const handleRevokeTeamInvite = async (inviteId: string) => {
+    if (!dealer || !canManageDealerTeam) {
+      return;
+    }
+
+    setTeamInviteRevokingId(inviteId);
+    setTeamError(null);
+    try {
+      const invite = await revokeDealerStaffInvite({
+        dealerId: dealer.id,
+        inviteId,
+      });
+      setTeamInvites(prev => prev.map(entry => (entry.id === invite.id ? invite : entry)));
+      setTeamLoaded(false);
+      addToast(
+        t('dealerDashboardPage.teamInviteRevoked', {
+          defaultValue: 'Team invite revoked.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to revoke dealer staff invite', error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : t('dealerDashboardPage.teamInviteRevokeFailed', {
+              defaultValue: 'The dealer team invite could not be revoked.',
+            });
+      setTeamError(message);
+      addToast(message, 'error');
+    } finally {
+      setTeamInviteRevokingId(null);
+    }
+  };
+
+  const handleRemoveTeamMember = async (userUid: string) => {
+    if (!dealer || !canManageDealerTeam) {
+      return;
+    }
+
+    setTeamMemberRemovingId(userUid);
+    setTeamError(null);
+    try {
+      await removeDealerStaffMember({
+        dealerId: dealer.id,
+        userUid,
+      });
+      setTeamMembers(prev => prev.filter(member => member.uid !== userUid));
+      setTeamLoaded(false);
+      addToast(
+        t('dealerDashboardPage.teamMemberRemoved', {
+          defaultValue: 'Team member removed.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to remove dealer staff member', error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : t('dealerDashboardPage.teamMemberRemoveFailed', {
+              defaultValue: 'The team member could not be removed.',
+            });
+      setTeamError(message);
+      addToast(message, 'error');
+    } finally {
+      setTeamMemberRemovingId(null);
+    }
+  };
+
+  const handleCopyTeamInviteLink = async (invite: AccessInvite) => {
+    if (!invite.inviteUrl) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(invite.inviteUrl);
+      addToast(
+        t('dealerDashboardPage.teamInviteCopied', {
+          defaultValue: 'Invite link copied.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to copy dealer team invite link', error);
+      addToast(
+        t('dealerDashboardPage.teamInviteCopyFailed', {
+          defaultValue: 'The invite link could not be copied.',
+        }),
+        'error',
+      );
+    }
+  };
+
   if (!dealer) {
     if (dataLoading) {
       return (
@@ -965,6 +1211,250 @@ const DealerDashboardPage: React.FC = () => {
             )}
           </div>
         </div>
+
+        {canViewDealerTeam && (
+          <section className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-cyan">
+                  {t('dealerDashboardPage.teamLabel', { defaultValue: 'Team access' })}
+                </p>
+                <h2 className="mt-2 text-2xl font-bold text-white">
+                  {t('dealerDashboardPage.teamTitle', { defaultValue: 'Manage your dealer team' })}
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-300">
+                  {t('dealerDashboardPage.teamDescription', {
+                    defaultValue:
+                      'Invite staff members into the dealer workspace, share secure acceptance links, and remove access when needed. Dealer plan limits still apply.',
+                  })}
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  {
+                    label: t('dealerDashboardPage.teamCapacityTotal', { defaultValue: 'Team capacity' }),
+                    value: teamCapacity?.maxTeamAccounts ?? 0,
+                  },
+                  {
+                    label: t('dealerDashboardPage.teamCapacityActive', { defaultValue: 'Active staff' }),
+                    value: teamCapacity?.activeStaffCount ?? 0,
+                  },
+                  {
+                    label: t('dealerDashboardPage.teamCapacityRemaining', { defaultValue: 'Available slots' }),
+                    value: teamCapacity?.remainingSlots ?? 0,
+                  },
+                ].map(stat => (
+                  <div key={stat.label} className="rounded-xl border border-white/10 bg-gray-950/50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{stat.label}</p>
+                    <p className="mt-2 text-2xl font-black text-white">{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {teamError && (
+              <div className="mt-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                {teamError}
+              </div>
+            )}
+
+            <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-4 flex items-center gap-2">
+                  <UserPlus className="h-4 w-4 text-gray-cyan" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                    {t('dealerDashboardPage.teamInviteSection', { defaultValue: 'Invite staff' })}
+                  </h3>
+                </div>
+
+                {canManageDealerTeam ? (
+                  <div className="space-y-4">
+                    <label className="flex flex-col gap-2 text-sm text-gray-300">
+                      <span className="font-medium text-white">
+                        {t('dealerDashboardPage.teamInviteEmailLabel', { defaultValue: 'Staff email' })}
+                      </span>
+                      <input
+                        type="email"
+                        value={teamInviteEmail}
+                        onChange={event => setTeamInviteEmail(event.target.value)}
+                        placeholder={t('dealerDashboardPage.teamInviteEmailPlaceholder', {
+                          defaultValue: 'staff@example.com',
+                        })}
+                        className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-gray-cyan/50 focus:outline-none"
+                      />
+                    </label>
+
+                    <label className="flex flex-col gap-2 text-sm text-gray-300">
+                      <span className="font-medium text-white">
+                        {t('dealerDashboardPage.teamInviteRoleLabel', { defaultValue: 'Workspace role' })}
+                      </span>
+                      <select
+                        value={teamInviteRole}
+                        onChange={event => setTeamInviteRole(event.target.value as Extract<DealerStaffRole, 'manager' | 'editor'>)}
+                        className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-gray-cyan/50 focus:outline-none"
+                      >
+                        <option value="manager">
+                          {t('dealerDashboardPage.teamRoleManager', { defaultValue: 'Manager' })}
+                        </option>
+                        <option value="editor">
+                          {t('dealerDashboardPage.teamRoleEditor', { defaultValue: 'Editor' })}
+                        </option>
+                      </select>
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => void handleCreateTeamInvite()}
+                      disabled={teamInviteSubmitting || (teamCapacity?.remainingSlots ?? 0) <= 0}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-semibold text-gray-900 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {teamInviteSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                      <span>{t('dealerDashboardPage.teamInviteButton', { defaultValue: 'Create invite link' })}</span>
+                    </button>
+
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-gray-400">
+                      {t('dealerDashboardPage.teamInviteHint', {
+                        defaultValue:
+                          'Managers can invite and remove staff. Editors can work in the dealer workspace but cannot manage team access.',
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-gray-400">
+                    {t('dealerDashboardPage.teamReadOnly', {
+                      defaultValue: 'Your current dealer role can view the team roster but cannot manage invites.',
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="mb-4 flex items-center gap-2">
+                    <Users className="h-4 w-4 text-gray-cyan" />
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                      {t('dealerDashboardPage.teamMembersTitle', { defaultValue: 'Current staff' })}
+                    </h3>
+                  </div>
+
+                  {teamLoading && !teamLoaded ? (
+                    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-gray-300">
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-cyan" />
+                      <span>{t('common.loading', { defaultValue: 'Loading…' })}</span>
+                    </div>
+                  ) : teamMembers.length === 0 ? (
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-gray-400">
+                      {t('dealerDashboardPage.teamMembersEmpty', {
+                        defaultValue: 'No additional staff accounts are active yet.',
+                      })}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {teamMembers.map(member => (
+                        <article key={member.uid} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-white">
+                              {member.displayName || member.email || member.uid}
+                            </p>
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                              {member.dealerStaffRole ?? 'staff'}
+                            </span>
+                            {member.accountStatus && (
+                              <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                                {member.accountStatus}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-2 text-xs text-gray-400">{member.email ?? member.uid}</p>
+                          {canManageDealerTeam && (
+                            <button
+                              type="button"
+                              onClick={() => void handleRemoveTeamMember(member.uid)}
+                              disabled={teamMemberRemovingId === member.uid}
+                              className="mt-3 inline-flex items-center gap-2 rounded-lg bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {teamMemberRemovingId === member.uid ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                              <span>{t('dealerDashboardPage.removeTeamMember', { defaultValue: 'Remove access' })}</span>
+                            </button>
+                          )}
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="mb-4 flex items-center gap-2">
+                    <Copy className="h-4 w-4 text-gray-cyan" />
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                      {t('dealerDashboardPage.teamInvitesTitle', { defaultValue: 'Pending and recent invites' })}
+                    </h3>
+                  </div>
+
+                  {teamInvites.length === 0 ? (
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-gray-400">
+                      {t('dealerDashboardPage.teamInvitesEmpty', {
+                        defaultValue: 'No dealer team invites have been created yet.',
+                      })}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {teamInvites.map(invite => (
+                        <article key={invite.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-white">{invite.email}</p>
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                              {invite.status}
+                            </span>
+                            {invite.dealerStaffRole && (
+                              <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                                {invite.dealerStaffRole}
+                              </span>
+                            )}
+                          </div>
+                          {invite.inviteUrl && (
+                            <p className="mt-2 break-all text-xs text-gray-400">{invite.inviteUrl}</p>
+                          )}
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {invite.inviteUrl && (
+                              <button
+                                type="button"
+                                onClick={() => void handleCopyTeamInviteLink(invite)}
+                                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
+                              >
+                                <Copy className="h-4 w-4" />
+                                <span>{t('dealerDashboardPage.copyTeamInvite', { defaultValue: 'Copy link' })}</span>
+                              </button>
+                            )}
+                            {canManageDealerTeam && invite.status === 'pending' && (
+                              <button
+                                type="button"
+                                onClick={() => void handleRevokeTeamInvite(invite.id)}
+                                disabled={teamInviteRevokingId === invite.id}
+                                className="inline-flex items-center gap-2 rounded-lg bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {teamInviteRevokingId === invite.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                                <span>{t('dealerDashboardPage.revokeTeamInvite', { defaultValue: 'Revoke' })}</span>
+                              </button>
+                            )}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-8">

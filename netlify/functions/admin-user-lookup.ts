@@ -148,9 +148,14 @@ export const handler = async (event: FunctionEvent) => {
     const profile = normalizeUserProfile({ uid, email }, rawProfileData);
 
     const dealerSnapshots = await firestore.collection('dealers').where('ownerUid', '==', uid).get();
+    const scopedDealerId =
+      typeof rawProfileData.dealerId === 'string' && rawProfileData.dealerId.trim()
+        ? rawProfileData.dealerId.trim()
+        : null;
     const dealerDocs = dedupeDocSnapshots([
       ...dealerSnapshots.docs,
       await firestore.collection('dealers').doc(uid).get(),
+      ...(scopedDealerId ? [await firestore.collection('dealers').doc(scopedDealerId).get()] : []),
     ]);
     const linkedDealers = dealerDocs.map(doc => {
       const data = doc.data() as DocumentData;

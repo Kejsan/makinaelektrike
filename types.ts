@@ -3,6 +3,7 @@ import type { Timestamp } from 'firebase/firestore';
 
 export type UserRole = 'admin' | 'dealer' | 'user' | 'pending';
 export type AccountType = 'admin' | 'dealer' | 'dealer_staff' | 'user' | 'pending';
+export type DealerStaffRole = 'owner' | 'manager' | 'editor';
 export type AccountStatus =
   | 'active'
   | 'pending'
@@ -22,11 +23,17 @@ export type AdminRoleId =
   | 'analyst';
 export type DealerPlanId = 'free' | 'paid';
 export type DealerSubscriptionStatus = 'active' | 'paused' | 'expired' | 'cancelled';
+export type AccessInviteType = 'platform_admin' | 'dealer_staff';
+export type AccessInviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
 export type AuditAction =
+  | 'invite.created'
+  | 'invite.revoked'
+  | 'invite.accepted'
   | 'dealer_plan.updated'
   | 'dealer.updated'
   | 'dealer_account.updated'
   | 'dealer_status.updated'
+  | 'dealer_staff.updated'
   | 'admin_access.updated'
   | 'user_status.updated'
   | 'listing.updated'
@@ -34,6 +41,7 @@ export type AuditAction =
   | 'charging_station.updated'
   | 'blog_post.updated';
 export type AuditEntityType =
+  | 'invite'
   | 'dealer'
   | 'user'
   | 'listing'
@@ -139,6 +147,8 @@ export interface UserProfile extends AuthenticatedUser {
   directPermissions?: PermissionOverrides;
   permissionScopes?: PermissionScope[];
   isMasterAdmin?: boolean;
+  dealerId?: string | null;
+  dealerStaffRole?: DealerStaffRole | null;
   dealerPlanId?: DealerPlanId | null;
   dealerSubscriptionStatus?: DealerSubscriptionStatus | null;
   [key: string]: unknown;
@@ -149,6 +159,28 @@ export type DealerStatus = 'pending' | 'approved' | 'rejected' | 'deleted';
 interface FirestoreTimestamps {
   createdAt?: Timestamp | null;
   updatedAt?: Timestamp | null;
+}
+
+export interface AccessInvite {
+  id: string;
+  type: AccessInviteType;
+  status: AccessInviteStatus;
+  email: string;
+  inviteUrl?: string | null;
+  dealerId?: string | null;
+  dealerName?: string | null;
+  adminRoleIds?: AdminRoleId[];
+  directPermissions?: PermissionOverrides;
+  dealerStaffRole?: DealerStaffRole | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  revokedBy?: string | null;
+  acceptedBy?: string | null;
+  createdAt?: Timestamp | string | null;
+  updatedAt?: Timestamp | string | null;
+  expiresAt?: Timestamp | string | null;
+  acceptedAt?: Timestamp | string | null;
+  revokedAt?: Timestamp | string | null;
 }
 
 interface DealerCore {

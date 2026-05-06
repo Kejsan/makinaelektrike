@@ -149,6 +149,17 @@ service cloud.firestore {
         hasDirectPermission('enquiries.read');
     }
 
+    function isDealerStaffForId(dealerId) {
+      return hasActiveUserRecord() &&
+        getUserData().accountType == 'dealer_staff' &&
+        getUserData().dealerId == dealerId &&
+        (
+          !('accountStatus' in getUserData()) ||
+          getUserData().accountStatus == 'active' ||
+          getUserData().accountStatus == 'approved'
+        );
+    }
+
     function isDealerOwnerById(dealerId) {
       return isSignedInAndNotBlocked() && (
         dealerId == request.auth.uid ||
@@ -157,6 +168,10 @@ service cloud.firestore {
           get(/databases/$(database)/documents/dealers/$(dealerId)).data.ownerUid == request.auth.uid
         )
       );
+    }
+
+    function isDealerMemberById(dealerId) {
+      return isDealerOwnerById(dealerId) || isDealerStaffForId(dealerId);
     }
 
     function isDealerOwner(dealerData) {
@@ -176,7 +191,7 @@ service cloud.firestore {
     function isListingOwner(listingData) {
       return isSignedInAndNotBlocked() && (
         listingData.ownerUid == request.auth.uid ||
-        isDealerOwnerById(listingData.dealerId)
+        isDealerMemberById(listingData.dealerId)
       );
     }
 
@@ -250,7 +265,7 @@ service cloud.firestore {
     }
 
     match /dealers/{dealerId} {
-      allow read: if canReadDealersAdmin() || isDealerOwner(resource.data) || isPublicDealer(resource.data);
+      allow read: if canReadDealersAdmin() || isDealerOwner(resource.data) || isDealerStaffForId(dealerId) || isPublicDealer(resource.data);
 
       allow create: if canManageDealers() || (
         isAuthenticated() &&
@@ -270,7 +285,7 @@ service cloud.firestore {
       );
 
       allow update: if canManageDealers() || canManageDealerPlans() || (
-        isDealerOwner(resource.data) &&
+        (isDealerOwner(resource.data) || isDealerStaffForId(dealerId)) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'approved',
           'approvedAt',
@@ -296,7 +311,7 @@ service cloud.firestore {
       allow create: if canModerateListings() || (
         isAuthenticated() &&
         request.resource.data.ownerUid == request.auth.uid &&
-        isDealerOwnerById(request.resource.data.dealerId) &&
+        isDealerMemberById(request.resource.data.dealerId) &&
         request.resource.data.status == 'pending'
       );
 
@@ -317,7 +332,7 @@ service cloud.firestore {
 
     match /enquiries/{enquiryId} {
       allow create: if hasFullAdminAccess();
-      allow read: if canReadEnquiriesAdmin() || isDealerOwnerById(resource.data.dealerId);
+      allow read: if canReadEnquiriesAdmin() || isDealerMemberById(resource.data.dealerId);
     }
 
     match /models/{modelId} {
@@ -325,18 +340,40 @@ service cloud.firestore {
 
       allow create: if canManageModels() || (
         isAuthenticated() &&
-        request.resource.data.ownerUid == request.auth.uid
+        request.resource.data.ownerUid == request.auth.uid &&
+        (
+          !('ownerDealerId' in request.resource.data) ||
+          request.resource.data.ownerDealerId == null ||
+          isDealerMemberById(request.resource.data.ownerDealerId)
+        )
       );
 
       allow update: if canManageModels() || (
         isAuthenticated() &&
-        resource.data.ownerUid == request.auth.uid &&
-        request.resource.data.ownerUid == resource.data.ownerUid
+        (
+          (
+            resource.data.ownerUid == request.auth.uid &&
+            request.resource.data.ownerUid == resource.data.ownerUid
+          ) ||
+          (
+            ('ownerDealerId' in resource.data) &&
+            resource.data.ownerDealerId != null &&
+            isDealerMemberById(resource.data.ownerDealerId) &&
+            request.resource.data.ownerDealerId == resource.data.ownerDealerId
+          )
+        )
       );
 
       allow delete: if canManageModels() || (
         isAuthenticated() &&
-        resource.data.ownerUid == request.auth.uid
+        (
+          resource.data.ownerUid == request.auth.uid ||
+          (
+            ('ownerDealerId' in resource.data) &&
+            resource.data.ownerDealerId != null &&
+            isDealerMemberById(resource.data.ownerDealerId)
+          )
+        )
       );
     }
 
@@ -345,17 +382,17 @@ service cloud.firestore {
 
       allow create: if canManageModels() || canManageDealers() || (
         isAuthenticated() &&
-        isDealerOwnerById(request.resource.data.dealer_id)
+        isDealerMemberById(request.resource.data.dealer_id)
       );
 
       allow update: if canManageModels() || canManageDealers() || (
         isAuthenticated() &&
-        isDealerOwnerById(resource.data.dealer_id)
+        isDealerMemberById(resource.data.dealer_id)
       );
 
       allow delete: if canManageModels() || canManageDealers() || (
         isAuthenticated() &&
-        isDealerOwnerById(resource.data.dealer_id)
+        isDealerMemberById(resource.data.dealer_id)
       );
     }
 

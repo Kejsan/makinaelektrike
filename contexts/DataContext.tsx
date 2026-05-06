@@ -478,7 +478,7 @@ const shouldPersistOffline = (error: unknown): error is FirebaseError =>
 export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const [dataState, dataDispatch] = useReducer(dataReducer, initialDataState);
   const [mutationState, mutationDispatch] = useReducer(mutationReducer, createInitialMutationState());
-  const { role, user, initializing } = useAuth();
+  const { role, user, profile, initializing } = useAuth();
   const { addToast } = useToast();
   const { t } = useTranslation();
   const location = useLocation();
@@ -500,8 +500,30 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const isAdminWorkspaceRoute = pathname === '/admin';
   const isDealerWorkspaceRoute = pathname.startsWith('/dealer/');
   const isPrivilegedRoute = isAdminWorkspaceRoute || isDealerWorkspaceRoute;
+  const dealerScopedId = useMemo(() => {
+    if (role !== 'dealer') {
+      return null;
+    }
+
+    if (profile?.accountType === 'dealer_staff' && typeof profile.dealerId === 'string' && profile.dealerId.trim()) {
+      return profile.dealerId.trim();
+    }
+
+    return userUid;
+  }, [profile, role, userUid]);
   const currentDealerIds = useMemo(() => {
-    if (role !== 'dealer' || !userUid) {
+    if (role !== 'dealer') {
+      return [];
+    }
+
+    if (profile?.accountType === 'dealer_staff' && typeof profile.dealerId === 'string') {
+      return dataState.dealers
+        .filter(dealer => dealer.id === profile.dealerId)
+        .map(dealer => dealer.id)
+        .filter(Boolean);
+    }
+
+    if (!userUid) {
       return [];
     }
 
@@ -509,7 +531,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       .filter(dealer => dealer.id === userUid || dealer.ownerUid === userUid)
       .map(dealer => dealer.id)
       .filter(Boolean);
-  }, [dataState.dealers, role, userUid]);
+  }, [dataState.dealers, profile, role, userUid]);
 
   const handleSubscriptionError = useCallback(
     (resource: string) => (error: FirestoreError) => {
@@ -555,7 +577,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
     const unsubscribers: Unsubscribe[] = [];
     const isAdminDataRoute = role === 'admin' && isAdminWorkspaceRoute;
-    const isDealerDataRoute = role === 'dealer' && isDealerWorkspaceRoute && Boolean(userUid);
+    const isDealerDataRoute = role === 'dealer' && isDealerWorkspaceRoute && Boolean(dealerScopedId);
 
     if (requiresCollection('dealers')) {
       unsubscribers.push(
@@ -564,8 +586,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
               onData: dealers => dataDispatch({ type: 'SET_DEALERS', payload: dealers }),
               onError: handleSubscriptionError('dealers'),
             })
-          : isDealerDataRoute
-            ? subscribeToDealersForAccount(userUid!, {
+          : isDealerDataRoute && dealerScopedId
+            ? subscribeToDealersForAccount(dealerScopedId, {
                 onData: dealers => dataDispatch({ type: 'SET_DEALERS', payload: dealers }),
                 onError: permissionAwareErrorHandler('dealer profile', () =>
                   dataDispatch({ type: 'SET_DEALERS', payload: [] }),
@@ -661,6 +683,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     loadStaticBlogPostFallback,
     permissionAwareErrorHandler,
     requiresCollection,
+    dealerScopedId,
     role,
     userUid,
   ]);

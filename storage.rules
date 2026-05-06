@@ -91,6 +91,17 @@ service firebase.storage {
         hasDirectPermission('models.merge');
     }
 
+    function isDealerStaffForId(dealerId) {
+      return hasActiveUserRecord() &&
+        getUserData().accountType == 'dealer_staff' &&
+        getUserData().dealerId == dealerId &&
+        (
+          !('accountStatus' in getUserData()) ||
+          getUserData().accountStatus == 'active' ||
+          getUserData().accountStatus == 'approved'
+        );
+    }
+
     function isDealerOwner(dealerId) {
       return isSignedInAndNotBlocked() && (
         dealerId == request.auth.uid ||
@@ -101,10 +112,21 @@ service firebase.storage {
       );
     }
 
-    function isModelOwner(modelId) {
+    function isDealerMember(dealerId) {
+      return isDealerOwner(dealerId) || isDealerStaffForId(dealerId);
+    }
+
+    function isModelOperator(modelId) {
       return isSignedInAndNotBlocked() &&
         firestore.exists(/databases/(default)/documents/models/$(modelId)) &&
-        firestore.get(/databases/(default)/documents/models/$(modelId)).data.ownerUid == request.auth.uid;
+        (
+          firestore.get(/databases/(default)/documents/models/$(modelId)).data.ownerUid == request.auth.uid ||
+          (
+            ('ownerDealerId' in firestore.get(/databases/(default)/documents/models/$(modelId)).data) &&
+            firestore.get(/databases/(default)/documents/models/$(modelId)).data.ownerDealerId != null &&
+            isDealerMember(firestore.get(/databases/(default)/documents/models/$(modelId)).data.ownerDealerId)
+          )
+        );
     }
 
     function isSafeImageUpload() {
@@ -115,17 +137,17 @@ service firebase.storage {
 
     match /listings/{dealerId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isSafeImageUpload() && (canModerateListings() || isDealerOwner(dealerId));
+      allow write: if isSafeImageUpload() && (canModerateListings() || isDealerMember(dealerId));
     }
 
     match /dealers/{dealerId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isSafeImageUpload() && (canManageDealers() || isDealerOwner(dealerId));
+      allow write: if isSafeImageUpload() && (canManageDealers() || isDealerMember(dealerId));
     }
 
     match /models/{modelId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isSafeImageUpload() && (canManageModels() || isModelOwner(modelId));
+      allow write: if isSafeImageUpload() && (canManageModels() || isModelOperator(modelId));
     }
 
     match /{allPaths=**} {

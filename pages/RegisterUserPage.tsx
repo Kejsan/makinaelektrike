@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { auth, firestore } from '../services/firebase';
@@ -15,15 +16,24 @@ const RegisterUserPage: React.FC = () => {
   const { registerUser, loading, user, role, initializing } = useAuth();
   const { addToast } = useToast();
   const navigate = useLocalizedNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTarget = searchParams.get('redirect');
+  const prefilledEmail = searchParams.get('email') ?? '';
   const [formError, setFormError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     phone: '',
-    email: '',
+    email: prefilledEmail,
     password: '',
     confirmPassword: '',
   });
+
+  useEffect(() => {
+    if (prefilledEmail && !formData.email) {
+      setFormData(prev => ({ ...prev, email: prefilledEmail }));
+    }
+  }, [formData.email, prefilledEmail]);
 
   if (initializing) {
     return (
@@ -35,6 +45,10 @@ const RegisterUserPage: React.FC = () => {
 
   if (user && role === 'pending') {
     return <LocalizedNavigate to="/awaiting-approval" replace />;
+  }
+
+  if (user && redirectTarget) {
+    return <LocalizedNavigate to={redirectTarget} replace />;
   }
 
   if (user) {
@@ -86,7 +100,7 @@ const RegisterUserPage: React.FC = () => {
       }
 
       addToast(t('registerUserPage.success'), 'success');
-      navigate('/favorites');
+      navigate(redirectTarget || '/favorites');
     } catch (error) {
       console.error('Failed to register user', error);
       addToast(

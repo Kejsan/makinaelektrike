@@ -30,6 +30,7 @@ import { useToast } from '../contexts/ToastContext';
 import { DataContext } from '../contexts/DataContext';
 import {
   AdminAuditLog,
+  AccessInvite,
   AccountStatus,
   AdminRoleId,
   Dealer,
@@ -55,6 +56,11 @@ import {
   updateAdminAccess,
   type AdminAccessLookupResult,
 } from '../services/adminAccess';
+import {
+  createAdminInvite,
+  listAdminInvites,
+  revokeAdminInvite,
+} from '../services/adminInvites';
 import { listAdminAuditLogs } from '../services/adminAudit';
 import {
   lookupAdminUser,
@@ -247,6 +253,14 @@ const AdminPage: React.FC = () => {
   const [adminAccessResult, setAdminAccessResult] = useState<AdminAccessLookupResult | null>(null);
   const [adminAccessRoleDraftIds, setAdminAccessRoleDraftIds] = useState<AdminRoleId[]>([]);
   const [adminAccessStatusDraft, setAdminAccessStatusDraft] = useState<AccountStatus>('active');
+  const [adminInviteEmail, setAdminInviteEmail] = useState('');
+  const [adminInviteRoleDraftIds, setAdminInviteRoleDraftIds] = useState<AdminRoleId[]>([]);
+  const [adminInviteError, setAdminInviteError] = useState<string | null>(null);
+  const [adminInviteCreating, setAdminInviteCreating] = useState(false);
+  const [adminInviteRevokingId, setAdminInviteRevokingId] = useState<string | null>(null);
+  const [adminInvites, setAdminInvites] = useState<AccessInvite[]>([]);
+  const [adminInvitesLoading, setAdminInvitesLoading] = useState(false);
+  const [adminInvitesLoaded, setAdminInvitesLoaded] = useState(false);
   const [userAdminQuery, setUserAdminQuery] = useState('');
   const [userAdminLookupLoading, setUserAdminLookupLoading] = useState(false);
   const [userAdminActionLoading, setUserAdminActionLoading] = useState(false);
@@ -1079,6 +1093,166 @@ const AdminPage: React.FC = () => {
     hydrateAdminAccessDraft,
     t,
   ]);
+
+  const loadAdminInvites = useCallback(
+    async (force = false) => {
+      if (!canManageAdminAccess) {
+        return;
+      }
+
+      if (adminInvitesLoading || (!force && adminInvitesLoaded)) {
+        return;
+      }
+
+      setAdminInvitesLoading(true);
+      setAdminInviteError(null);
+      try {
+        const invites = await listAdminInvites();
+        setAdminInvites(invites);
+        setAdminInvitesLoaded(true);
+      } catch (error) {
+        console.error('Failed to load admin invites', error);
+        setAdminInviteError(
+          error instanceof Error
+            ? error.message
+            : t('admin.adminInviteListFailed', {
+                defaultValue: 'Failed to load platform admin invites.',
+              }),
+        );
+      } finally {
+        setAdminInvitesLoading(false);
+      }
+    },
+    [adminInvitesLoaded, adminInvitesLoading, canManageAdminAccess, t],
+  );
+
+  useEffect(() => {
+    if (activeTab === 'access' && canManageAdminAccess) {
+      void loadAdminInvites();
+    }
+  }, [activeTab, canManageAdminAccess, loadAdminInvites]);
+
+  const toggleAdminInviteRoleDraft = useCallback(
+    (roleId: AdminRoleId) => {
+      if (roleId === 'master_admin' && !isMasterAdmin) {
+        return;
+      }
+
+      setAdminInviteRoleDraftIds(prev =>
+        prev.includes(roleId) ? prev.filter(id => id !== roleId) : [...prev, roleId],
+      );
+    },
+    [isMasterAdmin],
+  );
+
+  const handleCreateAdminInvite = useCallback(async () => {
+    const email = adminInviteEmail.trim();
+    if (!email) {
+      setAdminInviteError(
+        t('admin.adminInviteEmailRequired', {
+          defaultValue: 'Enter an email address before creating an invite.',
+        }),
+      );
+      return;
+    }
+
+    if (adminInviteRoleDraftIds.length === 0) {
+      setAdminInviteError(
+        t('admin.adminInviteRolesRequired', {
+          defaultValue: 'Select at least one admin preset for the invite.',
+        }),
+      );
+      return;
+    }
+
+    setAdminInviteCreating(true);
+    setAdminInviteError(null);
+    try {
+      const invite = await createAdminInvite({
+        email,
+        adminRoleIds: adminInviteRoleDraftIds,
+      });
+      setAdminInvites(prev => [invite, ...prev.filter(entry => entry.id !== invite.id)]);
+      setAdminInvitesLoaded(true);
+      setAdminInviteEmail('');
+      setAdminInviteRoleDraftIds([]);
+      addToast(
+        t('admin.adminInviteCreated', {
+          defaultValue: 'Platform admin invite created successfully.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to create admin invite', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.adminInviteCreateFailed', {
+              defaultValue: 'Failed to create the platform admin invite.',
+            });
+      setAdminInviteError(errorMessage);
+      addToast(errorMessage, 'error');
+    } finally {
+      setAdminInviteCreating(false);
+    }
+  }, [addToast, adminInviteEmail, adminInviteRoleDraftIds, t]);
+
+  const handleRevokeAdminInvite = useCallback(
+    async (inviteId: string) => {
+      setAdminInviteRevokingId(inviteId);
+      setAdminInviteError(null);
+      try {
+        const invite = await revokeAdminInvite(inviteId);
+        setAdminInvites(prev => prev.map(entry => (entry.id === invite.id ? invite : entry)));
+        addToast(
+          t('admin.adminInviteRevoked', {
+            defaultValue: 'Platform admin invite revoked.',
+          }),
+          'success',
+        );
+      } catch (error) {
+        console.error('Failed to revoke admin invite', error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : t('admin.adminInviteRevokeFailed', {
+                defaultValue: 'Failed to revoke the platform admin invite.',
+              });
+        setAdminInviteError(errorMessage);
+        addToast(errorMessage, 'error');
+      } finally {
+        setAdminInviteRevokingId(null);
+      }
+    },
+    [addToast, t],
+  );
+
+  const handleCopyInviteLink = useCallback(
+    async (invite: AccessInvite) => {
+      if (!invite.inviteUrl) {
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(invite.inviteUrl);
+        addToast(
+          t('admin.inviteLinkCopied', {
+            defaultValue: 'Invite link copied.',
+          }),
+          'success',
+        );
+      } catch (error) {
+        console.error('Failed to copy invite link', error);
+        addToast(
+          t('admin.inviteLinkCopyFailed', {
+            defaultValue: 'Failed to copy the invite link.',
+          }),
+          'error',
+        );
+      }
+    },
+    [addToast, t],
+  );
 
   const handleActivateAccount = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -2949,6 +3123,195 @@ const AdminPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-white">
+                {t('admin.adminInviteHeading', { defaultValue: 'Invite new platform admins' })}
+              </h3>
+              <p className="max-w-3xl text-sm text-gray-400">
+                {t('admin.adminInviteDescription', {
+                  defaultValue:
+                    'Create secure invite links for future platform admins. The invited user signs in with the target email address and accepts the invite through the backend-audited flow.',
+                })}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadAdminInvites(true)}
+              disabled={adminInvitesLoading}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {adminInvitesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw size={16} />}
+              <span>{t('admin.refreshInvites', { defaultValue: 'Refresh invites' })}</span>
+            </button>
+          </div>
+
+          {adminInviteError && (
+            <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+              {adminInviteError}
+            </div>
+          )}
+
+          <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_420px]">
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="space-y-4">
+                <label className="flex flex-col gap-2 text-sm text-gray-300">
+                  <span className="font-medium text-white">
+                    {t('admin.inviteEmailLabel', { defaultValue: 'Invite email' })}
+                  </span>
+                  <input
+                    type="email"
+                    value={adminInviteEmail}
+                    onChange={event => setAdminInviteEmail(event.target.value)}
+                    placeholder={t('admin.inviteEmailPlaceholder', {
+                      defaultValue: 'new-admin@example.com',
+                    })}
+                    className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-gray-cyan/50 focus:outline-none"
+                  />
+                </label>
+
+                <div>
+                  <p className="text-sm font-medium text-white">
+                    {t('admin.inviteRoleSelection', { defaultValue: 'Invite presets' })}
+                  </p>
+                  <div className="mt-3 space-y-3">
+                    {adminRoleOptions.map(([roleId, preset]) => {
+                      const checked = adminInviteRoleDraftIds.includes(roleId);
+                      const disabled = adminInviteCreating || (roleId === 'master_admin' && !isMasterAdmin);
+
+                      return (
+                        <label
+                          key={`invite-${roleId}`}
+                          className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition ${
+                            checked
+                              ? 'border-gray-cyan/40 bg-gray-cyan/10'
+                              : 'border-white/10 bg-white/5 hover:bg-white/10'
+                          } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleAdminInviteRoleDraft(roleId)}
+                            disabled={disabled}
+                            className="mt-1 h-4 w-4 rounded border-white/20 bg-white/5 text-gray-cyan focus:ring-gray-cyan/50"
+                          />
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-white">{preset.label}</span>
+                              {roleId === 'master_admin' && (
+                                <span className="rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-100">
+                                  {t('admin.highPrivilege', { defaultValue: 'High privilege' })}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-400">{preset.description}</p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void handleCreateAdminInvite()}
+                  disabled={adminInviteCreating}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-cyan/90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {adminInviteCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus size={16} />}
+                  <span>{t('admin.createAdminInvite', { defaultValue: 'Create invite link' })}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="mb-4 flex items-center gap-2">
+                <Key className="h-4 w-4 text-gray-cyan" />
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                  {t('admin.recentInvites', { defaultValue: 'Recent invites' })}
+                </h4>
+              </div>
+
+              {adminInvitesLoading && !adminInvitesLoaded ? (
+                renderLoadingState()
+              ) : adminInvites.length === 0 ? (
+                renderEmptyState(
+                  t('admin.adminInvitesEmpty', {
+                    defaultValue: 'No platform admin invites have been created yet.',
+                  }),
+                )
+              ) : (
+                <div className="space-y-3">
+                  {adminInvites.map(invite => (
+                    <article key={invite.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-white">{invite.email}</p>
+                        <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                          {invite.status}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {(invite.adminRoleIds ?? []).map(roleId => (
+                          <span
+                            key={`${invite.id}-${roleId}`}
+                            className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[11px] font-medium text-gray-200"
+                          >
+                            {ADMIN_ROLE_PRESETS[roleId]?.label ?? roleId}
+                          </span>
+                        ))}
+                      </div>
+                      {invite.createdAt && (
+                        <p className="mt-2 text-xs text-gray-500">
+                          {t('admin.inviteCreatedAt', {
+                            defaultValue: 'Created {{date}}',
+                            date: formatDateTime(typeof invite.createdAt === 'string' ? invite.createdAt : null),
+                          })}
+                        </p>
+                      )}
+                      {invite.inviteUrl && (
+                        <div className="mt-3 rounded-lg border border-white/10 bg-black/30 p-3">
+                          <p className="text-[11px] uppercase tracking-wide text-gray-500">
+                            {t('admin.inviteLinkLabel', { defaultValue: 'Invite link' })}
+                          </p>
+                          <p className="mt-2 break-all text-xs text-gray-300">{invite.inviteUrl}</p>
+                        </div>
+                      )}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {invite.inviteUrl && (
+                          <button
+                            type="button"
+                            onClick={() => void handleCopyInviteLink(invite)}
+                            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
+                          >
+                            <ExternalLink size={14} />
+                            <span>{t('admin.copyInviteLink', { defaultValue: 'Copy link' })}</span>
+                          </button>
+                        )}
+                        {invite.status === 'pending' && (
+                          <button
+                            type="button"
+                            onClick={() => void handleRevokeAdminInvite(invite.id)}
+                            disabled={adminInviteRevokingId === invite.id}
+                            className="inline-flex items-center gap-2 rounded-lg bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {adminInviteRevokingId === invite.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <XCircle size={14} />
+                            )}
+                            <span>{t('admin.revokeInvite', { defaultValue: 'Revoke' })}</span>
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     );
   };

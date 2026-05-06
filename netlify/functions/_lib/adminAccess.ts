@@ -45,20 +45,29 @@ const getUserProfileByUid = async (uid: string, email: string | null): Promise<U
   return normalizeUserProfile({ uid, email }, rawProfile);
 };
 
-export const requireAdminPermission = async (
+export const requireAuthenticatedProfile = async (
   event: FunctionEvent,
-  permission: PermissionKey,
 ): Promise<AuthenticatedAdminContext> => {
   const token = getBearerToken(event);
   const decodedToken = await getAdminAuth().verifyIdToken(token);
   const profile = await getUserProfileByUid(decodedToken.uid, decodedToken.email ?? null);
 
-  if (!hasPermission(profile, permission)) {
-    throw new Error(`Missing required permission: ${permission}.`);
-  }
-
   return {
     decodedToken,
     profile,
   };
+};
+
+export const requireAdminPermission = async (
+  event: FunctionEvent,
+  permission: PermissionKey,
+): Promise<AuthenticatedAdminContext> => {
+  const context = await requireAuthenticatedProfile(event);
+  const { profile } = context;
+
+  if (!hasPermission(profile, permission)) {
+    throw new Error(`Missing required permission: ${permission}.`);
+  }
+
+  return context;
 };
