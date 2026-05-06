@@ -739,17 +739,19 @@ const DealerDashboardPage: React.FC = () => {
         dealerStaffRole === 'manager'
       ),
   );
+  const dealerId = dealer?.id ?? null;
 
   useEffect(() => {
     setTeamMembers([]);
     setTeamInvites([]);
     setTeamCapacity(null);
+    setTeamLoading(false);
     setTeamLoaded(false);
     setTeamError(null);
-  }, [dealer?.id]);
+  }, [dealerId]);
 
   useEffect(() => {
-    if (!dealer || !canViewDealerTeam || teamLoading || teamLoaded) {
+    if (!dealerId || !canViewDealerTeam || teamLoaded) {
       return;
     }
 
@@ -757,7 +759,7 @@ const DealerDashboardPage: React.FC = () => {
     setTeamLoading(true);
     setTeamError(null);
 
-    void listDealerStaff(dealer.id)
+    void listDealerStaff(dealerId)
       .then(result => {
         if (cancelled) {
           return;
@@ -775,9 +777,7 @@ const DealerDashboardPage: React.FC = () => {
         setTeamError(
           error instanceof Error
             ? error.message
-            : t('dealerDashboardPage.teamLoadFailed', {
-                defaultValue: 'Dealer team access could not be loaded.',
-              }),
+            : 'Dealer team access could not be loaded.',
         );
       })
       .finally(() => {
@@ -789,7 +789,7 @@ const DealerDashboardPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [canViewDealerTeam, dealer, t, teamLoaded, teamLoading]);
+  }, [canViewDealerTeam, dealerId, teamLoaded]);
 
   const handleCreateTeamInvite = async () => {
     if (!dealer || !canManageDealerTeam) {
