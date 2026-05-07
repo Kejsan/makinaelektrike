@@ -42,15 +42,26 @@ import {
   DealerSubscriptionStatus,
   Listing,
   Model,
+  PlacementZoneStatus,
+  PlacementZone,
+  PlacementZoneFormValues,
+  PromotionalCampaign,
+  PromotionalCampaignFormValues,
   BlogPost,
   ChargingStation,
   PermissionKey,
   PermissionOverrides,
+  SponsorshipProductStatus,
+  SponsorshipProduct,
+  SponsorshipProductFormValues,
 } from '../types';
 import DealerForm, { DealerFormValues } from '../components/admin/DealerForm';
 import type { ModelFormValues } from '../components/admin/ModelForm';
 import BlogPostForm, { BlogPostFormValues } from '../components/admin/BlogPostForm';
 import ChargingStationForm from '../components/admin/ChargingStationForm';
+import PlacementZoneForm from '../components/admin/PlacementZoneForm';
+import SponsorshipProductForm from '../components/admin/SponsorshipProductForm';
+import PromotionalCampaignForm from '../components/admin/PromotionalCampaignForm';
 import type { BulkImportEntity } from '../components/admin/BulkImportModal';
 import BlogTextImportModal from '../components/admin/BlogTextImportModal';
 import OfflineQueuePanel from '../components/admin/OfflineQueuePanel';
@@ -103,6 +114,12 @@ import {
   type AdminModelLookupResult,
 } from '../services/adminModels';
 import {
+  listAdminPlacements,
+  savePlacementZone,
+  savePromotionalCampaign,
+  saveSponsorshipProduct,
+} from '../services/adminPlacements';
+import {
   lookupAdminStation,
   type AdminStationLookupResult,
 } from '../services/adminStations';
@@ -127,6 +144,9 @@ import {
   PERMISSION_KEYS,
   getEffectivePermissions,
 } from '../utils/accessControl';
+import {
+  formatPlacementEntityTypeLabel,
+} from '../utils/placements';
 
 const ModelForm = lazy(() => import('../components/admin/ModelForm'));
 const BulkImportModal = lazy(() => import('../components/admin/BulkImportModal'));
@@ -159,7 +179,17 @@ const AdminModal: React.FC<ModalProps> = ({ title, onClose, children }) => {
 
 type FormState<T> = { mode: 'create' | 'edit'; entity?: T } | null;
 
-type TabKey = 'dealers' | 'users' | 'models' | 'listings' | 'blog' | 'stations' | 'access' | 'audit' | 'migration';
+type TabKey =
+  | 'dealers'
+  | 'users'
+  | 'models'
+  | 'listings'
+  | 'blog'
+  | 'stations'
+  | 'placements'
+  | 'access'
+  | 'audit'
+  | 'migration';
 type DealerFilterKey = 'active' | 'inactive' | 'pending' | 'deleted';
 type DealerPlanDraft = {
   planId: DealerPlanId;
@@ -293,6 +323,18 @@ const AdminPage: React.FC = () => {
   const [stationControlError, setStationControlError] = useState<string | null>(null);
   const [stationControlNoteDraft, setStationControlNoteDraft] = useState('');
   const [stationControlNoteSaving, setStationControlNoteSaving] = useState(false);
+  const [placementZones, setPlacementZones] = useState<PlacementZone[]>([]);
+  const [sponsorshipProducts, setSponsorshipProducts] = useState<SponsorshipProduct[]>([]);
+  const [promotionalCampaigns, setPromotionalCampaigns] = useState<PromotionalCampaign[]>([]);
+  const [placementsLoading, setPlacementsLoading] = useState(false);
+  const [placementsLoaded, setPlacementsLoaded] = useState(false);
+  const [placementsError, setPlacementsError] = useState<string | null>(null);
+  const [placementSaving, setPlacementSaving] = useState(false);
+  const [placementZoneFormState, setPlacementZoneFormState] = useState<FormState<PlacementZone>>(null);
+  const [sponsorshipProductFormState, setSponsorshipProductFormState] =
+    useState<FormState<SponsorshipProduct>>(null);
+  const [promotionalCampaignFormState, setPromotionalCampaignFormState] =
+    useState<FormState<PromotionalCampaign>>(null);
   const [activationError, setActivationError] = useState<string | null>(null);
   const {
     dealers,
@@ -411,6 +453,21 @@ const AdminPage: React.FC = () => {
   const canManageStations =
     hasPermission('stations.edit') ||
     hasPermission('stations.merge');
+  const canReadPlacements =
+    hasPermission('placements.read') ||
+    hasPermission('placements.create') ||
+    hasPermission('placements.edit') ||
+    hasPermission('placements.assign') ||
+    hasPermission('placements.publish') ||
+    hasPermission('placements.pause') ||
+    hasPermission('placements.override');
+  const canManagePlacements =
+    hasPermission('placements.create') ||
+    hasPermission('placements.edit') ||
+    hasPermission('placements.assign') ||
+    hasPermission('placements.publish') ||
+    hasPermission('placements.pause') ||
+    hasPermission('placements.override');
   const canViewAudit = hasPermission('audit.view');
 
   // Reset selection and search on tab/filter change
@@ -648,6 +705,14 @@ const AdminPage: React.FC = () => {
       { id: 'listings' as TabKey, label: t('admin.listingsTab', { defaultValue: 'Listings' }) },
       { id: 'blog' as TabKey, label: t('admin.manageBlog') },
       { id: 'stations' as TabKey, label: t('admin.manageStations', { defaultValue: 'Charging stations' }) },
+      ...(canReadPlacements
+        ? [
+            {
+              id: 'placements' as TabKey,
+              label: t('admin.placementsTab', { defaultValue: 'Placements' }),
+            },
+          ]
+        : []),
       ...(canManageAdminAccess
         ? [
             {
@@ -666,7 +731,7 @@ const AdminPage: React.FC = () => {
         : []),
       { id: 'migration' as TabKey, label: t('admin.migrationTab', { defaultValue: 'Data migration' }) },
     ],
-    [canManageAdminAccess, canReadUsers, canViewAudit, t]
+    [canManageAdminAccess, canReadPlacements, canReadUsers, canViewAudit, t]
   );
 
   const handleLogout = async () => {
@@ -683,7 +748,44 @@ const AdminPage: React.FC = () => {
     setModelFormState(null);
     setBlogFormState(null);
     setStationFormState(null);
+    setPlacementZoneFormState(null);
+    setSponsorshipProductFormState(null);
+    setPromotionalCampaignFormState(null);
   };
+
+  const loadPlacementsCatalog = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
+      if (!canReadPlacements) {
+        return;
+      }
+
+      if (!silent) {
+        setPlacementsLoading(true);
+      }
+      setPlacementsError(null);
+      try {
+        const response = await listAdminPlacements();
+        setPlacementZones(response.zones);
+        setSponsorshipProducts(response.products);
+        setPromotionalCampaigns(response.campaigns);
+        setPlacementsLoaded(true);
+      } catch (error) {
+        console.error('Failed to load placements catalog', error);
+        setPlacementsError(
+          error instanceof Error
+            ? error.message
+            : t('admin.placementsLoadFailed', {
+                defaultValue: 'Failed to load placements management data.',
+              }),
+        );
+      } finally {
+        if (!silent) {
+          setPlacementsLoading(false);
+        }
+      }
+    },
+    [canReadPlacements, t],
+  );
 
   const getBulkModalTitle = (entity: BulkImportEntity) => {
     switch (entity) {
@@ -2420,6 +2522,258 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  const handlePlacementZoneSubmit = async (values: PlacementZoneFormValues) => {
+    setPlacementSaving(true);
+    setPlacementsError(null);
+    try {
+      await savePlacementZone({
+        id:
+          placementZoneFormState?.mode === 'edit' && placementZoneFormState.entity
+            ? placementZoneFormState.entity.id
+            : undefined,
+        values,
+      });
+      closeAllModals();
+      await loadPlacementsCatalog({ silent: true });
+      addToast(
+        t('admin.placementZoneSaved', {
+          defaultValue: 'Placement zone saved successfully.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to save placement zone', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.placementZoneSaveFailed', {
+              defaultValue: 'Failed to save the placement zone.',
+            });
+      setPlacementsError(errorMessage);
+      addToast(errorMessage, 'error');
+    } finally {
+      setPlacementSaving(false);
+    }
+  };
+
+  const handleSponsorshipProductSubmit = async (values: SponsorshipProductFormValues) => {
+    setPlacementSaving(true);
+    setPlacementsError(null);
+    try {
+      await saveSponsorshipProduct({
+        id:
+          sponsorshipProductFormState?.mode === 'edit' && sponsorshipProductFormState.entity
+            ? sponsorshipProductFormState.entity.id
+            : undefined,
+        values,
+      });
+      closeAllModals();
+      await loadPlacementsCatalog({ silent: true });
+      addToast(
+        t('admin.sponsorshipProductSaved', {
+          defaultValue: 'Sponsorship product saved successfully.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to save sponsorship product', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.sponsorshipProductSaveFailed', {
+              defaultValue: 'Failed to save the sponsorship product.',
+            });
+      setPlacementsError(errorMessage);
+      addToast(errorMessage, 'error');
+    } finally {
+      setPlacementSaving(false);
+    }
+  };
+
+  const handlePromotionalCampaignSubmit = async (values: PromotionalCampaignFormValues) => {
+    setPlacementSaving(true);
+    setPlacementsError(null);
+    try {
+      await savePromotionalCampaign({
+        id:
+          promotionalCampaignFormState?.mode === 'edit' && promotionalCampaignFormState.entity
+            ? promotionalCampaignFormState.entity.id
+            : undefined,
+        values,
+      });
+      closeAllModals();
+      await loadPlacementsCatalog({ silent: true });
+      addToast(
+        t('admin.promotionalCampaignSaved', {
+          defaultValue: 'Promotional campaign saved successfully.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to save promotional campaign', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.promotionalCampaignSaveFailed', {
+              defaultValue: 'Failed to save the promotional campaign.',
+            });
+      setPlacementsError(errorMessage);
+      addToast(errorMessage, 'error');
+    } finally {
+      setPlacementSaving(false);
+    }
+  };
+
+  const handlePlacementZoneStatusUpdate = async (
+    zone: PlacementZone,
+    status: PlacementZoneStatus,
+  ) => {
+    if (!canManagePlacements) {
+      return;
+    }
+
+    setPlacementSaving(true);
+    setPlacementsError(null);
+    try {
+      await savePlacementZone({
+        id: zone.id,
+        values: {
+          key: zone.key,
+          name: zone.name,
+          description: zone.description ?? '',
+          pageKey: zone.pageKey,
+          slotKey: zone.slotKey,
+          allowedEntityTypes: zone.allowedEntityTypes,
+          allowHousePromotions: zone.allowHousePromotions,
+          allowSponsoredPromotions: zone.allowSponsoredPromotions,
+          maxAssignments: zone.maxAssignments,
+          localeTargets: zone.localeTargets ?? [],
+          status,
+        },
+      });
+      await loadPlacementsCatalog({ silent: true });
+      addToast(
+        t('admin.placementZoneStatusUpdated', {
+          defaultValue: 'Placement zone status updated.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to update placement zone status', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.placementZoneStatusUpdateFailed', {
+              defaultValue: 'Failed to update the placement zone status.',
+            });
+      setPlacementsError(errorMessage);
+      addToast(errorMessage, 'error');
+    } finally {
+      setPlacementSaving(false);
+    }
+  };
+
+  const handleSponsorshipProductStatusUpdate = async (
+    product: SponsorshipProduct,
+    status: SponsorshipProductStatus,
+  ) => {
+    if (!canManagePlacements) {
+      return;
+    }
+
+    setPlacementSaving(true);
+    setPlacementsError(null);
+    try {
+      await saveSponsorshipProduct({
+        id: product.id,
+        values: {
+          code: product.code,
+          name: product.name,
+          description: product.description ?? '',
+          eligiblePlanIds: product.eligiblePlanIds,
+          eligibleEntityTypes: product.eligibleEntityTypes,
+          defaultDurationDays: product.defaultDurationDays ?? '',
+          priceLabel: product.priceLabel ?? '',
+          status,
+        },
+      });
+      await loadPlacementsCatalog({ silent: true });
+      addToast(
+        t('admin.sponsorshipProductStatusUpdated', {
+          defaultValue: 'Sponsorship product status updated.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to update sponsorship product status', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.sponsorshipProductStatusUpdateFailed', {
+              defaultValue: 'Failed to update the sponsorship product status.',
+            });
+      setPlacementsError(errorMessage);
+      addToast(errorMessage, 'error');
+    } finally {
+      setPlacementSaving(false);
+    }
+  };
+
+  const handlePromotionalCampaignStatusUpdate = async (
+    campaign: PromotionalCampaign,
+    status: PromotionalCampaign['status'],
+  ) => {
+    if (!canManagePlacements) {
+      return;
+    }
+
+    setPlacementSaving(true);
+    setPlacementsError(null);
+    try {
+      await savePromotionalCampaign({
+        id: campaign.id,
+        values: {
+          name: campaign.name,
+          description: campaign.description ?? '',
+          status,
+          promotionType: campaign.promotionType,
+          sponsoredEntityType: campaign.sponsoredEntityType ?? '',
+          sponsoredEntityId: campaign.sponsoredEntityId ?? '',
+          sponsorshipProductId: campaign.sponsorshipProductId ?? '',
+          zoneIds: campaign.zoneIds,
+          headline: campaign.headline ?? '',
+          supportingText: campaign.supportingText ?? '',
+          imageUrl: campaign.imageUrl ?? '',
+          ctaLabel: campaign.ctaLabel ?? '',
+          destinationUrl: campaign.destinationUrl ?? '',
+          localeTargets: campaign.localeTargets ?? [],
+          startAt: typeof campaign.startAt === 'string' ? campaign.startAt : '',
+          endAt: typeof campaign.endAt === 'string' ? campaign.endAt : '',
+          priority: campaign.priority,
+        },
+      });
+      await loadPlacementsCatalog({ silent: true });
+      addToast(
+        t('admin.promotionalCampaignStatusUpdated', {
+          defaultValue: 'Promotional campaign status updated.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to update promotional campaign status', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.promotionalCampaignStatusUpdateFailed', {
+              defaultValue: 'Failed to update the promotional campaign status.',
+            });
+      setPlacementsError(errorMessage);
+      addToast(errorMessage, 'error');
+    } finally {
+      setPlacementSaving(false);
+    }
+  };
+
   const handleCreateDealerModel = useCallback(
     async (values: Pick<Model, 'brand' | 'model_name'>) => {
       const response = await saveAdminModel({
@@ -2696,6 +3050,20 @@ const AdminPage: React.FC = () => {
 
     void loadStations();
   }, [refreshStationsData]);
+
+  useEffect(() => {
+    if (activeTab !== 'placements' || placementsLoaded || placementsLoading || !canReadPlacements) {
+      return;
+    }
+
+    void loadPlacementsCatalog();
+  }, [
+    activeTab,
+    canReadPlacements,
+    loadPlacementsCatalog,
+    placementsLoaded,
+    placementsLoading,
+  ]);
 
 
   const confirmAndDelete = async (action: () => Promise<void>) => {
@@ -5499,6 +5867,484 @@ const AdminPage: React.FC = () => {
     );
   };
 
+  const renderPlacementsPanel = () => {
+    if (placementsLoading && !placementsLoaded) {
+      return renderLoadingState();
+    }
+
+    if (placementsError && !placementsLoaded) {
+      return (
+        <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-6 py-10 text-center text-sm text-red-200">
+          <p className="text-base font-semibold">{placementsError}</p>
+        </div>
+      );
+    }
+
+    const activeZones = placementZones.filter(zone => zone.status === 'active').length;
+    const activeProducts = sponsorshipProducts.filter(product => product.status === 'active').length;
+    const liveCampaigns = promotionalCampaigns.filter(campaign => campaign.status === 'active').length;
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold text-white">
+              {t('admin.placementsControlCenter', { defaultValue: 'Placements control center' })}
+            </h2>
+            <p className="mt-1 text-sm text-gray-400">
+              {t('admin.placementsControlCenterDescription', {
+                defaultValue:
+                  'Configure dynamic placement zones, sponsorship products, and promotional campaigns under audited admin control.',
+              })}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void loadPlacementsCatalog()}
+              disabled={placementsLoading}
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {placementsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw size={16} />}
+              <span>{t('admin.refreshPlacements', { defaultValue: 'Refresh' })}</span>
+            </button>
+            {canManagePlacements && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setPlacementZoneFormState({ mode: 'create' })}
+                  className="inline-flex items-center gap-2 rounded-lg bg-gray-cyan px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-cyan/90"
+                >
+                  <Plus size={16} />
+                  <span>{t('admin.addPlacementZone', { defaultValue: 'Add zone' })}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSponsorshipProductFormState({ mode: 'create' })}
+                  className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
+                >
+                  <Plus size={16} />
+                  <span>{t('admin.addSponsorshipProduct', { defaultValue: 'Add product' })}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPromotionalCampaignFormState({ mode: 'create' })}
+                  className="inline-flex items-center gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-100 transition hover:bg-indigo-500/20"
+                >
+                  <Plus size={16} />
+                  <span>{t('admin.addPromotionalCampaign', { defaultValue: 'Add campaign' })}</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {placementsError && placementsLoaded && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            {placementsError}
+          </div>
+        )}
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="text-xs uppercase tracking-wide text-gray-500">
+              {t('admin.placementZonesSummary', { defaultValue: 'Placement zones' })}
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-white">{placementZones.length}</p>
+            <p className="mt-1 text-sm text-gray-400">
+              {t('admin.placementZonesActiveSummary', {
+                defaultValue: '{{count}} active',
+                count: activeZones,
+              })}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="text-xs uppercase tracking-wide text-gray-500">
+              {t('admin.sponsorshipProductsSummary', { defaultValue: 'Sponsorship products' })}
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-white">{sponsorshipProducts.length}</p>
+            <p className="mt-1 text-sm text-gray-400">
+              {t('admin.sponsorshipProductsActiveSummary', {
+                defaultValue: '{{count}} active',
+                count: activeProducts,
+              })}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="text-xs uppercase tracking-wide text-gray-500">
+              {t('admin.promotionalCampaignsSummary', { defaultValue: 'Promotional campaigns' })}
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-white">{promotionalCampaigns.length}</p>
+            <p className="mt-1 text-sm text-gray-400">
+              {t('admin.promotionalCampaignsLiveSummary', {
+                defaultValue: '{{count}} active',
+                count: liveCampaigns,
+              })}
+            </p>
+          </div>
+        </div>
+
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-white">
+                {t('admin.placementZonesDirectory', { defaultValue: 'Placement zones' })}
+              </h3>
+              <p className="mt-1 text-sm text-gray-400">
+                {t('admin.placementZonesDirectoryDescription', {
+                  defaultValue:
+                    'Named page slots that control where promotions can appear and what types of content can occupy them.',
+                })}
+              </p>
+            </div>
+          </div>
+
+          {placementZones.length === 0 ? (
+            renderEmptyState(
+              t('admin.noPlacementZones', {
+                defaultValue: 'No placement zones have been created yet.',
+              }),
+            )
+          ) : (
+            <div className="space-y-3">
+              {placementZones.map(zone => (
+                <article
+                  key={zone.id}
+                  className="rounded-xl border border-white/10 bg-black/20 px-4 py-4"
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-white">{zone.name}</p>
+                        <span className="inline-flex items-center rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                          {zone.status ?? 'inactive'}
+                        </span>
+                        <span className="inline-flex items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-medium text-indigo-100">
+                          {zone.key}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-400">
+                        {zone.pageKey} / {zone.slotKey}
+                      </p>
+                      {zone.description && <p className="text-sm text-gray-300">{zone.description}</p>}
+                      <div className="flex flex-wrap gap-2 text-[11px] text-gray-400">
+                        <span>
+                          {t('admin.maxAssignments', { defaultValue: 'Max assignments' })}: {zone.maxAssignments}
+                        </span>
+                        <span>
+                          {zone.allowHousePromotions
+                            ? t('admin.housePromotionsEnabled', { defaultValue: 'House enabled' })
+                            : t('admin.housePromotionsDisabled', { defaultValue: 'House disabled' })}
+                        </span>
+                        <span>
+                          {zone.allowSponsoredPromotions
+                            ? t('admin.sponsoredPromotionsEnabled', { defaultValue: 'Sponsored enabled' })
+                            : t('admin.sponsoredPromotionsDisabled', { defaultValue: 'Sponsored disabled' })}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {zone.allowedEntityTypes.map(entityType => (
+                          <span
+                            key={`${zone.id}-${entityType}`}
+                            className="inline-flex items-center rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-gray-300"
+                          >
+                            {formatPlacementEntityTypeLabel(entityType)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {canManagePlacements && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPlacementZoneFormState({ mode: 'edit', entity: zone })}
+                          className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10"
+                        >
+                          <Pencil size={14} />
+                          <span>{t('admin.edit')}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void handlePlacementZoneStatusUpdate(
+                              zone,
+                              zone.status === 'active' ? 'inactive' : 'active',
+                            )
+                          }
+                          disabled={placementSaving}
+                          className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {zone.status === 'active' ? <EyeOff size={14} /> : <Eye size={14} />}
+                          <span>
+                            {zone.status === 'active'
+                              ? t('admin.deactivate', { defaultValue: 'Deactivate' })
+                              : t('admin.activate', { defaultValue: 'Activate' })}
+                          </span>
+                        </button>
+                        {zone.status !== 'archived' && (
+                          <button
+                            type="button"
+                            onClick={() => void handlePlacementZoneStatusUpdate(zone, 'archived')}
+                            disabled={placementSaving}
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <Trash2 size={14} />
+                            <span>{t('admin.archive', { defaultValue: 'Archive' })}</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-white">
+              {t('admin.sponsorshipProductsDirectory', { defaultValue: 'Sponsorship products' })}
+            </h3>
+            <p className="mt-1 text-sm text-gray-400">
+              {t('admin.sponsorshipProductsDirectoryDescription', {
+                defaultValue:
+                  'Commercial inventory definitions that determine which plans and content types can buy visibility.',
+              })}
+            </p>
+          </div>
+
+          {sponsorshipProducts.length === 0 ? (
+            renderEmptyState(
+              t('admin.noSponsorshipProducts', {
+                defaultValue: 'No sponsorship products have been created yet.',
+              }),
+            )
+          ) : (
+            <div className="space-y-3">
+              {sponsorshipProducts.map(product => (
+                <article
+                  key={product.id}
+                  className="rounded-xl border border-white/10 bg-black/20 px-4 py-4"
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-white">{product.name}</p>
+                        <span className="inline-flex items-center rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                          {product.status ?? 'inactive'}
+                        </span>
+                        <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-100">
+                          {product.code}
+                        </span>
+                      </div>
+                      {product.description && <p className="text-sm text-gray-300">{product.description}</p>}
+                      <div className="flex flex-wrap gap-2 text-[11px] text-gray-400">
+                        <span>
+                          {t('admin.defaultDurationDays', { defaultValue: 'Default duration (days)' })}:{' '}
+                          {product.defaultDurationDays ?? '-'}
+                        </span>
+                        {product.priceLabel && <span>{product.priceLabel}</span>}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {product.eligiblePlanIds.map(planId => (
+                          <span
+                            key={`${product.id}-${planId}`}
+                            className="inline-flex items-center rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-100"
+                          >
+                            {planId.toUpperCase()}
+                          </span>
+                        ))}
+                        {product.eligibleEntityTypes.map(entityType => (
+                          <span
+                            key={`${product.id}-${entityType}`}
+                            className="inline-flex items-center rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-gray-300"
+                          >
+                            {formatPlacementEntityTypeLabel(entityType)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {canManagePlacements && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSponsorshipProductFormState({ mode: 'edit', entity: product })}
+                          className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10"
+                        >
+                          <Pencil size={14} />
+                          <span>{t('admin.edit')}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void handleSponsorshipProductStatusUpdate(
+                              product,
+                              product.status === 'active' ? 'inactive' : 'active',
+                            )
+                          }
+                          disabled={placementSaving}
+                          className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {product.status === 'active' ? <EyeOff size={14} /> : <Eye size={14} />}
+                          <span>
+                            {product.status === 'active'
+                              ? t('admin.deactivate', { defaultValue: 'Deactivate' })
+                              : t('admin.activate', { defaultValue: 'Activate' })}
+                          </span>
+                        </button>
+                        {product.status !== 'archived' && (
+                          <button
+                            type="button"
+                            onClick={() => void handleSponsorshipProductStatusUpdate(product, 'archived')}
+                            disabled={placementSaving}
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <Trash2 size={14} />
+                            <span>{t('admin.archive', { defaultValue: 'Archive' })}</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-white">
+              {t('admin.promotionalCampaignsDirectory', { defaultValue: 'Promotional campaigns' })}
+            </h3>
+            <p className="mt-1 text-sm text-gray-400">
+              {t('admin.promotionalCampaignsDirectoryDescription', {
+                defaultValue:
+                  'Scheduled or live promotion units that connect sponsored or house content to one or more placement zones.',
+              })}
+            </p>
+          </div>
+
+          {promotionalCampaigns.length === 0 ? (
+            renderEmptyState(
+              t('admin.noPromotionalCampaigns', {
+                defaultValue: 'No promotional campaigns have been created yet.',
+              }),
+            )
+          ) : (
+            <div className="space-y-3">
+              {promotionalCampaigns.map(campaign => (
+                <article
+                  key={campaign.id}
+                  className="rounded-xl border border-white/10 bg-black/20 px-4 py-4"
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-white">{campaign.name}</p>
+                        <span className="inline-flex items-center rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                          {campaign.status}
+                        </span>
+                        <span className="inline-flex items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-medium text-indigo-100">
+                          {campaign.promotionType}
+                        </span>
+                      </div>
+                      {campaign.description && <p className="text-sm text-gray-300">{campaign.description}</p>}
+                      <div className="flex flex-wrap gap-2 text-[11px] text-gray-400">
+                        <span>
+                          {t('admin.zoneAssignmentsCount', {
+                            defaultValue: '{{count}} zones',
+                            count: campaign.zoneIds.length,
+                          })}
+                        </span>
+                        {campaign.sponsoredEntityType && (
+                          <span>
+                            {formatPlacementEntityTypeLabel(campaign.sponsoredEntityType)} /{' '}
+                            {campaign.sponsoredEntityId ?? '-'}
+                          </span>
+                        )}
+                        {campaign.startAt && (
+                          <span>
+                            {t('admin.startsLabel', { defaultValue: 'Starts' })}:{' '}
+                            {formatDateTime(typeof campaign.startAt === 'string' ? campaign.startAt : null)}
+                          </span>
+                        )}
+                        {campaign.endAt && (
+                          <span>
+                            {t('admin.endsLabel', { defaultValue: 'Ends' })}:{' '}
+                            {formatDateTime(typeof campaign.endAt === 'string' ? campaign.endAt : null)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {campaign.zoneIds.map(zoneId => {
+                          const zone = placementZones.find(entry => entry.id === zoneId);
+                          return (
+                            <span
+                              key={`${campaign.id}-${zoneId}`}
+                              className="inline-flex items-center rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-gray-300"
+                            >
+                              {zone?.name ?? zoneId}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {canManagePlacements && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPromotionalCampaignFormState({ mode: 'edit', entity: campaign })}
+                          className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10"
+                        >
+                          <Pencil size={14} />
+                          <span>{t('admin.edit')}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void handlePromotionalCampaignStatusUpdate(
+                              campaign,
+                              campaign.status === 'active' ? 'paused' : 'active',
+                            )
+                          }
+                          disabled={placementSaving}
+                          className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-indigo-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {campaign.status === 'active' ? <Power size={14} /> : <CheckCircle size={14} />}
+                          <span>
+                            {campaign.status === 'active'
+                              ? t('admin.pause', { defaultValue: 'Pause' })
+                              : t('admin.publish', { defaultValue: 'Publish' })}
+                          </span>
+                        </button>
+                        {campaign.status !== 'archived' && (
+                          <button
+                            type="button"
+                            onClick={() => void handlePromotionalCampaignStatusUpdate(campaign, 'archived')}
+                            disabled={placementSaving}
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <Trash2 size={14} />
+                            <span>{t('admin.archive', { defaultValue: 'Archive' })}</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    );
+  };
+
   if (!user) {
     return null;
   }
@@ -5646,6 +6492,7 @@ const AdminPage: React.FC = () => {
           {activeTab === 'listings' && renderListingsPanel()}
           {activeTab === 'blog' && renderBlogPanel()}
           {activeTab === 'stations' && renderStationsPanel()}
+          {activeTab === 'placements' && renderPlacementsPanel()}
           {activeTab === 'access' && renderAccessPanel()}
           {activeTab === 'audit' && renderAuditPanel()}
           {activeTab === 'migration' && (
@@ -5730,6 +6577,62 @@ const AdminPage: React.FC = () => {
             onSubmit={handleStationSubmit}
             onCancel={closeAllModals}
             isSubmitting={stationSubmitting}
+          />
+        </AdminModal>
+      )}
+
+      {placementZoneFormState && (
+        <AdminModal
+          title={
+            placementZoneFormState.mode === 'edit'
+              ? t('admin.editPlacementZone', { defaultValue: 'Edit placement zone' })
+              : t('admin.addPlacementZone', { defaultValue: 'Add placement zone' })
+          }
+          onClose={closeAllModals}
+        >
+          <PlacementZoneForm
+            initialValues={placementZoneFormState.entity}
+            onSubmit={handlePlacementZoneSubmit}
+            onCancel={closeAllModals}
+            isSubmitting={placementSaving}
+          />
+        </AdminModal>
+      )}
+
+      {sponsorshipProductFormState && (
+        <AdminModal
+          title={
+            sponsorshipProductFormState.mode === 'edit'
+              ? t('admin.editSponsorshipProduct', { defaultValue: 'Edit sponsorship product' })
+              : t('admin.addSponsorshipProduct', { defaultValue: 'Add sponsorship product' })
+          }
+          onClose={closeAllModals}
+        >
+          <SponsorshipProductForm
+            initialValues={sponsorshipProductFormState.entity}
+            onSubmit={handleSponsorshipProductSubmit}
+            onCancel={closeAllModals}
+            isSubmitting={placementSaving}
+          />
+        </AdminModal>
+      )}
+
+      {promotionalCampaignFormState && (
+        <AdminModal
+          title={
+            promotionalCampaignFormState.mode === 'edit'
+              ? t('admin.editPromotionalCampaign', { defaultValue: 'Edit promotional campaign' })
+              : t('admin.addPromotionalCampaign', { defaultValue: 'Add promotional campaign' })
+          }
+          onClose={closeAllModals}
+        >
+          <PromotionalCampaignForm
+            initialValues={promotionalCampaignFormState.entity}
+            zones={placementZones}
+            products={sponsorshipProducts}
+            onSubmit={handlePromotionalCampaignSubmit}
+            onCancel={closeAllModals}
+            isSubmitting={placementSaving}
           />
         </AdminModal>
       )}

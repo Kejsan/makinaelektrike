@@ -41,6 +41,9 @@ export type AuditAction =
   | 'listing.updated'
   | 'model.updated'
   | 'charging_station.updated'
+  | 'placement_zone.updated'
+  | 'sponsorship_product.updated'
+  | 'promotional_campaign.updated'
   | 'blog_post.updated';
 export type AuditEntityType =
   | 'invite'
@@ -49,7 +52,27 @@ export type AuditEntityType =
   | 'listing'
   | 'model'
   | 'charging_station'
+  | 'placement_zone'
+  | 'sponsorship_product'
+  | 'promotional_campaign'
   | 'blog_post';
+export type PlacementEntityType =
+  | 'dealer'
+  | 'listing'
+  | 'model'
+  | 'charging_station'
+  | 'blog_post'
+  | 'service'
+  | 'custom';
+export type PlacementZoneStatus = 'active' | 'inactive' | 'archived';
+export type SponsorshipProductStatus = 'active' | 'inactive' | 'archived';
+export type PromotionalCampaignStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'active'
+  | 'paused'
+  | 'archived';
+export type PromotionalCampaignPromotionType = 'house_promotion' | 'sponsored_promotion';
 export type PermissionKey =
   | 'users.read'
   | 'users.edit'
@@ -205,6 +228,105 @@ export interface AccessInvite {
   expiresAt?: Timestamp | string | null;
   acceptedAt?: Timestamp | string | null;
   revokedAt?: Timestamp | string | null;
+}
+
+export interface PlacementZone extends FirestoreTimestamps {
+  id: string;
+  key: string;
+  name: string;
+  description?: string | null;
+  pageKey: string;
+  slotKey: string;
+  allowedEntityTypes: PlacementEntityType[];
+  allowHousePromotions: boolean;
+  allowSponsoredPromotions: boolean;
+  maxAssignments: number;
+  localeTargets?: string[];
+  status?: PlacementZoneStatus;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+}
+
+export interface PlacementZoneFormValues {
+  key: string;
+  name: string;
+  description: string;
+  pageKey: string;
+  slotKey: string;
+  allowedEntityTypes: PlacementEntityType[];
+  allowHousePromotions: boolean;
+  allowSponsoredPromotions: boolean;
+  maxAssignments: number | '';
+  localeTargets: string[];
+  status: PlacementZoneStatus;
+}
+
+export interface SponsorshipProduct extends FirestoreTimestamps {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  eligiblePlanIds: DealerPlanId[];
+  eligibleEntityTypes: PlacementEntityType[];
+  defaultDurationDays?: number | null;
+  priceLabel?: string | null;
+  status?: SponsorshipProductStatus;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+}
+
+export interface SponsorshipProductFormValues {
+  code: string;
+  name: string;
+  description: string;
+  eligiblePlanIds: DealerPlanId[];
+  eligibleEntityTypes: PlacementEntityType[];
+  defaultDurationDays: number | '';
+  priceLabel: string;
+  status: SponsorshipProductStatus;
+}
+
+export interface PromotionalCampaign extends FirestoreTimestamps {
+  id: string;
+  name: string;
+  description?: string | null;
+  status: PromotionalCampaignStatus;
+  promotionType: PromotionalCampaignPromotionType;
+  sponsoredEntityType?: PlacementEntityType | null;
+  sponsoredEntityId?: string | null;
+  sponsorshipProductId?: string | null;
+  zoneIds: string[];
+  headline?: string | null;
+  supportingText?: string | null;
+  imageUrl?: string | null;
+  ctaLabel?: string | null;
+  destinationUrl?: string | null;
+  localeTargets?: string[];
+  startAt?: Timestamp | string | null;
+  endAt?: Timestamp | string | null;
+  priority: number;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+}
+
+export interface PromotionalCampaignFormValues {
+  name: string;
+  description: string;
+  status: PromotionalCampaignStatus;
+  promotionType: PromotionalCampaignPromotionType;
+  sponsoredEntityType: PlacementEntityType | '';
+  sponsoredEntityId: string;
+  sponsorshipProductId: string;
+  zoneIds: string[];
+  headline: string;
+  supportingText: string;
+  imageUrl: string;
+  ctaLabel: string;
+  destinationUrl: string;
+  localeTargets: string[];
+  startAt: string;
+  endAt: string;
+  priority: number | '';
 }
 
 interface DealerCore {
