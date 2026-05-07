@@ -102,6 +102,10 @@ import {
   lookupAdminModel,
   type AdminModelLookupResult,
 } from '../services/adminModels';
+import {
+  lookupAdminStation,
+  type AdminStationLookupResult,
+} from '../services/adminStations';
 import { createAdminEntityNote } from '../services/adminNotes';
 import {
   removeDealerStaffMember as removeDealerTeamMember,
@@ -283,6 +287,12 @@ const AdminPage: React.FC = () => {
   const [modelControlError, setModelControlError] = useState<string | null>(null);
   const [modelControlNoteDraft, setModelControlNoteDraft] = useState('');
   const [modelControlNoteSaving, setModelControlNoteSaving] = useState(false);
+  const [stationControlStation, setStationControlStation] = useState<ChargingStation | null>(null);
+  const [stationControlDetail, setStationControlDetail] = useState<AdminStationLookupResult | null>(null);
+  const [stationControlLoading, setStationControlLoading] = useState(false);
+  const [stationControlError, setStationControlError] = useState<string | null>(null);
+  const [stationControlNoteDraft, setStationControlNoteDraft] = useState('');
+  const [stationControlNoteSaving, setStationControlNoteSaving] = useState(false);
   const [activationError, setActivationError] = useState<string | null>(null);
   const {
     dealers,
@@ -311,7 +321,7 @@ const AdminPage: React.FC = () => {
     { id: string; type: 'approve' | 'reject' | 'deactivate' | 'reactivate' | 'delete' } | null
   >(null);
   const [modelAction, setModelAction] = useState<
-    { id: string; type: 'toggleVisibility' | 'delete' } | null
+    { id: string; type: 'toggleVisibility' | 'toggleFeatured' | 'delete' } | null
   >(null);
   const [blogAction, setBlogAction] = useState<
     { id: string; type: 'toggleStatus' | 'delete' } | null
@@ -394,6 +404,13 @@ const AdminPage: React.FC = () => {
   const canManageModels =
     hasPermission('models.publish') ||
     hasPermission('models.merge');
+  const canReadStations =
+    hasPermission('stations.read') ||
+    hasPermission('stations.edit') ||
+    hasPermission('stations.merge');
+  const canManageStations =
+    hasPermission('stations.edit') ||
+    hasPermission('stations.merge');
   const canViewAudit = hasPermission('audit.view');
 
   // Reset selection and search on tab/filter change
@@ -546,6 +563,12 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  const refreshStationsData = useCallback(async () => {
+    const data = await fetchChargingStations();
+    setStations(data);
+    return data;
+  }, []);
+
   const handleBulkStationAction = async (action: 'delete' | 'toggleActive') => {
     if (!isAdmin || selectedIds.length === 0) return;
     if (action === 'delete' && !confirmBulkDelete()) return;
@@ -581,9 +604,20 @@ const AdminPage: React.FC = () => {
         }
         return Promise.resolve();
       }));
-      // Refresh stations after bulk action
-      const data = await fetchChargingStations();
-      setStations(data);
+      const data = await refreshStationsData();
+      if (stationControlStation && selectedIds.includes(stationControlStation.id)) {
+        if (action === 'delete') {
+          closeStationControlCenter();
+        } else {
+          const refreshedStation = data.find(station => station.id === stationControlStation.id) ?? null;
+          setStationControlStation(refreshedStation);
+          if (refreshedStation) {
+            await loadStationControlDetail(refreshedStation.id);
+          } else {
+            closeStationControlCenter();
+          }
+        }
+      }
       showBulkActionToast('success');
       setSelectedIds([]);
     } catch (error) {
@@ -1727,6 +1761,52 @@ const AdminPage: React.FC = () => {
     setModelControlNoteSaving(false);
   }, []);
 
+  const loadStationControlDetail = useCallback(
+    async (stationId: string) => {
+      if (!canReadStations) {
+        return;
+      }
+
+      setStationControlLoading(true);
+      setStationControlError(null);
+      try {
+        const detail = await lookupAdminStation(stationId);
+        setStationControlDetail(detail);
+      } catch (error) {
+        console.error('Failed to load charging-station control detail', error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : t('admin.stationControlLoadFailed', {
+                defaultValue: 'Failed to load the charging-station control center.',
+              });
+        setStationControlError(errorMessage);
+      } finally {
+        setStationControlLoading(false);
+      }
+    },
+    [canReadStations, t],
+  );
+
+  const openStationControlCenter = useCallback(
+    (station: ChargingStation) => {
+      setStationControlStation(station);
+      setStationControlDetail(null);
+      setStationControlError(null);
+      setStationControlNoteDraft('');
+      void loadStationControlDetail(station.id);
+    },
+    [loadStationControlDetail],
+  );
+
+  const closeStationControlCenter = useCallback(() => {
+    setStationControlStation(null);
+    setStationControlDetail(null);
+    setStationControlError(null);
+    setStationControlNoteDraft('');
+    setStationControlNoteSaving(false);
+  }, []);
+
   const handleDealerOwnerReassign = useCallback(async () => {
     if (!dealerControlDealer || !canEditDealers) {
       return;
@@ -2100,6 +2180,69 @@ const AdminPage: React.FC = () => {
     t,
   ]);
 
+  const handleStationControlNoteCreate = useCallback(async () => {
+    if (!stationControlStation) {
+      return;
+    }
+
+    if (!canManageStations) {
+      addToast(
+        t('admin.stationNotePermissionDenied', {
+          defaultValue: 'You do not have permission to add internal charging-station notes.',
+        }),
+        'error',
+      );
+      return;
+    }
+
+    const body = stationControlNoteDraft.trim();
+    if (!body) {
+      setStationControlError(
+        t('admin.stationNoteRequired', {
+          defaultValue: 'Enter a note before saving it.',
+        }),
+      );
+      return;
+    }
+
+    setStationControlNoteSaving(true);
+    setStationControlError(null);
+    try {
+      await createAdminEntityNote({
+        entityType: 'charging_station',
+        entityId: stationControlStation.id,
+        body,
+      });
+      await loadStationControlDetail(stationControlStation.id);
+      setStationControlNoteDraft('');
+      addToast(
+        t('admin.stationNoteCreated', {
+          defaultValue: 'Internal charging-station note added successfully.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to create charging-station admin note', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.stationNoteCreateFailed', {
+              defaultValue: 'Failed to add the internal charging-station note.',
+            });
+      setStationControlError(errorMessage);
+      addToast(errorMessage, 'error');
+    } finally {
+      setStationControlNoteSaving(false);
+    }
+  }, [
+    addToast,
+    canManageStations,
+    loadStationControlDetail,
+    stationControlNoteDraft,
+    stationControlStation,
+    t,
+  ]);
+
   const handleRejectDealer = async (dealerId: string) => {
     await handleDealerStatusAction(dealerId, 'reject');
   };
@@ -2216,7 +2359,26 @@ const AdminPage: React.FC = () => {
           values: followUpValues,
         });
       }
+
+      setModelControlModel(current =>
+        current && current.id === modelId
+          ? {
+              ...current,
+              ...values,
+              image_url:
+                typeof followUpValues.image_url === 'string' ? followUpValues.image_url : current.image_url,
+              imageGallery:
+                Array.isArray(followUpValues.imageGallery)
+                  ? (followUpValues.imageGallery as string[])
+                  : current.imageGallery,
+            }
+          : current,
+      );
+
       closeAllModals();
+      if (modelControlModel?.id === modelId) {
+        await loadModelControlDetail(modelId);
+      }
     } catch (error) {
       console.error(error);
       addToast(
@@ -2269,10 +2431,10 @@ const AdminPage: React.FC = () => {
   );
 
   const handleStationSubmit = async (values: ChargingStationFormValues) => {
-    if (!user?.uid) return;
-
     setStationSubmitting(true);
     try {
+      const editedStationId =
+        stationFormState?.mode === 'edit' && stationFormState.entity ? stationFormState.entity.id : null;
       if (stationFormState?.mode === 'edit' && stationFormState.entity) {
         await updateAdminStation({
           action: 'update',
@@ -2286,8 +2448,16 @@ const AdminPage: React.FC = () => {
         });
       }
       closeAllModals();
-      const updatedStations = await fetchChargingStations();
-      setStations(updatedStations);
+      const updatedStations = await refreshStationsData();
+      if (editedStationId && stationControlStation?.id === editedStationId) {
+        const refreshedStation = updatedStations.find(station => station.id === editedStationId) ?? null;
+        setStationControlStation(refreshedStation);
+        if (refreshedStation) {
+          await loadStationControlDetail(refreshedStation.id);
+        } else {
+          closeStationControlCenter();
+        }
+      }
     } catch (error) {
       console.error('Failed to save charging station:', error);
       addToast(
@@ -2319,8 +2489,10 @@ const AdminPage: React.FC = () => {
     setStationAction({ id: stationId, type: 'delete' });
     try {
       await updateAdminStation({ action: 'delete', stationId });
-      const updatedStations = await fetchChargingStations();
-      setStations(updatedStations);
+      await refreshStationsData();
+      if (stationControlStation?.id === stationId) {
+        closeStationControlCenter();
+      }
     } catch (error) {
       console.error('Failed to delete charging station:', error);
       addToast(
@@ -2347,8 +2519,16 @@ const AdminPage: React.FC = () => {
           isActive: station.isActive === false,
         },
       });
-      const updatedStations = await fetchChargingStations();
-      setStations(updatedStations);
+      const updatedStations = await refreshStationsData();
+      if (stationControlStation?.id === station.id) {
+        const refreshedStation = updatedStations.find(entry => entry.id === station.id) ?? null;
+        setStationControlStation(refreshedStation);
+        if (refreshedStation) {
+          await loadStationControlDetail(refreshedStation.id);
+        } else {
+          closeStationControlCenter();
+        }
+      }
     } catch (error) {
       console.error('Failed to update charging station visibility:', error);
       addToast(
@@ -2371,6 +2551,14 @@ const AdminPage: React.FC = () => {
         modelId: model.id,
         isActive: model.isActive === false,
       });
+      setModelControlModel(current =>
+        current && current.id === model.id
+          ? {
+              ...current,
+              isActive: model.isActive === false,
+            }
+          : current,
+      );
       if (modelControlModel?.id === model.id) {
         await loadModelControlDetail(model.id);
       }
@@ -2381,6 +2569,39 @@ const AdminPage: React.FC = () => {
           ? error.message
           : t('admin.modelVisibilityUpdateFailed', {
               defaultValue: 'Failed to update model visibility.',
+            }),
+        'error',
+      );
+    } finally {
+      setModelAction(null);
+    }
+  };
+
+  const handleToggleModelFeatured = async (model: Model) => {
+    setModelAction({ id: model.id, type: 'toggleFeatured' });
+    try {
+      await updateAdminModel({
+        modelId: model.id,
+        isFeatured: !model.isFeatured,
+      });
+      setModelControlModel(current =>
+        current && current.id === model.id
+          ? {
+              ...current,
+              isFeatured: !model.isFeatured,
+            }
+          : current,
+      );
+      if (modelControlModel?.id === model.id) {
+        await loadModelControlDetail(model.id);
+      }
+    } catch (error) {
+      console.error('Failed to update model featured flag:', error);
+      addToast(
+        error instanceof Error
+          ? error.message
+          : t('admin.modelFeaturedUpdateFailed', {
+              defaultValue: 'Failed to update the featured status for this model.',
             }),
         'error',
       );
@@ -2464,8 +2685,7 @@ const AdminPage: React.FC = () => {
       setStationsLoading(true);
       setStationsError(null);
       try {
-        const data = await fetchChargingStations();
-        setStations(data);
+        await refreshStationsData();
       } catch (error) {
         console.error('Error loading charging stations:', error);
         setStationsError('Failed to load charging stations');
@@ -2474,8 +2694,8 @@ const AdminPage: React.FC = () => {
       }
     };
 
-    loadStations();
-  }, []);
+    void loadStations();
+  }, [refreshStationsData]);
 
 
   const confirmAndDelete = async (action: () => Promise<void>) => {
@@ -5209,6 +5429,15 @@ const AdminPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {canReadStations && (
+                          <button
+                            onClick={() => openStationControlCenter(station)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-indigo-500/20 px-2 py-1 text-[10px] font-semibold text-indigo-100 transition hover:bg-indigo-500/30"
+                          >
+                            <Shield size={10} />
+                            {t('admin.stationControlCenter', { defaultValue: 'Control center' })}
+                          </button>
+                        )}
                         {station.googleMapsLink && (
                           <a
                             href={station.googleMapsLink}
@@ -6555,15 +6784,92 @@ const AdminPage: React.FC = () => {
                   </span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => void loadModelControlDetail(modelControlModel.id)}
-                disabled={modelControlLoading}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {modelControlLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw size={16} />}
-                <span>{t('admin.refreshModelControlCenter', { defaultValue: 'Refresh model data' })}</span>
-              </button>
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => void loadModelControlDetail(modelControlModel.id)}
+                  disabled={modelControlLoading}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {modelControlLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw size={16} />}
+                  <span>{t('admin.refreshModelControlCenter', { defaultValue: 'Refresh model data' })}</span>
+                </button>
+                {canManageModels && modelControlDetail && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setModelFormState({
+                          mode: 'edit',
+                          entity: models.find(entry => entry.id === modelControlModel.id) ?? modelControlModel,
+                        })
+                      }
+                      disabled={modelSubmitting}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Pencil size={16} />
+                      <span>{t('admin.editModel', { defaultValue: 'Edit model' })}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleToggleModelFeatured(modelControlModel)}
+                      disabled={modelAction !== null}
+                      className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                        modelControlDetail.model.isFeatured
+                          ? 'border-amber-500/30 bg-amber-500/10 text-amber-100 hover:bg-amber-500/20'
+                          : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20'
+                      }`}
+                    >
+                      {modelAction?.id === modelControlModel.id && modelAction.type === 'toggleFeatured' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle size={16} />
+                      )}
+                      <span>
+                        {modelControlDetail.model.isFeatured
+                          ? t('admin.unfeatureModel', { defaultValue: 'Remove featured' })
+                          : t('admin.featureModel', { defaultValue: 'Feature model' })}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleToggleModelVisibility(modelControlModel)}
+                      disabled={modelAction !== null}
+                      className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                        modelControlDetail.model.isActive === false
+                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20'
+                          : 'border-amber-500/30 bg-amber-500/10 text-amber-100 hover:bg-amber-500/20'
+                      }`}
+                    >
+                      {modelAction?.id === modelControlModel.id && modelAction.type === 'toggleVisibility' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : modelControlDetail.model.isActive === false ? (
+                        <Eye size={16} />
+                      ) : (
+                        <EyeOff size={16} />
+                      )}
+                      <span>
+                        {modelControlDetail.model.isActive === false
+                          ? t('admin.showModel', { defaultValue: 'Show model' })
+                          : t('admin.hideModel', { defaultValue: 'Hide model' })}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => confirmAndDelete(() => handleDeleteModel(modelControlModel.id))}
+                      disabled={modelAction !== null}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {modelAction?.id === modelControlModel.id && modelAction.type === 'delete' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
+                      <span>{t('admin.deleteModel', { defaultValue: 'Delete model' })}</span>
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
             {modelControlError && (
@@ -7029,6 +7335,392 @@ const AdminPage: React.FC = () => {
               <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-gray-400">
                 {t('admin.modelControlNoData', {
                   defaultValue: 'Model relationship data is not available yet.',
+                })}
+              </div>
+            )}
+          </div>
+        </AdminModal>
+      )}
+      {stationControlStation && (
+        <AdminModal
+          title={t('admin.stationControlCenterTitle', {
+            defaultValue: 'Charging-station control center: {{address}}',
+            address: stationControlStation.address,
+          })}
+          onClose={closeStationControlCenter}
+        >
+          <div className="space-y-6">
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2">
+                <p className="text-sm text-gray-300">
+                  {t('admin.stationControlCenterDescription', {
+                    defaultValue:
+                      'Inspect station visibility, location metadata, recent privileged actions, and internal notes.',
+                  })}
+                </p>
+                <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+                  <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                    ID: {stationControlStation.id}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                    {stationControlDetail?.station.isActive === false
+                      ? t('admin.hidden', { defaultValue: 'Hidden' })
+                      : t('admin.visible', { defaultValue: 'Visible' })}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => void loadStationControlDetail(stationControlStation.id)}
+                  disabled={stationControlLoading}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {stationControlLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw size={16} />}
+                  <span>{t('admin.refreshStationControlCenter', { defaultValue: 'Refresh station data' })}</span>
+                </button>
+                {(stationControlDetail?.station.googleMapsLink ?? stationControlStation.googleMapsLink) && (
+                  <a
+                    href={stationControlDetail?.station.googleMapsLink ?? stationControlStation.googleMapsLink ?? '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+                  >
+                    <ExternalLink size={16} />
+                    <span>{t('admin.openMapLink', { defaultValue: 'Open map link' })}</span>
+                  </a>
+                )}
+                {canManageStations && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setStationFormState({
+                          mode: 'edit',
+                          entity:
+                            stations.find(entry => entry.id === stationControlStation.id) ??
+                            stationControlStation,
+                        })
+                      }
+                      disabled={stationSubmitting}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Pencil size={16} />
+                      <span>{t('admin.editStation', { defaultValue: 'Edit station' })}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void handleToggleStationVisibility(
+                          stations.find(entry => entry.id === stationControlStation.id) ??
+                            stationControlStation,
+                        )
+                      }
+                      disabled={stationAction !== null}
+                      className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                        stationControlDetail?.station.isActive === false
+                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20'
+                          : 'border-amber-500/30 bg-amber-500/10 text-amber-100 hover:bg-amber-500/20'
+                      }`}
+                    >
+                      {stationAction?.id === stationControlStation.id &&
+                      stationAction.type === 'toggleVisibility' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : stationControlDetail?.station.isActive === false ? (
+                        <Eye size={16} />
+                      ) : (
+                        <EyeOff size={16} />
+                      )}
+                      <span>
+                        {stationControlDetail?.station.isActive === false
+                          ? t('admin.showStation', { defaultValue: 'Show station' })
+                          : t('admin.hideStation', { defaultValue: 'Hide station' })}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => confirmAndDelete(() => handleDeleteStation(stationControlStation.id))}
+                      disabled={stationAction !== null}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {stationAction?.id === stationControlStation.id && stationAction.type === 'delete' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
+                      <span>{t('admin.deleteStation', { defaultValue: 'Delete station' })}</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {stationControlError && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                {stationControlError}
+              </div>
+            )}
+
+            {stationControlLoading && !stationControlDetail ? (
+              <AdminLazyFallback
+                label={t('admin.loadingStationControlCenter', {
+                  defaultValue: 'Loading charging-station control center...',
+                })}
+              />
+            ) : stationControlDetail ? (
+              <>
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.stationOverview', { defaultValue: 'Station overview' })}
+                      </h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+                        <p className="text-base font-semibold text-white">
+                          {stationControlDetail.station.address ??
+                            t('admin.valueUnavailable', { defaultValue: 'Unavailable' })}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-medium">
+                          {stationControlDetail.station.operator && (
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                              {stationControlDetail.station.operator}
+                            </span>
+                          )}
+                          {stationControlDetail.station.plugTypes && (
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                              {stationControlDetail.station.plugTypes}
+                            </span>
+                          )}
+                          {stationControlDetail.station.chargingSpeedKw !== null && (
+                            <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-emerald-100">
+                              {stationControlDetail.station.chargingSpeedKw} kW
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.stationCoordinatesLabel', { defaultValue: 'Coordinates' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {stationControlDetail.station.latitude !== null &&
+                            stationControlDetail.station.longitude !== null
+                              ? `${stationControlDetail.station.latitude}, ${stationControlDetail.station.longitude}`
+                              : t('admin.coordinatesUnavailable', { defaultValue: 'Coordinates not set' })}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.stationPricingLabel', { defaultValue: 'Pricing details' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {stationControlDetail.station.pricingDetails ??
+                              t('admin.valueUnavailable', { defaultValue: 'Unavailable' })}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.createdOn', { defaultValue: 'Created on' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {formatDateTime(stationControlDetail.station.createdAt) ??
+                              t('admin.dateUnavailable', { defaultValue: 'Unavailable' })}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.updatedOn', { defaultValue: 'Updated on' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {formatDateTime(stationControlDetail.station.updatedAt) ??
+                              t('admin.dateUnavailable', { defaultValue: 'Unavailable' })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.stationOwnershipAndAudit', {
+                          defaultValue: 'Creation and accountability',
+                        })}
+                      </h3>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                        <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                          {t('admin.createdByLabel', { defaultValue: 'Created by' })}
+                        </p>
+                        {stationControlDetail.createdBy ? (
+                          <>
+                            <p className="mt-1 text-sm font-semibold text-white">
+                              {stationControlDetail.createdBy.displayName ||
+                                stationControlDetail.createdBy.email ||
+                                stationControlDetail.createdBy.uid}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-500">
+                              {stationControlDetail.createdBy.email ?? stationControlDetail.createdBy.uid}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="mt-1 text-sm text-gray-500">
+                            {t('admin.stationCreatedByUnavailable', {
+                              defaultValue: 'Creator details are not available.',
+                            })}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                        <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                          {t('admin.updatedByLabel', { defaultValue: 'Last updated by' })}
+                        </p>
+                        {stationControlDetail.updatedBy ? (
+                          <>
+                            <p className="mt-1 text-sm font-semibold text-white">
+                              {stationControlDetail.updatedBy.displayName ||
+                                stationControlDetail.updatedBy.email ||
+                                stationControlDetail.updatedBy.uid}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-500">
+                              {stationControlDetail.updatedBy.email ?? stationControlDetail.updatedBy.uid}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="mt-1 text-sm text-gray-500">
+                            {t('admin.stationUpdatedByUnavailable', {
+                              defaultValue: 'Updater details are not available.',
+                            })}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Eye className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.recentAdminHistory', { defaultValue: 'Recent admin history' })}
+                      </h3>
+                    </div>
+
+                    {stationControlDetail.recentAuditLogs.length === 0 ? (
+                      <p className="text-sm text-gray-500">
+                        {t('admin.stationRecentHistoryEmpty', {
+                          defaultValue: 'No recent privileged actions are linked to this station yet.',
+                        })}
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {stationControlDetail.recentAuditLogs.map(log => (
+                          <article
+                            key={log.id}
+                            className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex items-center rounded-full border border-gray-cyan/30 bg-gray-cyan/10 px-2 py-0.5 text-[10px] font-semibold text-gray-100">
+                                {formatAuditActionLabel(log.action)}
+                              </span>
+                              {log.createdAt && (
+                                <span className="text-xs text-gray-500">
+                                  {formatDateTime(typeof log.createdAt === 'string' ? log.createdAt : null)}
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-2 text-sm font-semibold text-white">{log.summary}</p>
+                            <p className="mt-2 text-xs text-gray-500">
+                              {t('admin.auditActorLabel', { defaultValue: 'Actor' })}: {log.actorEmail || log.actorUid}
+                            </p>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Pencil className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.internalAdminNotes', { defaultValue: 'Internal admin notes' })}
+                      </h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="flex flex-col gap-2 text-sm text-gray-300">
+                        <span className="font-medium text-white">
+                          {t('admin.addInternalNote', { defaultValue: 'Add internal note' })}
+                        </span>
+                        <textarea
+                          value={stationControlNoteDraft}
+                          onChange={event => setStationControlNoteDraft(event.target.value)}
+                          disabled={!canManageStations || stationControlNoteSaving}
+                          rows={4}
+                          placeholder={t('admin.stationInternalNotePlaceholder', {
+                            defaultValue:
+                              'Track data-quality issues, verification checks, duplicate risk, or operator follow-up for this station.',
+                          })}
+                          className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-gray-cyan/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => void handleStationControlNoteCreate()}
+                        disabled={!canManageStations || stationControlNoteSaving}
+                        className="inline-flex items-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-cyan/90 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {stationControlNoteSaving ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Plus size={16} />
+                        )}
+                        <span>{t('admin.saveInternalNote', { defaultValue: 'Save internal note' })}</span>
+                      </button>
+
+                      {stationControlDetail.adminNotes.length === 0 ? (
+                        <p className="rounded-xl border border-white/10 bg-black/20 px-4 py-4 text-sm text-gray-500">
+                          {t('admin.stationInternalNotesEmpty', {
+                            defaultValue: 'No internal admin notes have been recorded for this station yet.',
+                          })}
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {stationControlDetail.adminNotes.map(note => (
+                            <article
+                              key={note.id}
+                              className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                            >
+                              <p className="whitespace-pre-wrap text-sm text-gray-200">{note.body}</p>
+                              <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
+                                <span>{note.createdByEmail || note.createdByUid}</span>
+                                {note.createdAt && (
+                                  <span>{formatDateTime(typeof note.createdAt === 'string' ? note.createdAt : null)}</span>
+                                )}
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-gray-400">
+                {t('admin.stationControlNoData', {
+                  defaultValue: 'Charging-station relationship data is not available yet.',
                 })}
               </div>
             )}

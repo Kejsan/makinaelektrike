@@ -21,29 +21,40 @@ interface AdminEntityNoteCreateBody {
   body?: string;
 }
 
-type SupportedEntityType = 'user' | 'dealer' | 'listing' | 'model';
+type SupportedEntityType = 'user' | 'dealer' | 'listing' | 'model' | 'charging_station';
 
 const ENTITY_PERMISSION_MAP: Record<
   SupportedEntityType,
-  'users.edit' | 'dealers.edit' | 'listings.moderate' | 'models.publish'
+  'users.edit' | 'dealers.edit' | 'listings.moderate' | 'models.publish' | 'stations.edit'
 > = {
   user: 'users.edit',
   dealer: 'dealers.edit',
   listing: 'listings.moderate',
   model: 'models.publish',
+  charging_station: 'stations.edit',
 };
 
-const ENTITY_COLLECTION_MAP: Record<SupportedEntityType, 'users' | 'dealers' | 'listings' | 'models'> = {
+const ENTITY_COLLECTION_MAP: Record<
+  SupportedEntityType,
+  'users' | 'dealers' | 'listings' | 'models' | 'charging_stations'
+> = {
   user: 'users',
   dealer: 'dealers',
   listing: 'listings',
   model: 'models',
+  charging_station: 'charging_stations',
 };
 
 const getEntityType = (value: unknown): SupportedEntityType => {
   const entityType = getRequiredString(value, 'entityType', 32);
-  if (entityType !== 'user' && entityType !== 'dealer' && entityType !== 'listing' && entityType !== 'model') {
-    throw new Error('entityType must be either user, dealer, listing, or model.');
+  if (
+    entityType !== 'user' &&
+    entityType !== 'dealer' &&
+    entityType !== 'listing' &&
+    entityType !== 'model' &&
+    entityType !== 'charging_station'
+  ) {
+    throw new Error('entityType must be either user, dealer, listing, model, or charging_station.');
   }
   return entityType;
 };
@@ -55,7 +66,9 @@ const buildSummary = (entityType: SupportedEntityType, label: string) =>
       ? `Added internal admin note to dealer ${label}.`
       : entityType === 'listing'
         ? `Added internal admin note to listing ${label}.`
-        : `Added internal admin note to model ${label}.`;
+        : entityType === 'model'
+          ? `Added internal admin note to model ${label}.`
+          : `Added internal admin note to charging station ${label}.`;
 
 export const handler = async (event: FunctionEvent) => {
   if (event.httpMethod !== 'POST') {
@@ -80,7 +93,9 @@ export const handler = async (event: FunctionEvent) => {
               ? 'Dealer not found.'
               : entityType === 'listing'
                 ? 'Listing not found.'
-                : 'Model not found.',
+                : entityType === 'model'
+                  ? 'Model not found.'
+                  : 'Charging station not found.',
       });
     }
 
@@ -102,9 +117,15 @@ export const handler = async (event: FunctionEvent) => {
               : [targetData.make, targetData.model]
                   .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
                   .join(' ') || entityId
-            : [targetData.brand, targetData.model_name]
-                .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-                .join(' ') || entityId;
+            : entityType === 'model'
+              ? [targetData.brand, targetData.model_name]
+                  .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+                  .join(' ') || entityId
+              : typeof targetData.address === 'string' && targetData.address.trim().length > 0
+                ? targetData.address
+                : typeof targetData.operator === 'string' && targetData.operator.trim().length > 0
+                  ? targetData.operator
+                  : entityId;
 
     const noteReference = firestore.collection('adminEntityNotes').doc();
     const entityKey = buildAdminEntityKey(entityType, entityId);

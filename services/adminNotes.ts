@@ -17,7 +17,7 @@ const getRequiredIdToken = async () => {
 };
 
 export const createAdminEntityNote = async (payload: {
-  entityType: Extract<AuditEntityType, 'user' | 'dealer' | 'listing' | 'model'>;
+  entityType: Extract<AuditEntityType, 'user' | 'dealer' | 'listing' | 'model' | 'charging_station'>;
   entityId: string;
   body: string;
 }) => {
