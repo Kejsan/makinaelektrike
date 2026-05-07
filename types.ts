@@ -26,6 +26,7 @@ export type DealerSubscriptionStatus = 'active' | 'paused' | 'expired' | 'cancel
 export type AccessInviteType = 'platform_admin' | 'dealer_staff';
 export type AccessInviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
 export type AuditAction =
+  | 'admin_note.created'
   | 'invite.created'
   | 'invite.revoked'
   | 'invite.accepted'
@@ -131,6 +132,28 @@ export interface AdminAuditLog {
   after?: Record<string, unknown> | null;
   metadata?: Record<string, unknown> | null;
   createdAt?: Timestamp | string | null;
+}
+
+export interface AdminEntityNote {
+  id: string;
+  entityType: AuditEntityType;
+  entityId: string;
+  body: string;
+  createdByUid: string;
+  createdByEmail?: string | null;
+  createdAt?: Timestamp | string | null;
+}
+
+export interface AdminEntityListingSummary {
+  id: string;
+  title: string;
+  status: string | null;
+  dealerId: string | null;
+  dealerName: string | null;
+  ownerUid: string | null;
+  price: string | null;
+  createdAt?: Timestamp | string | null;
+  updatedAt?: Timestamp | string | null;
 }
 
 export interface AuthenticatedUser {

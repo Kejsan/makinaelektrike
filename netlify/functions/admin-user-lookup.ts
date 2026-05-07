@@ -13,6 +13,11 @@ import {
 import { getRequiredString } from './_lib/validation';
 import { requireAdminPermission } from './_lib/adminAccess';
 import { getAdminAuth, getAdminFirestore } from './_lib/firebaseAdmin';
+import {
+  listAdminEntityNotes,
+  listRecentAdminAuditLogsForEntity,
+  serializeTimestamp,
+} from './_lib/adminEntityDetails';
 import { normalizeUserProfile } from '../../utils/accessControl';
 
 interface UserLookupBody {
@@ -121,6 +126,29 @@ const buildListingCounts = (listingDocs: Array<QueryDocumentSnapshot | DocumentS
   return counts;
 };
 
+const getListingSortTime = (doc: QueryDocumentSnapshot | DocumentSnapshot) => {
+  const data = (doc.data() ?? {}) as DocumentData;
+  const updatedAt = serializeTimestamp(data.updatedAt);
+  const createdAt = serializeTimestamp(data.createdAt);
+  const parsed = Date.parse(updatedAt ?? createdAt ?? '');
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const buildListingTitle = (doc: QueryDocumentSnapshot | DocumentSnapshot) => {
+  const data = (doc.data() ?? {}) as DocumentData;
+
+  if (typeof data.title === 'string' && data.title.trim()) {
+    return data.title;
+  }
+
+  const brand = typeof data.brand === 'string' ? data.brand.trim() : '';
+  const model = typeof data.model === 'string' ? data.model.trim() : '';
+  const variant = typeof data.variant === 'string' ? data.variant.trim() : '';
+  const fallback = [brand, model, variant].filter(Boolean).join(' ');
+
+  return fallback || doc.id;
+};
+
 export const handler = async (event: FunctionEvent) => {
   if (event.httpMethod !== 'POST') {
     return methodNotAllowed(['POST']);
@@ -146,6 +174,8 @@ export const handler = async (event: FunctionEvent) => {
       (typeof firestoreDoc?.data()?.email === 'string' ? (firestoreDoc.data()!.email as string) : null);
     const rawProfileData = (firestoreDoc?.data() ?? {}) as Record<string, unknown>;
     const profile = normalizeUserProfile({ uid, email }, rawProfileData);
+    const dealerStaffRole =
+      typeof rawProfileData.dealerStaffRole === 'string' ? rawProfileData.dealerStaffRole : null;
 
     const dealerSnapshots = await firestore.collection('dealers').where('ownerUid', '==', uid).get();
     const scopedDealerId =
@@ -167,6 +197,8 @@ export const handler = async (event: FunctionEvent) => {
         isDeleted: data.isDeleted === true,
         planId: typeof data.planId === 'string' ? data.planId : null,
         subscriptionStatus: typeof data.subscriptionStatus === 'string' ? data.subscriptionStatus : null,
+        isOwner: typeof data.ownerUid === 'string' ? data.ownerUid === uid : doc.id === uid,
+        staffRole: scopedDealerId === doc.id ? dealerStaffRole : null,
       };
     });
     const linkedDealerIds = linkedDealers.map(dealer => dealer.id);
@@ -181,13 +213,70 @@ export const handler = async (event: FunctionEvent) => {
     ]);
     const listingCounts = buildListingCounts(listingDocs);
 
-    const modelCount = (await firestore.collection('models').where('ownerUid', '==', uid).get()).size;
-    const enquiryCount = (
-      await Promise.all(
+    const recentListingDocs = listingDocs
+      .filter(doc => doc.exists)
+      .sort((left, right) => getListingSortTime(right) - getListingSortTime(left))
+      .slice(0, 8);
+    const dealerNameById = new Map(linkedDealers.map(dealer => [dealer.id, dealer.name]));
+    const missingDealerIds = Array.from(
+      new Set(
+        recentListingDocs
+          .map(doc => {
+            const data = (doc.data() ?? {}) as DocumentData;
+            return typeof data.dealerId === 'string' ? data.dealerId : null;
+          })
+          .filter((dealerId): dealerId is string => Boolean(dealerId && !dealerNameById.has(dealerId))),
+      ),
+    );
+
+    if (missingDealerIds.length > 0) {
+      const missingDealerSnapshots = await Promise.all(
+        missingDealerIds.map(dealerId => firestore.collection('dealers').doc(dealerId).get()),
+      );
+      missingDealerSnapshots.forEach(snapshot => {
+        if (!snapshot.exists) {
+          return;
+        }
+        const data = snapshot.data() as DocumentData;
+        dealerNameById.set(
+          snapshot.id,
+          typeof data.name === 'string'
+            ? data.name
+            : typeof data.companyName === 'string'
+              ? data.companyName
+              : snapshot.id,
+        );
+      });
+    }
+
+    const [modelSnapshot, enquirySnapshots, favouriteSnapshot, adminNotes, recentAuditLogs] = await Promise.all([
+      firestore.collection('models').where('ownerUid', '==', uid).get(),
+      Promise.all(
         linkedDealerIds.map(dealerId => firestore.collection('enquiries').where('dealerId', '==', dealerId).get()),
-      )
-    ).reduce((sum, snapshot) => sum + snapshot.size, 0);
-    const favouriteCount = (await firestore.collection('users').doc(uid).collection('favourites').get()).size;
+      ),
+      firestore.collection('users').doc(uid).collection('favourites').get(),
+      listAdminEntityNotes({ entityType: 'user', entityId: uid, limit: 12 }),
+      listRecentAdminAuditLogsForEntity({ entityType: 'user', entityId: uid, targetUid: uid, limit: 10 }),
+    ]);
+
+    const modelCount = modelSnapshot.size;
+    const enquiryCount = enquirySnapshots.reduce((sum, snapshot) => sum + snapshot.size, 0);
+    const favouriteCount = favouriteSnapshot.size;
+    const recentListings = recentListingDocs.map(doc => {
+      const data = (doc.data() ?? {}) as DocumentData;
+      const dealerId = typeof data.dealerId === 'string' ? data.dealerId : null;
+      return {
+        id: doc.id,
+        title: buildListingTitle(doc),
+        status: typeof data.status === 'string' ? data.status : null,
+        dealerId,
+        dealerName: dealerId ? dealerNameById.get(dealerId) ?? null : null,
+        ownerUid: typeof data.ownerUid === 'string' ? data.ownerUid : null,
+        price: typeof data.price === 'string' ? data.price : null,
+        createdAt: serializeTimestamp(data.createdAt),
+        updatedAt: serializeTimestamp(data.updatedAt),
+      };
+    });
 
     return json(200, {
       ok: true,
@@ -210,6 +299,7 @@ export const handler = async (event: FunctionEvent) => {
         relationships: {
           linkedDealers,
           listingCounts,
+          recentListings,
           modelCount,
           favouriteCount,
           enquiryCount,
@@ -221,6 +311,8 @@ export const handler = async (event: FunctionEvent) => {
             linkedDealers.length > 0,
           isPlatformAdmin: (profile.adminRoleIds?.length ?? 0) > 0,
         },
+        adminNotes,
+        recentAuditLogs,
       },
     });
   } catch (error) {

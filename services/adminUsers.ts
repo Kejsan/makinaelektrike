@@ -3,8 +3,12 @@ import { fetchFunctionJson } from './serverFunctions';
 import type {
   AccountStatus,
   AccountType,
+  AdminAuditLog,
+  AdminEntityListingSummary,
+  AdminEntityNote,
   AdminRoleId,
   DealerPlanId,
+  DealerStaffRole,
   DealerSubscriptionStatus,
   PermissionOverrides,
   UserRole,
@@ -18,6 +22,8 @@ export interface AdminUserLookupDealerRelationship {
   isDeleted: boolean;
   planId: DealerPlanId | null;
   subscriptionStatus: DealerSubscriptionStatus | null;
+  isOwner: boolean;
+  staffRole: DealerStaffRole | null;
 }
 
 export interface AdminUserLookupListingCounts {
@@ -49,12 +55,15 @@ export interface AdminUserLookupResult {
   relationships: {
     linkedDealers: AdminUserLookupDealerRelationship[];
     listingCounts: AdminUserLookupListingCounts;
+    recentListings: AdminEntityListingSummary[];
     modelCount: number;
     favouriteCount: number;
     enquiryCount: number;
     hasDealerAccount: boolean;
     isPlatformAdmin: boolean;
   };
+  adminNotes: AdminEntityNote[];
+  recentAuditLogs: AdminAuditLog[];
 }
 
 interface AdminUserLookupResponse {

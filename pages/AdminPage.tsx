@@ -22,6 +22,9 @@ import {
   Search,
   Eye,
   EyeOff,
+  ImageIcon,
+  MapPin,
+  MessageSquare,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +40,7 @@ import {
   DealerPlanId,
   DealerStatus,
   DealerSubscriptionStatus,
+  Listing,
   Model,
   BlogPost,
   ChargingStation,
@@ -90,6 +94,11 @@ import {
   updateAdminDealerOwner,
   type AdminDealerLookupResult,
 } from '../services/adminDealers';
+import {
+  lookupAdminListing,
+  type AdminListingLookupResult,
+} from '../services/adminListings';
+import { createAdminEntityNote } from '../services/adminNotes';
 import {
   removeDealerStaffMember as removeDealerTeamMember,
   revokeDealerStaffInvite as revokeDealerTeamInvite,
@@ -256,6 +265,14 @@ const AdminPage: React.FC = () => {
   const [dealerOwnerUpdating, setDealerOwnerUpdating] = useState(false);
   const [dealerControlInviteRevokingId, setDealerControlInviteRevokingId] = useState<string | null>(null);
   const [dealerControlStaffRemovingId, setDealerControlStaffRemovingId] = useState<string | null>(null);
+  const [dealerControlNoteDraft, setDealerControlNoteDraft] = useState('');
+  const [dealerControlNoteSaving, setDealerControlNoteSaving] = useState(false);
+  const [listingControlListing, setListingControlListing] = useState<Listing | null>(null);
+  const [listingControlDetail, setListingControlDetail] = useState<AdminListingLookupResult | null>(null);
+  const [listingControlLoading, setListingControlLoading] = useState(false);
+  const [listingControlError, setListingControlError] = useState<string | null>(null);
+  const [listingControlNoteDraft, setListingControlNoteDraft] = useState('');
+  const [listingControlNoteSaving, setListingControlNoteSaving] = useState(false);
   const [activationError, setActivationError] = useState<string | null>(null);
   const {
     dealers,
@@ -330,6 +347,8 @@ const AdminPage: React.FC = () => {
   const [userAdminActionLoading, setUserAdminActionLoading] = useState(false);
   const [userAdminLookupError, setUserAdminLookupError] = useState<string | null>(null);
   const [userAdminResult, setUserAdminResult] = useState<AdminUserLookupResult | null>(null);
+  const [userAdminNoteDraft, setUserAdminNoteDraft] = useState('');
+  const [userAdminNoteSaving, setUserAdminNoteSaving] = useState(false);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditLoaded, setAuditLoaded] = useState(false);
@@ -353,6 +372,11 @@ const AdminPage: React.FC = () => {
   const canReadUsers = hasPermission('users.read') || hasPermission('users.edit') || hasPermission('users.suspend') || hasPermission('users.reactivate');
   const canSuspendUsers = hasPermission('users.suspend');
   const canReactivateUsers = hasPermission('users.reactivate');
+  const canReadListings =
+    hasPermission('listings.read') ||
+    hasPermission('listings.moderate') ||
+    hasPermission('listings.reassign');
+  const canModerateListings = hasPermission('listings.moderate');
   const canViewAudit = hasPermission('audit.view');
 
   // Reset selection and search on tab/filter change
@@ -793,6 +817,12 @@ const AdminPage: React.FC = () => {
   }, [activeTab, canReadUsers]);
 
   useEffect(() => {
+    if (!canReadListings && activeTab === 'listings') {
+      setActiveTab('dealers');
+    }
+  }, [activeTab, canReadListings]);
+
+  useEffect(() => {
     if (!canManageAdminAccess && activeTab === 'access') {
       setActiveTab('dealers');
     }
@@ -958,6 +988,7 @@ const AdminPage: React.FC = () => {
       try {
         const result = await lookupAdminUser(query);
         setUserAdminResult(result);
+        setUserAdminNoteDraft('');
       } catch (error) {
         console.error('Failed to look up user account', error);
         const errorMessage =
@@ -1569,6 +1600,7 @@ const AdminPage: React.FC = () => {
       setDealerOwnerDraftQuery('');
       setDealerControlInviteRevokingId(null);
       setDealerControlStaffRemovingId(null);
+      setDealerControlNoteDraft('');
       void loadDealerControlDetail(dealer.id);
     },
     [loadDealerControlDetail],
@@ -1582,6 +1614,54 @@ const AdminPage: React.FC = () => {
     setDealerOwnerUpdating(false);
     setDealerControlInviteRevokingId(null);
     setDealerControlStaffRemovingId(null);
+    setDealerControlNoteDraft('');
+    setDealerControlNoteSaving(false);
+  }, []);
+
+  const loadListingControlDetail = useCallback(
+    async (listingId: string) => {
+      if (!canReadListings) {
+        return;
+      }
+
+      setListingControlLoading(true);
+      setListingControlError(null);
+      try {
+        const detail = await lookupAdminListing(listingId);
+        setListingControlDetail(detail);
+      } catch (error) {
+        console.error('Failed to load listing control detail', error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : t('admin.listingControlLoadFailed', {
+                defaultValue: 'Failed to load the listing control center.',
+              });
+        setListingControlError(errorMessage);
+      } finally {
+        setListingControlLoading(false);
+      }
+    },
+    [canReadListings, t],
+  );
+
+  const openListingControlCenter = useCallback(
+    (listing: Listing) => {
+      setListingControlListing(listing);
+      setListingControlDetail(null);
+      setListingControlError(null);
+      setListingControlNoteDraft('');
+      void loadListingControlDetail(listing.id);
+    },
+    [loadListingControlDetail],
+  );
+
+  const closeListingControlCenter = useCallback(() => {
+    setListingControlListing(null);
+    setListingControlDetail(null);
+    setListingControlError(null);
+    setListingControlNoteDraft('');
+    setListingControlNoteSaving(false);
   }, []);
 
   const handleDealerOwnerReassign = useCallback(async () => {
@@ -1718,6 +1798,181 @@ const AdminPage: React.FC = () => {
     },
     [addToast, canManageDealerTeam, dealerControlDealer, loadDealerControlDetail, t],
   );
+
+  const handleUserAdminNoteCreate = useCallback(async () => {
+    if (!userAdminResult) {
+      return;
+    }
+
+    if (!hasPermission('users.edit')) {
+      addToast(
+        t('admin.userNotePermissionDenied', {
+          defaultValue: 'You do not have permission to add internal notes to user accounts.',
+        }),
+        'error',
+      );
+      return;
+    }
+
+    const body = userAdminNoteDraft.trim();
+    if (!body) {
+      addToast(
+        t('admin.userNoteRequired', {
+          defaultValue: 'Enter a note before saving it.',
+        }),
+        'error',
+      );
+      return;
+    }
+
+    setUserAdminNoteSaving(true);
+    try {
+      await createAdminEntityNote({
+        entityType: 'user',
+        entityId: userAdminResult.uid,
+        body,
+      });
+      await refreshUserAdminResult(userAdminResult.uid);
+      setUserAdminNoteDraft('');
+      addToast(
+        t('admin.userNoteCreated', {
+          defaultValue: 'Internal user note added successfully.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to create user admin note', error);
+      addToast(
+        error instanceof Error
+          ? error.message
+          : t('admin.userNoteCreateFailed', {
+              defaultValue: 'Failed to add the internal user note.',
+            }),
+        'error',
+      );
+    } finally {
+      setUserAdminNoteSaving(false);
+    }
+  }, [addToast, hasPermission, refreshUserAdminResult, t, userAdminNoteDraft, userAdminResult]);
+
+  const handleDealerControlNoteCreate = useCallback(async () => {
+    if (!dealerControlDealer) {
+      return;
+    }
+
+    if (!canEditDealers) {
+      addToast(
+        t('admin.dealerNotePermissionDenied', {
+          defaultValue: 'You do not have permission to add internal dealer notes.',
+        }),
+        'error',
+      );
+      return;
+    }
+
+    const body = dealerControlNoteDraft.trim();
+    if (!body) {
+      setDealerControlError(
+        t('admin.dealerNoteRequired', {
+          defaultValue: 'Enter a note before saving it.',
+        }),
+      );
+      return;
+    }
+
+    setDealerControlNoteSaving(true);
+    setDealerControlError(null);
+    try {
+      await createAdminEntityNote({
+        entityType: 'dealer',
+        entityId: dealerControlDealer.id,
+        body,
+      });
+      await loadDealerControlDetail(dealerControlDealer.id);
+      setDealerControlNoteDraft('');
+      addToast(
+        t('admin.dealerNoteCreated', {
+          defaultValue: 'Internal dealer note added successfully.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to create dealer admin note', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.dealerNoteCreateFailed', {
+              defaultValue: 'Failed to add the internal dealer note.',
+            });
+      setDealerControlError(errorMessage);
+      addToast(errorMessage, 'error');
+    } finally {
+      setDealerControlNoteSaving(false);
+    }
+  }, [addToast, canEditDealers, dealerControlDealer, dealerControlNoteDraft, loadDealerControlDetail, t]);
+
+  const handleListingControlNoteCreate = useCallback(async () => {
+    if (!listingControlListing) {
+      return;
+    }
+
+    if (!canModerateListings) {
+      addToast(
+        t('admin.listingNotePermissionDenied', {
+          defaultValue: 'You do not have permission to add internal listing notes.',
+        }),
+        'error',
+      );
+      return;
+    }
+
+    const body = listingControlNoteDraft.trim();
+    if (!body) {
+      setListingControlError(
+        t('admin.listingNoteRequired', {
+          defaultValue: 'Enter a note before saving it.',
+        }),
+      );
+      return;
+    }
+
+    setListingControlNoteSaving(true);
+    setListingControlError(null);
+    try {
+      await createAdminEntityNote({
+        entityType: 'listing',
+        entityId: listingControlListing.id,
+        body,
+      });
+      await loadListingControlDetail(listingControlListing.id);
+      setListingControlNoteDraft('');
+      addToast(
+        t('admin.listingNoteCreated', {
+          defaultValue: 'Internal listing note added successfully.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to create listing admin note', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.listingNoteCreateFailed', {
+              defaultValue: 'Failed to add the internal listing note.',
+            });
+      setListingControlError(errorMessage);
+      addToast(errorMessage, 'error');
+    } finally {
+      setListingControlNoteSaving(false);
+    }
+  }, [
+    addToast,
+    canModerateListings,
+    listingControlListing,
+    listingControlNoteDraft,
+    loadListingControlDetail,
+    t,
+  ]);
 
   const handleRejectDealer = async (dealerId: string) => {
     await handleDealerStatusAction(dealerId, 'reject');
@@ -2721,6 +2976,10 @@ const AdminPage: React.FC = () => {
     const lastSignInAt = formatDateTime(userAdminResult?.lastSignInAt);
     const linkedDealers = userAdminResult?.relationships.linkedDealers ?? [];
     const listingCounts = userAdminResult?.relationships.listingCounts;
+    const recentUserListings = userAdminResult?.relationships.recentListings ?? [];
+    const userAdminNotes = userAdminResult?.adminNotes ?? [];
+    const userRecentAuditLogs = userAdminResult?.recentAuditLogs ?? [];
+    const canAddUserNotes = hasPermission('users.edit');
 
     return (
       <div className="space-y-6">
@@ -2955,6 +3214,19 @@ const AdminPage: React.FC = () => {
                           <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
                             {dealer.status ?? 'unknown'}
                           </span>
+                          {dealer.isOwner && (
+                            <span className="inline-flex items-center rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-100">
+                              {t('admin.dealerOwnerBadge', { defaultValue: 'Owner' })}
+                            </span>
+                          )}
+                          {dealer.staffRole && (
+                            <span className="inline-flex items-center rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-100">
+                              {t('admin.dealerStaffRoleBadge', {
+                                defaultValue: 'Staff: {{role}}',
+                                role: dealer.staffRole,
+                              })}
+                            </span>
+                          )}
                           {dealer.planId && (
                             <span className="inline-flex items-center rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-100">
                               {dealer.planId}
@@ -2977,9 +3249,9 @@ const AdminPage: React.FC = () => {
                     </div>
                   )}
 
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-sm font-semibold text-white">
-                      {t('admin.userInventoryBreakdown', { defaultValue: 'Inventory breakdown' })}
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                      <p className="text-sm font-semibold text-white">
+                        {t('admin.userInventoryBreakdown', { defaultValue: 'Inventory breakdown' })}
                     </p>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                       {[
@@ -2995,13 +3267,57 @@ const AdminPage: React.FC = () => {
                           <p className="text-[10px] uppercase tracking-wide text-gray-500">{label}</p>
                           <p className="mt-1 text-base font-semibold text-white">{value}</p>
                         </div>
-                      ))}
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                      <p className="text-sm font-semibold text-white">
+                        {t('admin.userRecentListings', { defaultValue: 'Recent listings' })}
+                      </p>
+                      {recentUserListings.length === 0 ? (
+                        <p className="mt-3 text-sm text-gray-500">
+                          {t('admin.userRecentListingsEmpty', {
+                            defaultValue: 'No recent listings were found for this account.',
+                          })}
+                        </p>
+                      ) : (
+                        <div className="mt-3 space-y-3">
+                          {recentUserListings.map(listing => (
+                            <div
+                              key={listing.id}
+                              className="rounded-lg border border-white/10 bg-black/20 px-3 py-3"
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-semibold text-white">{listing.title}</p>
+                                <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                                  {listing.status ?? 'unknown'}
+                                </span>
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-400">
+                                <span>ID: {listing.id}</span>
+                                {listing.dealerName && <span>{listing.dealerName}</span>}
+                                {listing.price && <span>{listing.price}</span>}
+                                {listing.updatedAt && (
+                                  <span>
+                                    {t('admin.updatedOn', {
+                                      defaultValue: 'Updated on {{date}}',
+                                      date: formatDateTime(
+                                        typeof listing.updatedAt === 'string' ? listing.updatedAt : null,
+                                      ),
+                                    })}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <div className="mb-4 flex items-center gap-2">
                   <Power className="h-4 w-4 text-gray-cyan" />
                   <h4 className="text-sm font-semibold uppercase tracking-wide text-white/80">
@@ -3063,6 +3379,112 @@ const AdminPage: React.FC = () => {
                   </div>
                 )}
               </div>
+            </div>
+
+            <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-4 flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4 text-gray-cyan" />
+                  <h4 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                    {t('admin.internalAdminNotes', { defaultValue: 'Internal admin notes' })}
+                  </h4>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="flex flex-col gap-2 text-sm text-gray-300">
+                    <span className="font-medium text-white">
+                      {t('admin.addInternalNote', { defaultValue: 'Add internal note' })}
+                    </span>
+                    <textarea
+                      value={userAdminNoteDraft}
+                      onChange={event => setUserAdminNoteDraft(event.target.value)}
+                      disabled={!canAddUserNotes || userAdminNoteSaving}
+                      rows={4}
+                      placeholder={t('admin.internalNotePlaceholder', {
+                        defaultValue:
+                          'Add context for future admins, moderation notes, or support follow-up details.',
+                      })}
+                      className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-gray-cyan/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void handleUserAdminNoteCreate()}
+                    disabled={!canAddUserNotes || userAdminNoteSaving}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-cyan/90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {userAdminNoteSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus size={16} />}
+                    <span>{t('admin.saveInternalNote', { defaultValue: 'Save internal note' })}</span>
+                  </button>
+
+                  {userAdminNotes.length === 0 ? (
+                    <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-gray-500">
+                      {t('admin.internalNotesEmpty', {
+                        defaultValue: 'No internal admin notes have been recorded for this account yet.',
+                      })}
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {userAdminNotes.map(note => (
+                        <article
+                          key={note.id}
+                          className="rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+                        >
+                          <p className="whitespace-pre-wrap text-sm text-gray-200">{note.body}</p>
+                          <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
+                            <span>{note.createdByEmail || note.createdByUid}</span>
+                            {note.createdAt && (
+                              <span>{formatDateTime(typeof note.createdAt === 'string' ? note.createdAt : null)}</span>
+                            )}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-4 flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-gray-cyan" />
+                  <h4 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                    {t('admin.recentAdminHistory', { defaultValue: 'Recent admin history' })}
+                  </h4>
+                </div>
+
+                {userRecentAuditLogs.length === 0 ? (
+                  <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-gray-500">
+                    {t('admin.recentAdminHistoryEmpty', {
+                      defaultValue: 'No recent privileged actions are linked to this account yet.',
+                    })}
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {userRecentAuditLogs.map(log => (
+                      <article
+                        key={log.id}
+                        className="rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center rounded-full border border-gray-cyan/30 bg-gray-cyan/10 px-2 py-0.5 text-[10px] font-semibold text-gray-100">
+                            {formatAuditActionLabel(log.action)}
+                          </span>
+                          {log.createdAt && (
+                            <span className="text-xs text-gray-500">
+                              {formatDateTime(typeof log.createdAt === 'string' ? log.createdAt : null)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-2 text-sm font-semibold text-white">{log.summary}</p>
+                        <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
+                          <span>{t('admin.auditActorLabel', { defaultValue: 'Actor' })}: {log.actorEmail || log.actorUid}</span>
+                          <span>{log.entityType}:{log.entityId}</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
             </div>
           </div>
         )}
@@ -4283,10 +4705,18 @@ const AdminPage: React.FC = () => {
             dealers={dealers}
             onUpdateStatus={async (id, status) => {
               await updateAdminListing({ listingId: id, status });
+              if (listingControlListing?.id === id) {
+                await loadListingControlDetail(id);
+              }
             }}
             onDelete={async (id) => {
               await updateAdminListing({ listingId: id, status: 'deleted' });
+              if (listingControlListing?.id === id) {
+                await loadListingControlDetail(id);
+              }
             }}
+            onOpenControlCenter={openListingControlCenter}
+            canOpenControlCenter={canReadListings}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
             onSelectAll={toggleSelectAll}
@@ -5218,6 +5648,163 @@ const AdminPage: React.FC = () => {
                   </div>
                 </section>
 
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <ClipboardList className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.dealerRecentListings', { defaultValue: 'Recent listings' })}
+                      </h3>
+                    </div>
+
+                    {dealerControlDetail.relationships.recentListings.length === 0 ? (
+                      <p className="text-sm text-gray-500">
+                        {t('admin.dealerRecentListingsEmpty', {
+                          defaultValue: 'No recent listings were found for this dealer.',
+                        })}
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {dealerControlDetail.relationships.recentListings.map(listing => (
+                          <article
+                            key={listing.id}
+                            className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-white">{listing.title}</p>
+                              <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                                {listing.status ?? 'unknown'}
+                              </span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-400">
+                              <span>ID: {listing.id}</span>
+                              {listing.ownerUid && <span>Owner UID: {listing.ownerUid}</span>}
+                              {listing.price && <span>{listing.price}</span>}
+                              {listing.updatedAt && (
+                                <span>
+                                  {t('admin.updatedOn', {
+                                    defaultValue: 'Updated on {{date}}',
+                                    date: formatDateTime(
+                                      typeof listing.updatedAt === 'string' ? listing.updatedAt : null,
+                                    ),
+                                  })}
+                                </span>
+                              )}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Eye className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.recentAdminHistory', { defaultValue: 'Recent admin history' })}
+                      </h3>
+                    </div>
+
+                    {dealerControlDetail.recentAuditLogs.length === 0 ? (
+                      <p className="text-sm text-gray-500">
+                        {t('admin.dealerRecentHistoryEmpty', {
+                          defaultValue: 'No recent privileged actions are linked to this dealer yet.',
+                        })}
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {dealerControlDetail.recentAuditLogs.map(log => (
+                          <article
+                            key={log.id}
+                            className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex items-center rounded-full border border-gray-cyan/30 bg-gray-cyan/10 px-2 py-0.5 text-[10px] font-semibold text-gray-100">
+                                {formatAuditActionLabel(log.action)}
+                              </span>
+                              {log.createdAt && (
+                                <span className="text-xs text-gray-500">
+                                  {formatDateTime(typeof log.createdAt === 'string' ? log.createdAt : null)}
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-2 text-sm font-semibold text-white">{log.summary}</p>
+                            <p className="mt-2 text-xs text-gray-500">
+                              {t('admin.auditActorLabel', { defaultValue: 'Actor' })}: {log.actorEmail || log.actorUid}
+                            </p>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                </div>
+
+                <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="mb-4 flex items-center gap-2">
+                    <Pencil className="h-4 w-4 text-gray-cyan" />
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                      {t('admin.internalAdminNotes', { defaultValue: 'Internal admin notes' })}
+                    </h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="flex flex-col gap-2 text-sm text-gray-300">
+                      <span className="font-medium text-white">
+                        {t('admin.addInternalNote', { defaultValue: 'Add internal note' })}
+                      </span>
+                      <textarea
+                        value={dealerControlNoteDraft}
+                        onChange={event => setDealerControlNoteDraft(event.target.value)}
+                        disabled={!canEditDealers || dealerControlNoteSaving}
+                        rows={4}
+                        placeholder={t('admin.dealerInternalNotePlaceholder', {
+                          defaultValue:
+                            'Track context for future admins, commercial follow-up, or operational issues on this dealer.',
+                        })}
+                        className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-gray-cyan/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => void handleDealerControlNoteCreate()}
+                      disabled={!canEditDealers || dealerControlNoteSaving}
+                      className="inline-flex items-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-cyan/90 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {dealerControlNoteSaving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus size={16} />
+                      )}
+                      <span>{t('admin.saveInternalNote', { defaultValue: 'Save internal note' })}</span>
+                    </button>
+
+                    {dealerControlDetail.adminNotes.length === 0 ? (
+                      <p className="rounded-xl border border-white/10 bg-black/20 px-4 py-4 text-sm text-gray-500">
+                        {t('admin.dealerInternalNotesEmpty', {
+                          defaultValue: 'No internal admin notes have been recorded for this dealer yet.',
+                        })}
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {dealerControlDetail.adminNotes.map(note => (
+                          <article
+                            key={note.id}
+                            className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                          >
+                            <p className="whitespace-pre-wrap text-sm text-gray-200">{note.body}</p>
+                            <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
+                              <span>{note.createdByEmail || note.createdByUid}</span>
+                              {note.createdAt && (
+                                <span>{formatDateTime(typeof note.createdAt === 'string' ? note.createdAt : null)}</span>
+                              )}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </section>
+
                 <div className="grid gap-6 xl:grid-cols-2">
                   <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
                     <div className="mb-4 flex items-center gap-2">
@@ -5357,6 +5944,441 @@ const AdminPage: React.FC = () => {
               <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-gray-400">
                 {t('admin.dealerControlNoData', {
                   defaultValue: 'Dealer relationship data is not available yet.',
+                })}
+              </div>
+            )}
+          </div>
+        </AdminModal>
+      )}
+      {listingControlListing && (
+        <AdminModal
+          title={t('admin.listingControlCenterTitle', {
+            defaultValue: 'Listing control center: {{name}}',
+            name: listingControlListing.title || `${listingControlListing.make} ${listingControlListing.model}`,
+          })}
+          onClose={closeListingControlCenter}
+        >
+          <div className="space-y-6">
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2">
+                <p className="text-sm text-gray-300">
+                  {t('admin.listingControlCenterDescription', {
+                    defaultValue:
+                      'Inspect listing ownership, dealer linkage, moderation state, enquiries, and internal admin context through trusted backend reads.',
+                  })}
+                </p>
+                <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+                  <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                    ID: {listingControlListing.id}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                    {t('admin.listingFilterStatusLabel', {
+                      defaultValue: 'Status: {{status}}',
+                      status: listingControlDetail?.listing.status ?? listingControlListing.status,
+                    })}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadListingControlDetail(listingControlListing.id)}
+                disabled={listingControlLoading}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {listingControlLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw size={16} />}
+                <span>{t('admin.refreshListingControlCenter', { defaultValue: 'Refresh listing data' })}</span>
+              </button>
+            </div>
+
+            {listingControlError && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                {listingControlError}
+              </div>
+            )}
+
+            {listingControlLoading && !listingControlDetail ? (
+              <AdminLazyFallback
+                label={t('admin.loadingListingControlCenter', {
+                  defaultValue: 'Loading listing control center...',
+                })}
+              />
+            ) : listingControlDetail ? (
+              <>
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.listingOverview', { defaultValue: 'Listing overview' })}
+                      </h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      {listingControlDetail.listing.primaryImageUrl ? (
+                        <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+                          <img
+                            src={listingControlDetail.listing.primaryImageUrl}
+                            alt={listingControlDetail.listing.title}
+                            className="h-52 w-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex h-52 items-center justify-center rounded-2xl border border-dashed border-white/10 bg-black/20 text-sm text-gray-500">
+                          {t('admin.listingNoPrimaryImage', { defaultValue: 'No primary image on file.' })}
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-base font-semibold text-white">{listingControlDetail.listing.title}</p>
+                          <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                            {listingControlDetail.listing.status ?? 'unknown'}
+                          </span>
+                          {listingControlDetail.listing.isFeatured && (
+                            <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-200">
+                              {t('admin.featured', { defaultValue: 'Featured' })}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+                          {listingControlDetail.listing.make && (
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                              {listingControlDetail.listing.make}
+                              {listingControlDetail.listing.model ? ` ${listingControlDetail.listing.model}` : ''}
+                            </span>
+                          )}
+                          {listingControlDetail.listing.year !== null && (
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                              {listingControlDetail.listing.year}
+                            </span>
+                          )}
+                          {listingControlDetail.listing.bodyType && (
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                              {listingControlDetail.listing.bodyType}
+                            </span>
+                          )}
+                          {listingControlDetail.listing.fuelType && (
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                              {listingControlDetail.listing.fuelType}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.price', { defaultValue: 'Price' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {listingControlDetail.listing.price !== null
+                              ? `${listingControlDetail.listing.price.toLocaleString()} ${listingControlDetail.listing.priceCurrency ?? ''}`.trim()
+                              : t('admin.priceUnknown', { defaultValue: 'Price unavailable' })}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.mileage', { defaultValue: 'Mileage' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {listingControlDetail.listing.mileage !== null
+                              ? `${listingControlDetail.listing.mileage.toLocaleString()} km`
+                              : t('admin.mileageUnknown', { defaultValue: 'Mileage unavailable' })}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.mediaSummaryLabel', { defaultValue: 'Media' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {t('admin.mediaSummaryValue', {
+                              defaultValue: '{{images}} images, {{gallery}} gallery items',
+                              images: listingControlDetail.listing.imageCount,
+                              gallery: listingControlDetail.listing.galleryCount,
+                            })}
+                          </p>
+                          {listingControlDetail.listing.videoUrl && (
+                            <p className="mt-1 text-xs text-gray-500">
+                              {t('admin.videoAttached', { defaultValue: 'Video attached' })}
+                            </p>
+                          )}
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.listingFlagsLabel', { defaultValue: 'Commercial flags' })}
+                          </p>
+                          <div className="mt-1 flex flex-wrap gap-2 text-xs text-gray-300">
+                            <span>{listingControlDetail.listing.isForRent ? 'Rent enabled' : 'No rent'}</span>
+                            <span>{listingControlDetail.listing.isForSubscription ? 'Subscription enabled' : 'No subscription'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {(listingControlDetail.listing.locationAddress || listingControlDetail.listing.locationCity) && (
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <div className="mb-2 flex items-center gap-2 text-[10px] uppercase tracking-wide text-gray-500">
+                            <MapPin className="h-3.5 w-3.5 text-gray-cyan" />
+                            <span>{t('admin.locationLabel', { defaultValue: 'Location' })}</span>
+                          </div>
+                          <p className="text-sm text-gray-200">
+                            {[listingControlDetail.listing.locationAddress, listingControlDetail.listing.locationCity]
+                              .filter(Boolean)
+                              .join(', ')}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  <div className="space-y-6">
+                    <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div className="mb-4 flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-gray-cyan" />
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                          {t('admin.listingRelationships', { defaultValue: 'Ownership and relationships' })}
+                        </h3>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.dealerLabel', { defaultValue: 'Dealer' })}
+                          </p>
+                          {listingControlDetail.dealer ? (
+                            <>
+                              <p className="mt-1 text-sm font-semibold text-white">
+                                {listingControlDetail.dealer.name}
+                              </p>
+                              <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-medium">
+                                <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-gray-300">
+                                  {listingControlDetail.dealer.status ?? 'unknown'}
+                                </span>
+                                {listingControlDetail.dealer.planId && (
+                                  <span className="inline-flex items-center rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-sky-100">
+                                    {listingControlDetail.dealer.planId.toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <p className="mt-1 text-sm text-gray-500">
+                              {t('admin.listingNoDealerLinked', { defaultValue: 'No dealer record is linked.' })}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.ownerAccountLabel', { defaultValue: 'Owner account' })}
+                          </p>
+                          {listingControlDetail.owner ? (
+                            <>
+                              <p className="mt-1 text-sm font-semibold text-white">
+                                {listingControlDetail.owner.displayName ||
+                                  listingControlDetail.owner.email ||
+                                  listingControlDetail.owner.uid}
+                              </p>
+                              <p className="mt-1 text-xs text-gray-500">
+                                {listingControlDetail.owner.email ?? listingControlDetail.owner.uid}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="mt-1 text-sm text-gray-500">
+                              {t('admin.listingNoOwnerLinked', { defaultValue: 'No owner account is linked.' })}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.modelLabel', { defaultValue: 'Model linkage' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {listingControlDetail.model
+                              ? [listingControlDetail.model.brand, listingControlDetail.model.modelName]
+                                  .filter(Boolean)
+                                  .join(' ')
+                              : t('admin.listingNoModelLinked', {
+                                  defaultValue: 'No canonical model is linked.',
+                                })}
+                          </p>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div className="mb-4 flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4 text-gray-cyan" />
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                          {t('admin.listingOperationalSnapshot', { defaultValue: 'Operational snapshot' })}
+                        </h3>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.enquiriesLabel', { defaultValue: 'Enquiries' })}
+                          </p>
+                          <p className="mt-1 text-lg font-semibold text-white">
+                            {listingControlDetail.relationships.enquiryCount}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {t('admin.enquiryBreakdown', {
+                              defaultValue: 'New {{newCount}} / Read {{readCount}} / Replied {{repliedCount}}',
+                              newCount: listingControlDetail.relationships.newEnquiryCount,
+                              readCount: listingControlDetail.relationships.readEnquiryCount,
+                              repliedCount: listingControlDetail.relationships.repliedEnquiryCount,
+                            })}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.listingModerationState', { defaultValue: 'Moderation state' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {listingControlDetail.listing.rejectionReason
+                              ? listingControlDetail.listing.rejectionReason
+                              : t('admin.listingNoRejectionReason', {
+                                  defaultValue: 'No rejection reason recorded.',
+                                })}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.createdOn', { defaultValue: 'Created on' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {formatDateTime(listingControlDetail.listing.createdAt) ??
+                              t('admin.dateUnavailable', { defaultValue: 'Unavailable' })}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.updatedOn', { defaultValue: 'Updated on' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {formatDateTime(listingControlDetail.listing.updatedAt) ??
+                              t('admin.dateUnavailable', { defaultValue: 'Unavailable' })}
+                          </p>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Eye className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.recentAdminHistory', { defaultValue: 'Recent admin history' })}
+                      </h3>
+                    </div>
+
+                    {listingControlDetail.recentAuditLogs.length === 0 ? (
+                      <p className="text-sm text-gray-500">
+                        {t('admin.listingRecentHistoryEmpty', {
+                          defaultValue: 'No recent privileged actions are linked to this listing yet.',
+                        })}
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {listingControlDetail.recentAuditLogs.map(log => (
+                          <article
+                            key={log.id}
+                            className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex items-center rounded-full border border-gray-cyan/30 bg-gray-cyan/10 px-2 py-0.5 text-[10px] font-semibold text-gray-100">
+                                {formatAuditActionLabel(log.action)}
+                              </span>
+                              {log.createdAt && (
+                                <span className="text-xs text-gray-500">
+                                  {formatDateTime(typeof log.createdAt === 'string' ? log.createdAt : null)}
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-2 text-sm font-semibold text-white">{log.summary}</p>
+                            <p className="mt-2 text-xs text-gray-500">
+                              {t('admin.auditActorLabel', { defaultValue: 'Actor' })}: {log.actorEmail || log.actorUid}
+                            </p>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Pencil className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.internalAdminNotes', { defaultValue: 'Internal admin notes' })}
+                      </h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="flex flex-col gap-2 text-sm text-gray-300">
+                        <span className="font-medium text-white">
+                          {t('admin.addInternalNote', { defaultValue: 'Add internal note' })}
+                        </span>
+                        <textarea
+                          value={listingControlNoteDraft}
+                          onChange={event => setListingControlNoteDraft(event.target.value)}
+                          disabled={!canModerateListings || listingControlNoteSaving}
+                          rows={4}
+                          placeholder={t('admin.listingInternalNotePlaceholder', {
+                            defaultValue:
+                              'Track moderation rationale, pricing concerns, duplicate suspicion, or operational follow-up for this listing.',
+                          })}
+                          className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-gray-cyan/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => void handleListingControlNoteCreate()}
+                        disabled={!canModerateListings || listingControlNoteSaving}
+                        className="inline-flex items-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-cyan/90 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {listingControlNoteSaving ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Plus size={16} />
+                        )}
+                        <span>{t('admin.saveInternalNote', { defaultValue: 'Save internal note' })}</span>
+                      </button>
+
+                      {listingControlDetail.adminNotes.length === 0 ? (
+                        <p className="rounded-xl border border-white/10 bg-black/20 px-4 py-4 text-sm text-gray-500">
+                          {t('admin.listingInternalNotesEmpty', {
+                            defaultValue: 'No internal admin notes have been recorded for this listing yet.',
+                          })}
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {listingControlDetail.adminNotes.map(note => (
+                            <article
+                              key={note.id}
+                              className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                            >
+                              <p className="whitespace-pre-wrap text-sm text-gray-200">{note.body}</p>
+                              <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
+                                <span>{note.createdByEmail || note.createdByUid}</span>
+                                {note.createdAt && (
+                                  <span>{formatDateTime(typeof note.createdAt === 'string' ? note.createdAt : null)}</span>
+                                )}
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-gray-400">
+                {t('admin.listingControlNoData', {
+                  defaultValue: 'Listing relationship data is not available yet.',
                 })}
               </div>
             )}

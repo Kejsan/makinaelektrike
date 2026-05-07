@@ -13,6 +13,11 @@ import {
 import { getRequiredString } from './_lib/validation';
 import { requireAdminPermission } from './_lib/adminAccess';
 import { getAdminAuth, getAdminFirestore } from './_lib/firebaseAdmin';
+import {
+  listAdminEntityNotes,
+  listRecentAdminAuditLogsForEntity,
+  serializeTimestamp,
+} from './_lib/adminEntityDetails';
 import { getDealerTeamCapacity, listDealerStaffUsers } from './_lib/dealerAccess';
 import { serializeAccessInvite } from './_lib/invites';
 import { normalizeUserProfile } from '../../utils/accessControl';
@@ -36,22 +41,6 @@ const isAuthUserNotFoundError = (error: unknown) =>
   error !== null &&
   'code' in error &&
   (error as { code?: string }).code === 'auth/user-not-found';
-
-const serializeTimestamp = (value: unknown): string | null => {
-  if (!value || typeof value !== 'object') {
-    return null;
-  }
-
-  if ('toDate' in (value as Record<string, unknown>) && typeof (value as { toDate?: unknown }).toDate === 'function') {
-    try {
-      return (value as { toDate: () => Date }).toDate().toISOString();
-    } catch {
-      return null;
-    }
-  }
-
-  return null;
-};
 
 const getSortTime = (value: unknown) => {
   const serialized = serializeTimestamp(value);
@@ -94,6 +83,26 @@ const getOwnerAuthRecord = async (uid: string): Promise<UserRecord | null> => {
   }
 };
 
+const getListingTitle = (data: DocumentData, fallbackId: string) => {
+  if (typeof data.title === 'string' && data.title.trim()) {
+    return data.title;
+  }
+
+  const brand = typeof data.brand === 'string' ? data.brand.trim() : '';
+  const model = typeof data.model === 'string' ? data.model.trim() : '';
+  const variant = typeof data.variant === 'string' ? data.variant.trim() : '';
+  const fallback = [brand, model, variant].filter(Boolean).join(' ');
+
+  return fallback || fallbackId;
+};
+
+const getListingTimelineSortTime = (data: DocumentData) => {
+  const updatedAt = serializeTimestamp(data.updatedAt);
+  const createdAt = serializeTimestamp(data.createdAt);
+  const parsed = Date.parse(updatedAt ?? createdAt ?? '');
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 export const handler = async (event: FunctionEvent) => {
   if (event.httpMethod !== 'POST') {
     return methodNotAllowed(['POST']);
@@ -118,7 +127,18 @@ export const handler = async (event: FunctionEvent) => {
           ? dealerData.uid
           : null;
 
-    const [ownerSnapshot, ownerAuthRecord, listingSnapshot, enquirySnapshot, dealerModelsSnapshot, staffMembers, capacity, inviteSnapshot] =
+    const [
+      ownerSnapshot,
+      ownerAuthRecord,
+      listingSnapshot,
+      enquirySnapshot,
+      dealerModelsSnapshot,
+      staffMembers,
+      capacity,
+      inviteSnapshot,
+      adminNotes,
+      recentAuditLogs,
+    ] =
       await Promise.all([
         ownerUid ? firestore.collection('users').doc(ownerUid).get() : Promise.resolve(null),
         ownerUid ? getOwnerAuthRecord(ownerUid) : Promise.resolve(null),
@@ -132,6 +152,8 @@ export const handler = async (event: FunctionEvent) => {
           .where('type', '==', 'dealer_staff')
           .where('dealerId', '==', dealerId)
           .get(),
+        listAdminEntityNotes({ entityType: 'dealer', entityId: dealerId, limit: 12 }),
+        listRecentAdminAuditLogsForEntity({ entityType: 'dealer', entityId: dealerId, dealerId, limit: 10 }),
       ]);
 
     const ownerProfile =
@@ -149,6 +171,26 @@ export const handler = async (event: FunctionEvent) => {
       )
       .slice(0, 50)
       .map(doc => serializeAccessInvite(doc.id, (doc.data() ?? {}) as Record<string, unknown>, event));
+    const recentListings = listingSnapshot.docs
+      .map(doc => ({ id: doc.id, data: doc.data() as DocumentData }))
+      .sort((left, right) => getListingTimelineSortTime(right.data) - getListingTimelineSortTime(left.data))
+      .slice(0, 8)
+      .map(entry => ({
+        id: entry.id,
+        title: getListingTitle(entry.data, entry.id),
+        status: typeof entry.data.status === 'string' ? entry.data.status : null,
+        dealerId: typeof entry.data.dealerId === 'string' ? entry.data.dealerId : dealerId,
+        dealerName:
+          typeof dealerData.name === 'string'
+            ? dealerData.name
+            : typeof dealerData.companyName === 'string'
+              ? dealerData.companyName
+              : dealerId,
+        ownerUid: typeof entry.data.ownerUid === 'string' ? entry.data.ownerUid : null,
+        price: typeof entry.data.price === 'string' ? entry.data.price : null,
+        createdAt: serializeTimestamp(entry.data.createdAt),
+        updatedAt: serializeTimestamp(entry.data.updatedAt),
+      }));
 
     return json(200, {
       ok: true,
@@ -210,6 +252,7 @@ export const handler = async (event: FunctionEvent) => {
           : null,
         relationships: {
           listingCounts: buildListingCounts(listingSnapshot.docs),
+          recentListings,
           modelCount: dealerModelsSnapshot.size,
           enquiryCount: enquirySnapshot.size,
         },
@@ -220,6 +263,8 @@ export const handler = async (event: FunctionEvent) => {
           updatedAt: serializeTimestamp(staffMember.updatedAt),
         })),
         invites,
+        adminNotes,
+        recentAuditLogs,
       },
     });
   } catch (error) {

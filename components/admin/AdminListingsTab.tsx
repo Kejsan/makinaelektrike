@@ -18,6 +18,8 @@ interface AdminListingsTabProps {
   dealers: Dealer[];
   onUpdateStatus: (id: string, status: ListingStatus) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onOpenControlCenter?: (listing: Listing) => void;
+  canOpenControlCenter?: boolean;
   selectedIds: string[];
   onToggleSelect: (id: string) => void;
   onSelectAll: (ids: string[]) => void;
@@ -29,6 +31,8 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
   dealers, 
   onUpdateStatus, 
   onDelete,
+  onOpenControlCenter,
+  canOpenControlCenter = false,
   selectedIds,
   onToggleSelect,
   onSelectAll,
@@ -246,6 +250,17 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-end items-center gap-2">
+                        {canOpenControlCenter && onOpenControlCenter && (
+                          <button
+                            onClick={() => onOpenControlCenter(listing)}
+                            className="p-2 hover:bg-gray-cyan/20 text-gray-cyan rounded-lg transition-colors border border-transparent hover:border-gray-cyan/30"
+                            title={t('admin.listings.controlCenter', { defaultValue: 'Control center' })}
+                            aria-label={t('admin.listings.controlCenter', { defaultValue: 'Control center' })}
+                          >
+                            <Search className="h-4 w-4" />
+                          </button>
+                        )}
+
                         {listing.status === 'pending' && (
                           <button
                             onClick={() => onUpdateStatus(listing.id, 'active')}

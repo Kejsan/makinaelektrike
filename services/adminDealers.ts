@@ -4,6 +4,9 @@ import type {
   AccessInvite,
   AccountStatus,
   AccountType,
+  AdminAuditLog,
+  AdminEntityListingSummary,
+  AdminEntityNote,
   AdminRoleId,
   DealerPlanId,
   DealerStaffRole,
@@ -67,6 +70,7 @@ export interface AdminDealerLookupResult {
   owner: AdminDealerLookupOwnerProfile | null;
   relationships: {
     listingCounts: AdminDealerLookupListingCounts;
+    recentListings: AdminEntityListingSummary[];
     modelCount: number;
     enquiryCount: number;
   };
@@ -79,6 +83,8 @@ export interface AdminDealerLookupResult {
   };
   staffMembers: AdminDealerLookupStaffMember[];
   invites: AccessInvite[];
+  adminNotes: AdminEntityNote[];
+  recentAuditLogs: AdminAuditLog[];
 }
 
 interface AdminDealerLookupResponse {
