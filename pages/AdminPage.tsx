@@ -40,6 +40,8 @@ import {
   Model,
   BlogPost,
   ChargingStation,
+  PermissionKey,
+  PermissionOverrides,
 } from '../types';
 import DealerForm, { DealerFormValues } from '../components/admin/DealerForm';
 import type { ModelFormValues } from '../components/admin/ModelForm';
@@ -52,9 +54,11 @@ import {
   fetchChargingStations,
 } from '../services/chargingStations';
 import {
+  listAdminAccessRoster,
   lookupAdminAccess,
   updateAdminAccess,
   type AdminAccessLookupResult,
+  type AdminAccessRosterItem,
 } from '../services/adminAccess';
 import {
   createAdminInvite,
@@ -81,6 +85,15 @@ import {
 } from '../services/adminContent';
 import { activateAdminDealerAccount } from '../services/adminDealerAccounts';
 import { updateDealerPlan as updateDealerPlanAssignment } from '../services/adminDealerPlans';
+import {
+  lookupAdminDealer,
+  updateAdminDealerOwner,
+  type AdminDealerLookupResult,
+} from '../services/adminDealers';
+import {
+  removeDealerStaffMember as removeDealerTeamMember,
+  revokeDealerStaffInvite as revokeDealerTeamInvite,
+} from '../services/dealerStaff';
 import type { ChargingStationFormValues } from '../types';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
@@ -92,7 +105,11 @@ import {
   uploadModelHeroImage,
 } from '../services/storage';
 import ModalLayout from '../components/ModalLayout';
-import { ADMIN_ROLE_PRESETS } from '../utils/accessControl';
+import {
+  ADMIN_ROLE_PRESETS,
+  PERMISSION_KEYS,
+  getEffectivePermissions,
+} from '../utils/accessControl';
 
 const ModelForm = lazy(() => import('../components/admin/ModelForm'));
 const BulkImportModal = lazy(() => import('../components/admin/BulkImportModal'));
@@ -187,6 +204,40 @@ const formatAuditActionLabel = (action: string) =>
     .replace(/[._]/g, ' ')
     .replace(/\b\w/g, character => character.toUpperCase());
 
+const PERMISSION_OVERRIDE_OPTIONS = ['inherit', 'allow', 'deny'] as const;
+type PermissionOverrideOption = (typeof PERMISSION_OVERRIDE_OPTIONS)[number];
+
+const PERMISSION_GROUP_LABELS: Record<string, string> = {
+  users: 'Users',
+  dealers: 'Dealers',
+  dealer_plans: 'Dealer plans',
+  listings: 'Listings',
+  models: 'EV models',
+  stations: 'Charging stations',
+  blog: 'Blog',
+  placements: 'Placements',
+  enquiries: 'Enquiries',
+  admins: 'Admins',
+  audit: 'Audit',
+  reports: 'Reports',
+};
+
+const formatPermissionGroupLabel = (group: string) =>
+  PERMISSION_GROUP_LABELS[group] ??
+  group
+    .split('_')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+
+const formatPermissionActionLabel = (permission: PermissionKey) => {
+  const [, action = permission] = permission.split('.');
+
+  return action
+    .split('_')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+};
+
 const AdminPage: React.FC = () => {
   const { logout, user, role, hasPermission, isMasterAdmin } = useAuth();
   const { addToast } = useToast();
@@ -197,6 +248,14 @@ const AdminPage: React.FC = () => {
   const [activationPassword, setActivationPassword] = useState('');
   const [activationEmail, setActivationEmail] = useState('');
   const [isActivating, setIsActivating] = useState(false);
+  const [dealerControlDealer, setDealerControlDealer] = useState<Dealer | null>(null);
+  const [dealerControlDetail, setDealerControlDetail] = useState<AdminDealerLookupResult | null>(null);
+  const [dealerControlLoading, setDealerControlLoading] = useState(false);
+  const [dealerControlError, setDealerControlError] = useState<string | null>(null);
+  const [dealerOwnerDraftQuery, setDealerOwnerDraftQuery] = useState('');
+  const [dealerOwnerUpdating, setDealerOwnerUpdating] = useState(false);
+  const [dealerControlInviteRevokingId, setDealerControlInviteRevokingId] = useState<string | null>(null);
+  const [dealerControlStaffRemovingId, setDealerControlStaffRemovingId] = useState<string | null>(null);
   const [activationError, setActivationError] = useState<string | null>(null);
   const {
     dealers,
@@ -253,6 +312,11 @@ const AdminPage: React.FC = () => {
   const [adminAccessResult, setAdminAccessResult] = useState<AdminAccessLookupResult | null>(null);
   const [adminAccessRoleDraftIds, setAdminAccessRoleDraftIds] = useState<AdminRoleId[]>([]);
   const [adminAccessStatusDraft, setAdminAccessStatusDraft] = useState<AccountStatus>('active');
+  const [adminAccessDirectPermissionDraft, setAdminAccessDirectPermissionDraft] = useState<PermissionOverrides>({});
+  const [adminRoster, setAdminRoster] = useState<AdminAccessRosterItem[]>([]);
+  const [adminRosterLoading, setAdminRosterLoading] = useState(false);
+  const [adminRosterLoaded, setAdminRosterLoaded] = useState(false);
+  const [adminRosterError, setAdminRosterError] = useState<string | null>(null);
   const [adminInviteEmail, setAdminInviteEmail] = useState('');
   const [adminInviteRoleDraftIds, setAdminInviteRoleDraftIds] = useState<AdminRoleId[]>([]);
   const [adminInviteError, setAdminInviteError] = useState<string | null>(null);
@@ -275,6 +339,17 @@ const AdminPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const canManageAdminAccess = hasPermission('admins.assign_permissions');
+  const canInviteAdmins = hasPermission('admins.invite');
+  const canReadDealers =
+    hasPermission('dealers.read') ||
+    hasPermission('dealers.edit') ||
+    hasPermission('dealers.approve') ||
+    hasPermission('dealers.manage_staff');
+  const canEditDealers = hasPermission('dealers.edit');
+  const canManageDealerTeam =
+    hasPermission('dealers.manage_staff') ||
+    hasPermission('dealers.edit') ||
+    hasPermission('dealers.approve');
   const canReadUsers = hasPermission('users.read') || hasPermission('users.edit') || hasPermission('users.suspend') || hasPermission('users.reactivate');
   const canSuspendUsers = hasPermission('users.suspend');
   const canReactivateUsers = hasPermission('users.reactivate');
@@ -692,6 +767,24 @@ const AdminPage: React.FC = () => {
       >).filter(([roleId]) => isMasterAdmin || roleId !== 'master_admin'),
     [isMasterAdmin],
   );
+  const permissionGroups = useMemo(() => {
+    const grouped = PERMISSION_KEYS.reduce<Record<string, PermissionKey[]>>((acc, permission) => {
+      const [group] = permission.split('.');
+      if (!acc[group]) {
+        acc[group] = [];
+      }
+      acc[group].push(permission);
+      return acc;
+    }, {});
+
+    return Object.entries(grouped)
+      .sort(([left], [right]) => formatPermissionGroupLabel(left).localeCompare(formatPermissionGroupLabel(right)))
+      .map(([group, permissions]) => ({
+        group,
+        label: formatPermissionGroupLabel(group),
+        permissions,
+      }));
+  }, []);
 
   useEffect(() => {
     if (!canReadUsers && activeTab === 'users') {
@@ -988,7 +1081,50 @@ const AdminPage: React.FC = () => {
   const hydrateAdminAccessDraft = useCallback((result: AdminAccessLookupResult) => {
     setAdminAccessRoleDraftIds(result.adminRoleIds ?? []);
     setAdminAccessStatusDraft(result.accountStatus ?? 'active');
+    setAdminAccessDirectPermissionDraft(result.directPermissions ?? {});
   }, []);
+
+  const selectAdminAccessTarget = useCallback(
+    (result: AdminAccessLookupResult) => {
+      setAdminAccessResult(result);
+      setAdminAccessQuery(result.email ?? result.uid);
+      setAdminAccessLookupError(null);
+      hydrateAdminAccessDraft(result);
+    },
+    [hydrateAdminAccessDraft],
+  );
+
+  const loadAdminAccessRoster = useCallback(
+    async (force = false) => {
+      if (!canManageAdminAccess) {
+        return;
+      }
+
+      if (adminRosterLoading || (!force && adminRosterLoaded)) {
+        return;
+      }
+
+      setAdminRosterLoading(true);
+      setAdminRosterError(null);
+      try {
+        const admins = await listAdminAccessRoster();
+        setAdminRoster(admins);
+        setAdminRosterLoaded(true);
+      } catch (error) {
+        console.error('Failed to load admin roster', error);
+        setAdminRosterError(
+          error instanceof Error
+            ? error.message
+            : t('admin.adminRosterLoadFailed', {
+                defaultValue: 'Failed to load platform admins.',
+              }),
+        );
+      } finally {
+        setAdminRosterLoading(false);
+      }
+    },
+    [adminRosterLoaded, adminRosterLoading, canManageAdminAccess, t],
+  );
 
   const handleAdminAccessLookup = useCallback(
     async (event?: React.FormEvent) => {
@@ -1019,8 +1155,7 @@ const AdminPage: React.FC = () => {
       setAdminAccessLookupError(null);
       try {
         const result = await lookupAdminAccess(query);
-        setAdminAccessResult(result);
-        hydrateAdminAccessDraft(result);
+        selectAdminAccessTarget(result);
       } catch (error) {
         console.error('Failed to look up admin access target', error);
         const errorMessage =
@@ -1035,7 +1170,7 @@ const AdminPage: React.FC = () => {
         setAdminAccessLookupLoading(false);
       }
     },
-    [addToast, adminAccessQuery, canManageAdminAccess, hydrateAdminAccessDraft, t],
+    [addToast, adminAccessQuery, canManageAdminAccess, selectAdminAccessTarget, t],
   );
 
   const toggleAdminAccessRoleDraft = useCallback(
@@ -1051,6 +1186,27 @@ const AdminPage: React.FC = () => {
     [isMasterAdmin],
   );
 
+  const setAdminAccessDirectPermissionOverride = useCallback(
+    (permission: PermissionKey, nextValue: PermissionOverrideOption) => {
+      if (!isMasterAdmin) {
+        return;
+      }
+
+      setAdminAccessDirectPermissionDraft(prev => {
+        const nextDraft = { ...prev };
+
+        if (nextValue === 'inherit') {
+          delete nextDraft[permission];
+        } else {
+          nextDraft[permission] = nextValue === 'allow';
+        }
+
+        return nextDraft;
+      });
+    },
+    [isMasterAdmin],
+  );
+
   const handleAdminAccessSave = useCallback(async () => {
     if (!canManageAdminAccess || !adminAccessResult) {
       return;
@@ -1062,10 +1218,11 @@ const AdminPage: React.FC = () => {
         uid: adminAccessResult.uid,
         adminRoleIds: adminAccessRoleDraftIds,
         accountStatus: adminAccessStatusDraft,
+        ...(isMasterAdmin ? { directPermissions: adminAccessDirectPermissionDraft } : {}),
       });
       const refreshed = await lookupAdminAccess(adminAccessResult.uid);
-      setAdminAccessResult(refreshed);
-      hydrateAdminAccessDraft(refreshed);
+      selectAdminAccessTarget(refreshed);
+      void loadAdminAccessRoster(true);
       addToast(
         t('admin.adminAccessUpdated', {
           defaultValue: 'Platform admin access updated successfully.',
@@ -1086,17 +1243,75 @@ const AdminPage: React.FC = () => {
     }
   }, [
     addToast,
+    adminAccessDirectPermissionDraft,
     adminAccessResult,
     adminAccessRoleDraftIds,
     adminAccessStatusDraft,
     canManageAdminAccess,
-    hydrateAdminAccessDraft,
+    isMasterAdmin,
+    loadAdminAccessRoster,
+    selectAdminAccessTarget,
+    t,
+  ]);
+
+  const handleAdminAccessRevoke = useCallback(async () => {
+    if (!canManageAdminAccess || !adminAccessResult) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      t('admin.removeAdminAccessConfirm', {
+        defaultValue:
+          'Remove all platform-admin access from this account? The user will keep their underlying account but lose platform-admin permissions.',
+      }),
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setAdminAccessSaving(true);
+    try {
+      await updateAdminAccess({
+        uid: adminAccessResult.uid,
+        adminRoleIds: [],
+        accountStatus: adminAccessStatusDraft,
+        ...(isMasterAdmin ? { directPermissions: {} } : {}),
+      });
+      const refreshed = await lookupAdminAccess(adminAccessResult.uid);
+      selectAdminAccessTarget(refreshed);
+      void loadAdminAccessRoster(true);
+      addToast(
+        t('admin.adminAccessRevoked', {
+          defaultValue: 'Platform admin access removed successfully.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to revoke admin access', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.adminAccessRevokeFailed', {
+              defaultValue: 'Failed to remove platform admin access.',
+            });
+      addToast(errorMessage, 'error');
+    } finally {
+      setAdminAccessSaving(false);
+    }
+  }, [
+    addToast,
+    adminAccessResult,
+    adminAccessStatusDraft,
+    canManageAdminAccess,
+    isMasterAdmin,
+    loadAdminAccessRoster,
+    selectAdminAccessTarget,
     t,
   ]);
 
   const loadAdminInvites = useCallback(
     async (force = false) => {
-      if (!canManageAdminAccess) {
+      if (!canInviteAdmins) {
         return;
       }
 
@@ -1123,14 +1338,20 @@ const AdminPage: React.FC = () => {
         setAdminInvitesLoading(false);
       }
     },
-    [adminInvitesLoaded, adminInvitesLoading, canManageAdminAccess, t],
+    [adminInvitesLoaded, adminInvitesLoading, canInviteAdmins, t],
   );
 
   useEffect(() => {
     if (activeTab === 'access' && canManageAdminAccess) {
+      void loadAdminAccessRoster();
+    }
+  }, [activeTab, canManageAdminAccess, loadAdminAccessRoster]);
+
+  useEffect(() => {
+    if (activeTab === 'access' && canInviteAdmins) {
       void loadAdminInvites();
     }
-  }, [activeTab, canManageAdminAccess, loadAdminInvites]);
+  }, [activeTab, canInviteAdmins, loadAdminInvites]);
 
   const toggleAdminInviteRoleDraft = useCallback(
     (roleId: AdminRoleId) => {
@@ -1146,6 +1367,15 @@ const AdminPage: React.FC = () => {
   );
 
   const handleCreateAdminInvite = useCallback(async () => {
+    if (!canInviteAdmins) {
+      setAdminInviteError(
+        t('admin.adminInvitePermissionDenied', {
+          defaultValue: 'You do not have permission to invite platform admins.',
+        }),
+      );
+      return;
+    }
+
     const email = adminInviteEmail.trim();
     if (!email) {
       setAdminInviteError(
@@ -1195,10 +1425,14 @@ const AdminPage: React.FC = () => {
     } finally {
       setAdminInviteCreating(false);
     }
-  }, [addToast, adminInviteEmail, adminInviteRoleDraftIds, t]);
+  }, [addToast, adminInviteEmail, adminInviteRoleDraftIds, canInviteAdmins, t]);
 
   const handleRevokeAdminInvite = useCallback(
     async (inviteId: string) => {
+      if (!canInviteAdmins) {
+        return;
+      }
+
       setAdminInviteRevokingId(inviteId);
       setAdminInviteError(null);
       try {
@@ -1224,7 +1458,7 @@ const AdminPage: React.FC = () => {
         setAdminInviteRevokingId(null);
       }
     },
-    [addToast, t],
+    [addToast, canInviteAdmins, t],
   );
 
   const handleCopyInviteLink = useCallback(
@@ -1299,6 +1533,191 @@ const AdminPage: React.FC = () => {
       setIsActivating(false);
     }
   };
+
+  const loadDealerControlDetail = useCallback(
+    async (dealerId: string) => {
+      if (!canReadDealers) {
+        return;
+      }
+
+      setDealerControlLoading(true);
+      setDealerControlError(null);
+      try {
+        const detail = await lookupAdminDealer(dealerId);
+        setDealerControlDetail(detail);
+      } catch (error) {
+        console.error('Failed to load dealer control detail', error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : t('admin.dealerControlLoadFailed', {
+                defaultValue: 'Failed to load the dealer control center.',
+              });
+        setDealerControlError(errorMessage);
+      } finally {
+        setDealerControlLoading(false);
+      }
+    },
+    [canReadDealers, t],
+  );
+
+  const openDealerControlCenter = useCallback(
+    (dealer: Dealer) => {
+      setDealerControlDealer(dealer);
+      setDealerControlDetail(null);
+      setDealerControlError(null);
+      setDealerOwnerDraftQuery('');
+      setDealerControlInviteRevokingId(null);
+      setDealerControlStaffRemovingId(null);
+      void loadDealerControlDetail(dealer.id);
+    },
+    [loadDealerControlDetail],
+  );
+
+  const closeDealerControlCenter = useCallback(() => {
+    setDealerControlDealer(null);
+    setDealerControlDetail(null);
+    setDealerControlError(null);
+    setDealerOwnerDraftQuery('');
+    setDealerOwnerUpdating(false);
+    setDealerControlInviteRevokingId(null);
+    setDealerControlStaffRemovingId(null);
+  }, []);
+
+  const handleDealerOwnerReassign = useCallback(async () => {
+    if (!dealerControlDealer || !canEditDealers) {
+      return;
+    }
+
+    const query = dealerOwnerDraftQuery.trim();
+    if (!query) {
+      setDealerControlError(
+        t('admin.dealerOwnerQueryRequired', {
+          defaultValue: 'Enter the email or UID of the account that should become the dealer owner.',
+        }),
+      );
+      return;
+    }
+
+    setDealerOwnerUpdating(true);
+    setDealerControlError(null);
+    try {
+      await updateAdminDealerOwner({
+        dealerId: dealerControlDealer.id,
+        query,
+      });
+      await loadDealerControlDetail(dealerControlDealer.id);
+      setDealerOwnerDraftQuery('');
+      addToast(
+        t('admin.dealerOwnerReassigned', {
+          defaultValue: 'Dealer owner reassigned successfully.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to reassign dealer owner', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.dealerOwnerReassignFailed', {
+              defaultValue: 'Failed to reassign the dealer owner.',
+            });
+      setDealerControlError(errorMessage);
+      addToast(errorMessage, 'error');
+    } finally {
+      setDealerOwnerUpdating(false);
+    }
+  }, [
+    addToast,
+    canEditDealers,
+    dealerControlDealer,
+    dealerOwnerDraftQuery,
+    loadDealerControlDetail,
+    t,
+  ]);
+
+  const handleDealerControlInviteRevoke = useCallback(
+    async (inviteId: string) => {
+      if (!dealerControlDealer || !canManageDealerTeam) {
+        return;
+      }
+
+      setDealerControlInviteRevokingId(inviteId);
+      setDealerControlError(null);
+      try {
+        await revokeDealerTeamInvite({
+          dealerId: dealerControlDealer.id,
+          inviteId,
+        });
+        await loadDealerControlDetail(dealerControlDealer.id);
+        addToast(
+          t('admin.dealerTeamInviteRevoked', {
+            defaultValue: 'Dealer team invite revoked.',
+          }),
+          'success',
+        );
+      } catch (error) {
+        console.error('Failed to revoke dealer team invite', error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : t('admin.dealerTeamInviteRevokeFailed', {
+                defaultValue: 'Failed to revoke the dealer team invite.',
+              });
+        setDealerControlError(errorMessage);
+        addToast(errorMessage, 'error');
+      } finally {
+        setDealerControlInviteRevokingId(null);
+      }
+    },
+    [addToast, canManageDealerTeam, dealerControlDealer, loadDealerControlDetail, t],
+  );
+
+  const handleDealerControlStaffRemove = useCallback(
+    async (userUid: string) => {
+      if (!dealerControlDealer || !canManageDealerTeam) {
+        return;
+      }
+
+      const confirmed = window.confirm(
+        t('admin.dealerStaffRemoveConfirm', {
+          defaultValue: 'Remove this staff member from the dealer team?',
+        }),
+      );
+      if (!confirmed) {
+        return;
+      }
+
+      setDealerControlStaffRemovingId(userUid);
+      setDealerControlError(null);
+      try {
+        await removeDealerTeamMember({
+          dealerId: dealerControlDealer.id,
+          userUid,
+        });
+        await loadDealerControlDetail(dealerControlDealer.id);
+        addToast(
+          t('admin.dealerStaffRemoved', {
+            defaultValue: 'Dealer staff member removed.',
+          }),
+          'success',
+        );
+      } catch (error) {
+        console.error('Failed to remove dealer staff member', error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : t('admin.dealerStaffRemoveFailed', {
+                defaultValue: 'Failed to remove the dealer staff member.',
+              });
+        setDealerControlError(errorMessage);
+        addToast(errorMessage, 'error');
+      } finally {
+        setDealerControlStaffRemovingId(null);
+      }
+    },
+    [addToast, canManageDealerTeam, dealerControlDealer, loadDealerControlDetail, t],
+  );
 
   const handleRejectDealer = async (dealerId: string) => {
     await handleDealerStatusAction(dealerId, 'reject');
@@ -2183,6 +2602,15 @@ const AdminPage: React.FC = () => {
                         )}
                       </div>
                       <div className="flex flex-wrap items-center justify-end gap-2">
+                        {canReadDealers && (
+                          <button
+                            onClick={() => openDealerControlCenter(dealer)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
+                          >
+                            <Shield size={14} />
+                            <span>{t('admin.dealerControlCenter', { defaultValue: 'Control center' })}</span>
+                          </button>
+                        )}
                         {showEditButton && (
                           <button
                             onClick={() => setDealerFormState({ mode: 'edit', entity: dealer })}
@@ -2790,7 +3218,7 @@ const AdminPage: React.FC = () => {
               })}
             </div>
           )}
-        </div>
+          </div>
       </div>
     );
   };
@@ -2810,7 +3238,7 @@ const AdminPage: React.FC = () => {
       );
     }
 
-    const directPermissionEntries = Object.entries(adminAccessResult?.directPermissions ?? {});
+    const currentDirectPermissionEntries = Object.entries(adminAccessResult?.directPermissions ?? {});
     const initialRoleIds = adminAccessResult?.adminRoleIds ?? [];
     const initialRoleSet = new Set(initialRoleIds);
     const draftRoleSet = new Set(adminAccessRoleDraftIds);
@@ -2818,24 +3246,49 @@ const AdminPage: React.FC = () => {
       initialRoleSet.size !== draftRoleSet.size ||
       adminAccessRoleDraftIds.some(roleId => !initialRoleSet.has(roleId));
     const initialStatus = adminAccessResult?.accountStatus ?? 'active';
-    const isDraftDirty = hasRoleDraftChanges || adminAccessStatusDraft !== initialStatus;
+    const initialDirectPermissions = adminAccessResult?.directPermissions ?? {};
+    const directPermissionKeys = new Set<PermissionKey>([
+      ...Object.keys(initialDirectPermissions),
+      ...Object.keys(adminAccessDirectPermissionDraft),
+    ] as PermissionKey[]);
+    const hasDirectPermissionDraftChanges = Array.from(directPermissionKeys).some(
+      permission => initialDirectPermissions[permission] !== adminAccessDirectPermissionDraft[permission],
+    );
+    const isDraftDirty =
+      hasRoleDraftChanges ||
+      adminAccessStatusDraft !== initialStatus ||
+      (isMasterAdmin && hasDirectPermissionDraftChanges);
     const isDealerLikeTarget =
       adminAccessResult?.accountType === 'dealer' ||
       adminAccessResult?.accountType === 'dealer_staff' ||
       adminAccessResult?.role === 'dealer' ||
       adminAccessResult?.role === 'pending';
     const isProtectedMasterAdminTarget = Boolean(adminAccessResult?.isMasterAdmin && !isMasterAdmin);
+    const isSelfTarget = Boolean(adminAccessResult?.uid && user?.uid === adminAccessResult.uid);
     const controlsDisabled =
       !adminAccessResult ||
       adminAccessSaving ||
       adminAccessLookupLoading ||
       isDealerLikeTarget ||
-      isProtectedMasterAdminTarget;
+      isProtectedMasterAdminTarget ||
+      isSelfTarget;
+    const canRevokeAdminAccess = Boolean((adminAccessResult?.adminRoleIds?.length ?? 0) > 0);
+    const effectivePermissions = getEffectivePermissions(
+      adminAccessRoleDraftIds,
+      adminAccessDirectPermissionDraft,
+    );
+    const effectivePermissionGroups = permissionGroups
+      .map(group => ({
+        ...group,
+        permissions: group.permissions.filter(permission => effectivePermissions.has(permission)),
+      }))
+      .filter(group => group.permissions.length > 0);
+    const selectedAdminUid = adminAccessResult?.uid ?? null;
 
     return (
       <div className="space-y-6">
         <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
               <h2 className="text-xl font-semibold text-white">
                 {t('admin.accessControlHeading', { defaultValue: 'Platform admin access control' })}
@@ -2850,53 +3303,175 @@ const AdminPage: React.FC = () => {
             <div className="rounded-xl border border-gray-cyan/20 bg-gray-cyan/10 px-4 py-3 text-xs text-gray-100">
               {t('admin.accessControlNote', {
                 defaultValue:
-                  'Use separate platform-admin accounts. Do not repurpose dealer logins for platform operations.',
+                  'Use separate platform-admin accounts. Direct overrides should be reserved for exceptions, not normal role design.',
               })}
             </div>
           </div>
 
-          <form
-            onSubmit={handleAdminAccessLookup}
-            className="mt-6 flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 lg:flex-row lg:items-end"
-          >
-            <label className="flex min-w-0 flex-1 flex-col gap-2 text-sm text-gray-300">
-              <span className="font-medium text-white">
-                {t('admin.accessLookupLabel', {
-                  defaultValue: 'User email or UID',
-                })}
-              </span>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-                <input
-                  type="text"
-                  value={adminAccessQuery}
-                  onChange={event => setAdminAccessQuery(event.target.value)}
-                  placeholder={t('admin.accessLookupPlaceholder', {
-                    defaultValue: 'name@example.com or Firebase UID',
-                  })}
-                  className="w-full rounded-xl border border-white/10 bg-black/40 py-3 pl-10 pr-4 text-sm text-white focus:border-gray-cyan/50 focus:outline-none"
-                />
+          <div className="mt-6 grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                    {t('admin.platformAdminRoster', { defaultValue: 'Current platform admins' })}
+                  </h3>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {t('admin.platformAdminRosterDescription', {
+                      defaultValue:
+                        'Select an existing admin account to inspect or update its presets and overrides.',
+                    })}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void loadAdminAccessRoster(true)}
+                  disabled={adminRosterLoading}
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {adminRosterLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw size={14} />}
+                  <span>{t('admin.refreshAdminRoster', { defaultValue: 'Refresh' })}</span>
+                </button>
               </div>
-            </label>
-            <button
-              type="submit"
-              disabled={adminAccessLookupLoading}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-cyan/90 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {adminAccessLookupLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Search size={16} />
-              )}
-              <span>{t('admin.accessLookupButton', { defaultValue: 'Find account' })}</span>
-            </button>
-          </form>
 
-          {adminAccessLookupError && (
-            <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-              {adminAccessLookupError}
+              {adminRosterError && (
+                <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                  {adminRosterError}
+                </div>
+              )}
+
+              {adminRosterLoading && !adminRosterLoaded ? (
+                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-8 text-sm text-gray-300">
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-cyan" />
+                  <span>{t('admin.loadingAdminRoster', { defaultValue: 'Loading platform admins...' })}</span>
+                </div>
+              ) : adminRoster.length === 0 ? (
+                renderEmptyState(
+                  t('admin.adminRosterEmpty', {
+                    defaultValue: 'No platform-admin accounts have been assigned yet.',
+                  }),
+                )
+              ) : (
+                <div className="space-y-3">
+                  {adminRoster.map(adminEntry => {
+                    const isSelected = adminEntry.uid === selectedAdminUid;
+
+                    return (
+                      <button
+                        key={adminEntry.uid}
+                        type="button"
+                        onClick={() => selectAdminAccessTarget(adminEntry)}
+                        className={`w-full rounded-xl border px-4 py-3 text-left transition ${
+                          isSelected
+                            ? 'border-gray-cyan/40 bg-gray-cyan/10'
+                            : 'border-white/10 bg-white/5 hover:bg-white/10'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-white">
+                            {adminEntry.displayName ||
+                              adminEntry.email ||
+                              t('admin.accessControlUnnamedUser', { defaultValue: 'Unnamed account' })}
+                          </p>
+                          {adminEntry.isMasterAdmin && (
+                            <span className="inline-flex items-center rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-100">
+                              {t('admin.masterAdminBadge', { defaultValue: 'Master admin' })}
+                            </span>
+                          )}
+                          {user?.uid === adminEntry.uid && (
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                              {t('admin.currentAccountBadge', { defaultValue: 'Current account' })}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-2 text-xs text-gray-400">
+                          {adminEntry.email ?? t('admin.missingEmail', { defaultValue: 'No email on file' })}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-medium">
+                          <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                            {t('admin.accessAccountStatusBadge', {
+                              defaultValue: 'Status: {{status}}',
+                              status: adminEntry.accountStatus ?? 'active',
+                            })}
+                          </span>
+                          <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                            {t('admin.accessPresetCountBadge', {
+                              defaultValue: '{{count}} preset(s)',
+                              count: adminEntry.adminRoleIds.length,
+                            })}
+                          </span>
+                        </div>
+                        {adminEntry.updatedAt && (
+                          <p className="mt-3 text-[11px] text-gray-500">
+                            {t('admin.adminRosterUpdatedAt', {
+                              defaultValue: 'Updated {{date}}',
+                              date: formatDateTime(adminEntry.updatedAt),
+                            })}
+                          </p>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
+
+            <div className="space-y-4">
+              <form
+                onSubmit={handleAdminAccessLookup}
+                className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 lg:flex-row lg:items-end"
+              >
+                <label className="flex min-w-0 flex-1 flex-col gap-2 text-sm text-gray-300">
+                  <span className="font-medium text-white">
+                    {t('admin.accessLookupLabel', {
+                      defaultValue: 'User email or UID',
+                    })}
+                  </span>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                    <input
+                      type="text"
+                      value={adminAccessQuery}
+                      onChange={event => setAdminAccessQuery(event.target.value)}
+                      placeholder={t('admin.accessLookupPlaceholder', {
+                        defaultValue: 'name@example.com or Firebase UID',
+                      })}
+                      className="w-full rounded-xl border border-white/10 bg-black/40 py-3 pl-10 pr-4 text-sm text-white focus:border-gray-cyan/50 focus:outline-none"
+                    />
+                  </div>
+                </label>
+                <button
+                  type="submit"
+                  disabled={adminAccessLookupLoading}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-cyan/90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {adminAccessLookupLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search size={16} />
+                  )}
+                  <span>{t('admin.accessLookupButton', { defaultValue: 'Find account' })}</span>
+                </button>
+              </form>
+
+              {adminAccessLookupError && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                  {adminAccessLookupError}
+                </div>
+              )}
+
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-gray-400">
+                <p className="font-semibold text-white">
+                  {t('admin.accessLookupHintHeading', { defaultValue: 'Lookup and roster can be used together' })}
+                </p>
+                <p className="mt-2">
+                  {t('admin.accessLookupHintDescription', {
+                    defaultValue:
+                      'Use the roster for known platform admins, or search by UID/email when preparing a new account for admin access.',
+                  })}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {adminAccessResult && (
@@ -2972,7 +3547,7 @@ const AdminPage: React.FC = () => {
                     </span>
                   )}
                 </div>
-                {directPermissionEntries.length > 0 && (
+                {currentDirectPermissionEntries.length > 0 && (
                   <div className="mt-3 border-t border-white/10 pt-3">
                     <p className="font-semibold uppercase tracking-wide text-white/80">
                       {t('admin.directPermissionOverrides', {
@@ -2980,7 +3555,7 @@ const AdminPage: React.FC = () => {
                       })}
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {directPermissionEntries.map(([permission, value]) => (
+                      {currentDirectPermissionEntries.map(([permission, value]) => (
                         <span
                           key={permission}
                           className={`inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-medium ${
@@ -3016,7 +3591,16 @@ const AdminPage: React.FC = () => {
               </div>
             )}
 
-            <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_340px]">
+            {isSelfTarget && (
+              <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                {t('admin.selfAdminEditWarning', {
+                  defaultValue:
+                    'Use a separate platform-admin account to change your own privileges. Self-edits are blocked through this control surface.',
+                })}
+              </div>
+            )}
+
+            <div className="mt-6 grid gap-6 2xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <div className="mb-4 flex items-center gap-2">
                   <Shield className="h-4 w-4 text-gray-cyan" />
@@ -3062,63 +3646,214 @@ const AdminPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <div className="mb-4 flex items-center gap-2">
-                  <Key className="h-4 w-4 text-gray-cyan" />
-                  <h4 className="text-sm font-semibold uppercase tracking-wide text-white/80">
-                    {t('admin.accessControls', { defaultValue: 'Access controls' })}
-                  </h4>
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="mb-4 flex items-center gap-2">
+                    <Key className="h-4 w-4 text-gray-cyan" />
+                    <h4 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                      {t('admin.accessControls', { defaultValue: 'Access controls' })}
+                    </h4>
+                  </div>
+
+                  <label className="flex flex-col gap-2 text-sm text-gray-300">
+                    <span className="font-medium text-white">
+                      {t('admin.adminAccountStatusLabel', { defaultValue: 'Admin account status' })}
+                    </span>
+                    <select
+                      value={adminAccessStatusDraft}
+                      onChange={event => setAdminAccessStatusDraft(event.target.value as AccountStatus)}
+                      disabled={controlsDisabled}
+                      className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white focus:border-gray-cyan/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {ADMIN_ACCOUNT_STATUSES.map(status => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <div className="mt-6 space-y-3">
+                    <button
+                      type="button"
+                      onClick={handleAdminAccessSave}
+                      disabled={!isDraftDirty || controlsDisabled}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-cyan/90 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {adminAccessSaving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle size={16} />
+                      )}
+                      <span>{t('admin.saveAdminAccess', { defaultValue: 'Save access changes' })}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAdminAccessRevoke}
+                      disabled={controlsDisabled || !canRevokeAdminAccess}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-500/20 px-4 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <XCircle size={16} />
+                      <span>{t('admin.removeAdminAccessButton', { defaultValue: 'Remove admin access' })}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => adminAccessResult && hydrateAdminAccessDraft(adminAccessResult)}
+                      disabled={!isDraftDirty || adminAccessSaving}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <RefreshCcw size={16} />
+                      <span>{t('admin.resetAdminAccessDraft', { defaultValue: 'Reset changes' })}</span>
+                    </button>
+                  </div>
+
+                  <div className="mt-6 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-gray-400">
+                    {t('admin.removeAdminAccessHint', {
+                      defaultValue:
+                        'Role presets should cover the normal case. Use direct overrides only when a specific permission needs to be added or blocked.',
+                    })}
+                  </div>
                 </div>
 
-                <label className="flex flex-col gap-2 text-sm text-gray-300">
-                  <span className="font-medium text-white">
-                    {t('admin.adminAccountStatusLabel', { defaultValue: 'Admin account status' })}
-                  </span>
-                  <select
-                    value={adminAccessStatusDraft}
-                    onChange={event => setAdminAccessStatusDraft(event.target.value as AccountStatus)}
-                    disabled={controlsDisabled}
-                    className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white focus:border-gray-cyan/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {ADMIN_ACCOUNT_STATUSES.map(status => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="mb-4 flex items-center gap-2">
+                    <Eye className="h-4 w-4 text-gray-cyan" />
+                    <h4 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                      {t('admin.effectivePermissionsHeading', { defaultValue: 'Effective permissions preview' })}
+                    </h4>
+                  </div>
 
-                <div className="mt-6 space-y-3">
-                  <button
-                    type="button"
-                    onClick={handleAdminAccessSave}
-                    disabled={!isDraftDirty || controlsDisabled}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-cyan/90 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {adminAccessSaving ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                  <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-gray-400">
+                    {t('admin.effectivePermissionsSummary', {
+                      defaultValue: '{{count}} effective permission(s) after presets and overrides are applied.',
+                      count: effectivePermissions.size,
+                    })}
+                  </div>
+
+                  <div className="mt-4 max-h-[360px] space-y-4 overflow-y-auto pr-1">
+                    {effectivePermissionGroups.length === 0 ? (
+                      <p className="text-sm text-gray-500">
+                        {t('admin.effectivePermissionsEmpty', {
+                          defaultValue: 'No platform-admin permissions are currently effective for this account.',
+                        })}
+                      </p>
                     ) : (
-                      <CheckCircle size={16} />
+                      effectivePermissionGroups.map(group => (
+                        <div key={group.group}>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-white/70">
+                            {group.label}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {group.permissions.map(permission => (
+                              <span
+                                key={permission}
+                                className="inline-flex items-center rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[11px] font-medium text-emerald-100"
+                              >
+                                {formatPermissionActionLabel(permission)}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))
                     )}
-                    <span>{t('admin.saveAdminAccess', { defaultValue: 'Save access changes' })}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => adminAccessResult && hydrateAdminAccessDraft(adminAccessResult)}
-                    disabled={!isDraftDirty || adminAccessSaving}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <RefreshCcw size={16} />
-                    <span>{t('admin.resetAdminAccessDraft', { defaultValue: 'Reset changes' })}</span>
-                  </button>
+                  </div>
                 </div>
+              </div>
+            </div>
 
-                <div className="mt-6 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-gray-400">
-                  {t('admin.removeAdminAccessHint', {
+            <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-gray-cyan" />
+                  <div>
+                    <h4 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                      {t('admin.directPermissionOverrideEditor', {
+                        defaultValue: 'Direct permission overrides',
+                      })}
+                    </h4>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {t('admin.directPermissionOverrideDescription', {
+                        defaultValue:
+                          'Override a specific permission to allow it, deny it, or inherit it from the assigned role presets.',
+                      })}
+                    </p>
+                  </div>
+                </div>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-gray-300">
+                  {t('admin.overrideCountBadge', {
+                    defaultValue: '{{count}} override(s)',
+                    count: Object.keys(adminAccessDirectPermissionDraft).length,
+                  })}
+                </span>
+              </div>
+
+              {!isMasterAdmin && (
+                <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                  {t('admin.directOverridesMasterOnly', {
                     defaultValue:
-                      'To remove platform-admin access entirely, clear all role presets and save.',
+                      'Only a master admin can change direct permission overrides. You can still inspect the current override state here.',
                   })}
                 </div>
+              )}
+
+              <div className="grid gap-4 xl:grid-cols-2">
+                {permissionGroups.map(group => (
+                  <section key={group.group} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <h5 className="text-sm font-semibold text-white">{group.label}</h5>
+                    <div className="mt-3 space-y-3">
+                      {group.permissions.map(permission => {
+                        const overrideValue = adminAccessDirectPermissionDraft[permission];
+                        const selectValue: PermissionOverrideOption =
+                          overrideValue === true ? 'allow' : overrideValue === false ? 'deny' : 'inherit';
+                        const isGranted = effectivePermissions.has(permission);
+
+                        return (
+                          <div
+                            key={permission}
+                            className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3 md:flex-row md:items-center md:justify-between"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-medium text-white">
+                                  {formatPermissionActionLabel(permission)}
+                                </p>
+                                <span
+                                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                                    isGranted
+                                      ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100'
+                                      : 'border-white/10 bg-black/20 text-gray-400'
+                                  }`}
+                                >
+                                  {isGranted
+                                    ? t('admin.permissionGranted', { defaultValue: 'Granted' })
+                                    : t('admin.permissionBlocked', { defaultValue: 'Blocked' })}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500">{permission}</p>
+                            </div>
+                            <select
+                              value={selectValue}
+                              onChange={event =>
+                                setAdminAccessDirectPermissionOverride(
+                                  permission,
+                                  event.target.value as PermissionOverrideOption,
+                                )
+                              }
+                              disabled={!isMasterAdmin || controlsDisabled}
+                              className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white focus:border-gray-cyan/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {PERMISSION_OVERRIDE_OPTIONS.map(option => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
               </div>
             </div>
           </div>
@@ -3311,7 +4046,7 @@ const AdminPage: React.FC = () => {
               )}
             </div>
           </div>
-        </div>
+          </div>
       </div>
     );
   };
@@ -4227,6 +4962,405 @@ const AdminPage: React.FC = () => {
           onClose={() => setBlogTextImportOpen(false)}
         >
           <BlogTextImportModal onClose={() => setBlogTextImportOpen(false)} />
+        </AdminModal>
+      )}
+      {dealerControlDealer && (
+        <AdminModal
+          title={t('admin.dealerControlCenterTitle', {
+            defaultValue: 'Dealer control center: {{name}}',
+            name: dealerControlDealer.name,
+          })}
+          onClose={closeDealerControlCenter}
+        >
+          <div className="space-y-6">
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2">
+                <p className="text-sm text-gray-300">
+                  {t('admin.dealerControlCenterDescription', {
+                    defaultValue:
+                      'Inspect the dealer owner account, team members, pending invites, and operational relationships. Owner reassignment and team enforcement run through trusted backend paths.',
+                  })}
+                </p>
+                <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+                  <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                    ID: {dealerControlDealer.id}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                    {t('admin.dealerFilterStatusLabel', {
+                      defaultValue: 'Status: {{status}}',
+                      status: deriveStatus(dealerControlDealer),
+                    })}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadDealerControlDetail(dealerControlDealer.id)}
+                disabled={dealerControlLoading}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {dealerControlLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw size={16} />}
+                <span>{t('admin.refreshDealerControlCenter', { defaultValue: 'Refresh dealer data' })}</span>
+              </button>
+            </div>
+
+            {dealerControlError && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                {dealerControlError}
+              </div>
+            )}
+
+            {dealerControlLoading && !dealerControlDetail ? (
+              <AdminLazyFallback
+                label={t('admin.loadingDealerControlCenter', {
+                  defaultValue: 'Loading dealer control center...',
+                })}
+              />
+            ) : dealerControlDetail ? (
+              <>
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.dealerOwnerAccount', { defaultValue: 'Owner account' })}
+                      </h3>
+                    </div>
+
+                    {dealerControlDetail.owner ? (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-base font-semibold text-white">
+                              {dealerControlDetail.owner.displayName ||
+                                dealerControlDetail.owner.email ||
+                                dealerControlDetail.owner.uid}
+                            </p>
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                              UID: {dealerControlDetail.owner.uid}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                              {t('admin.accessRoleBadge', {
+                                defaultValue: 'Role: {{role}}',
+                                role: dealerControlDetail.owner.role,
+                              })}
+                            </span>
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                              {t('admin.accessAccountTypeBadge', {
+                                defaultValue: 'Type: {{type}}',
+                                type: dealerControlDetail.owner.accountType ?? 'user',
+                              })}
+                            </span>
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                              {t('admin.accessAccountStatusBadge', {
+                                defaultValue: 'Status: {{status}}',
+                                status: dealerControlDetail.owner.accountStatus ?? 'active',
+                              })}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                            <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                              {t('admin.ownerEmailLabel', { defaultValue: 'Owner email' })}
+                            </p>
+                            <p className="mt-1 text-sm text-gray-200">
+                              {dealerControlDetail.owner.email ??
+                                t('admin.missingEmail', { defaultValue: 'No email on file' })}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                            <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                              {t('admin.emailVerificationStatus', { defaultValue: 'Email verification' })}
+                            </p>
+                            <p className="mt-1 text-sm text-gray-200">
+                              {dealerControlDetail.owner.emailVerified
+                                ? t('admin.emailVerifiedBadge', { defaultValue: 'Email verified' })
+                                : t('admin.emailNotVerified', { defaultValue: 'Not verified' })}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                            <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                              {t('admin.lastSignInLabel', { defaultValue: 'Last sign-in' })}
+                            </p>
+                            <p className="mt-1 text-sm text-gray-200">
+                              {formatDateTime(dealerControlDetail.owner.lastSignInAt) ??
+                                t('admin.noLastSignIn', { defaultValue: 'No sign-in recorded' })}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                            <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                              {t('admin.authAccessLabel', { defaultValue: 'Auth access' })}
+                            </p>
+                            <p className="mt-1 text-sm text-gray-200">
+                              {dealerControlDetail.owner.authDisabled
+                                ? t('admin.authDisabled', { defaultValue: 'Disabled' })
+                                : t('admin.authEnabled', { defaultValue: 'Enabled' })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                        {t('admin.noDealerOwnerLinked', {
+                          defaultValue:
+                            'No owner account is currently linked to this dealer. Use account activation or assign an existing account below.',
+                        })}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <UserPlus className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.reassignDealerOwner', { defaultValue: 'Reassign owner' })}
+                      </h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      <p className="text-sm text-gray-400">
+                        {t('admin.reassignDealerOwnerDescription', {
+                          defaultValue:
+                            'Promote an existing user account into the dealer owner role. The account must already exist and cannot be a platform admin.',
+                        })}
+                      </p>
+                      <label className="flex flex-col gap-2 text-sm text-gray-300">
+                        <span className="font-medium text-white">
+                          {t('admin.ownerReassignQueryLabel', {
+                            defaultValue: 'Target email or UID',
+                          })}
+                        </span>
+                        <input
+                          type="text"
+                          value={dealerOwnerDraftQuery}
+                          onChange={event => setDealerOwnerDraftQuery(event.target.value)}
+                          disabled={!canEditDealers || dealerOwnerUpdating}
+                          placeholder={t('admin.ownerReassignQueryPlaceholder', {
+                            defaultValue: 'new-owner@example.com or Firebase UID',
+                          })}
+                          className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-gray-cyan/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => void handleDealerOwnerReassign()}
+                        disabled={!canEditDealers || dealerOwnerUpdating}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-cyan/90 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {dealerOwnerUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield size={16} />}
+                        <span>{t('admin.reassignDealerOwnerButton', { defaultValue: 'Reassign owner' })}</span>
+                      </button>
+                    </div>
+                  </section>
+                </div>
+
+                <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="mb-4 flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4 text-gray-cyan" />
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                      {t('admin.dealerOperationalSnapshot', { defaultValue: 'Operational snapshot' })}
+                    </h3>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                      <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                        {t('admin.listingsTab', { defaultValue: 'Listings' })}
+                      </p>
+                      <p className="mt-1 text-lg font-semibold text-white">
+                        {dealerControlDetail.relationships.listingCounts.total}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {t('admin.pendingActiveSplit', {
+                          defaultValue: 'Pending {{pending}} / Active {{active}}',
+                          pending: dealerControlDetail.relationships.listingCounts.pending,
+                          active:
+                            dealerControlDetail.relationships.listingCounts.active +
+                            dealerControlDetail.relationships.listingCounts.approved,
+                        })}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                      <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                        {t('admin.manageModels', { defaultValue: 'Models' })}
+                      </p>
+                      <p className="mt-1 text-lg font-semibold text-white">
+                        {dealerControlDetail.relationships.modelCount}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                      <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                        {t('admin.enquiriesLabel', { defaultValue: 'Enquiries' })}
+                      </p>
+                      <p className="mt-1 text-lg font-semibold text-white">
+                        {dealerControlDetail.relationships.enquiryCount}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                      <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                        {t('admin.teamCapacityLabel', { defaultValue: 'Team capacity' })}
+                      </p>
+                      <p className="mt-1 text-lg font-semibold text-white">
+                        {dealerControlDetail.capacity.remainingSlots} / {dealerControlDetail.capacity.maxTeamAccounts}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {t('admin.teamUsageSummary', {
+                          defaultValue: 'Owner {{owners}}, Staff {{staff}}, Pending invites {{invites}}',
+                          owners: dealerControlDetail.capacity.ownerCount,
+                          staff: dealerControlDetail.capacity.activeStaffCount,
+                          invites: dealerControlDetail.capacity.pendingInviteCount,
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="grid gap-6 xl:grid-cols-2">
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.dealerTeamMembers', { defaultValue: 'Dealer team members' })}
+                      </h3>
+                    </div>
+
+                    {dealerControlDetail.staffMembers.length === 0 ? (
+                      <p className="text-sm text-gray-500">
+                        {t('admin.dealerTeamMembersEmpty', {
+                          defaultValue: 'No dealer staff members are currently linked.',
+                        })}
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {dealerControlDetail.staffMembers.map(member => (
+                          <article
+                            key={member.uid}
+                            className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                          >
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                              <div className="space-y-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-sm font-semibold text-white">
+                                    {member.displayName || member.email || member.uid}
+                                  </p>
+                                  <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                                    {member.dealerStaffRole ?? 'staff'}
+                                  </span>
+                                  {member.accountStatus && (
+                                    <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                                      {member.accountStatus}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-400">{member.email ?? member.uid}</p>
+                                {member.updatedAt && (
+                                  <p className="text-xs text-gray-500">
+                                    {t('admin.updatedOn', {
+                                      defaultValue: 'Updated on {{date}}',
+                                      date: formatDateTime(member.updatedAt),
+                                    })}
+                                  </p>
+                                )}
+                              </div>
+                              {canManageDealerTeam && (
+                                <button
+                                  type="button"
+                                  onClick={() => void handleDealerControlStaffRemove(member.uid)}
+                                  disabled={dealerControlStaffRemovingId === member.uid}
+                                  className="inline-flex items-center gap-2 rounded-lg bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {dealerControlStaffRemovingId === member.uid ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 size={14} />
+                                  )}
+                                  <span>{t('admin.removeStaffAccess', { defaultValue: 'Remove access' })}</span>
+                                </button>
+                              )}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Key className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.dealerTeamInvites', { defaultValue: 'Dealer team invites' })}
+                      </h3>
+                    </div>
+
+                    {dealerControlDetail.invites.length === 0 ? (
+                      <p className="text-sm text-gray-500">
+                        {t('admin.dealerTeamInvitesEmpty', {
+                          defaultValue: 'No dealer team invites have been issued yet.',
+                        })}
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {dealerControlDetail.invites.map(invite => (
+                          <article
+                            key={invite.id}
+                            className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                          >
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                              <div className="space-y-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-sm font-semibold text-white">{invite.email}</p>
+                                  <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                                    {invite.status}
+                                  </span>
+                                  {invite.dealerStaffRole && (
+                                    <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                                      {invite.dealerStaffRole}
+                                    </span>
+                                  )}
+                                </div>
+                                {invite.createdAt && (
+                                  <p className="text-xs text-gray-500">
+                                    {t('admin.inviteCreatedAt', {
+                                      defaultValue: 'Created {{date}}',
+                                      date: formatDateTime(typeof invite.createdAt === 'string' ? invite.createdAt : null),
+                                    })}
+                                  </p>
+                                )}
+                              </div>
+                              {canManageDealerTeam && invite.status === 'pending' && (
+                                <button
+                                  type="button"
+                                  onClick={() => void handleDealerControlInviteRevoke(invite.id)}
+                                  disabled={dealerControlInviteRevokingId === invite.id}
+                                  className="inline-flex items-center gap-2 rounded-lg bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {dealerControlInviteRevokingId === invite.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <XCircle size={14} />
+                                  )}
+                                  <span>{t('admin.revokeInvite', { defaultValue: 'Revoke' })}</span>
+                                </button>
+                              )}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-gray-400">
+                {t('admin.dealerControlNoData', {
+                  defaultValue: 'Dealer relationship data is not available yet.',
+                })}
+              </div>
+            )}
+          </div>
         </AdminModal>
       )}
       {activationModalDealer && (

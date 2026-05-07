@@ -425,6 +425,26 @@ export const getPermissionsForAdminRoles = (roleIds: readonly AdminRoleId[]): Se
   }, new Set());
 };
 
+export const getEffectivePermissions = (
+  roleIds: readonly AdminRoleId[],
+  directPermissions?: PermissionOverrides | null,
+): Set<PermissionKey> => {
+  const effectivePermissions = getPermissionsForAdminRoles(roleIds);
+
+  Object.entries(normalizePermissionOverrides(directPermissions)).forEach(([permission, flag]) => {
+    if (flag === true) {
+      effectivePermissions.add(permission as PermissionKey);
+      return;
+    }
+
+    if (flag === false) {
+      effectivePermissions.delete(permission as PermissionKey);
+    }
+  });
+
+  return effectivePermissions;
+};
+
 export const hasPermission = (
   profile: Pick<UserProfile, 'adminRoleIds' | 'directPermissions' | 'isMasterAdmin'> | null | undefined,
   permission: PermissionKey,

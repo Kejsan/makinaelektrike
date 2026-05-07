@@ -24,9 +24,18 @@ export interface AdminAccessLookupResult {
   dealerSubscriptionStatus: DealerSubscriptionStatus | null;
 }
 
+export interface AdminAccessRosterItem extends AdminAccessLookupResult {
+  updatedAt: string | null;
+}
+
 interface AdminAccessLookupResponse {
   ok: true;
   user: AdminAccessLookupResult;
+}
+
+interface AdminAccessListResponse {
+  ok: true;
+  admins: AdminAccessRosterItem[];
 }
 
 export interface AdminAccessUpdatePayload {
@@ -87,4 +96,16 @@ export const lookupAdminAccess = async (query: string): Promise<AdminAccessLooku
   );
 
   return response.user;
+};
+
+export const listAdminAccessRoster = async (): Promise<AdminAccessRosterItem[]> => {
+  const idToken = await getRequiredIdToken();
+  const response = await fetchFunctionJson<AdminAccessListResponse>('admin-access-list', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+    },
+  });
+
+  return response.admins;
 };

@@ -31,6 +31,7 @@ export type AuditAction =
   | 'invite.accepted'
   | 'dealer_plan.updated'
   | 'dealer.updated'
+  | 'dealer_owner.updated'
   | 'dealer_account.updated'
   | 'dealer_status.updated'
   | 'dealer_staff.updated'
