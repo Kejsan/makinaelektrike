@@ -144,7 +144,7 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
               className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-semibold hover:bg-amber-500/30 transition-colors"
             >
               <EyeOff size={14} />
-              {t('admin.hide')}
+              {t('admin.listings.hideAction', { defaultValue: 'Hide' })}
             </button>
             <button
               onClick={() => onBulkAction('reject')}
@@ -183,7 +183,9 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
                 <th className="px-6 py-4 font-semibold">{t('admin.listings.dealer', { defaultValue: 'Dealer' })}</th>
                 <th className="px-6 py-4 font-semibold">{t('admin.price')}</th>
                 <th className="px-6 py-4 font-semibold">{t('admin.status')}</th>
-                <th className="px-6 py-4 font-semibold text-right">{t('admin.actions')}</th>
+                <th className="px-6 py-4 font-semibold text-right">
+                  {t('admin.listings.actionsHeader', { defaultValue: 'Actions' })}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -276,8 +278,8 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
                           <button
                             onClick={() => onUpdateStatus(listing.id, 'inactive')}
                             className="p-2 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors border border-transparent hover:border-amber-500/30"
-                            title={t('admin.hide')}
-                            aria-label={t('admin.hide')}
+                            title={t('admin.listings.hideAction', { defaultValue: 'Hide' })}
+                            aria-label={t('admin.listings.hideAction', { defaultValue: 'Hide' })}
                           >
                             <EyeOff className="h-4 w-4" />
                           </button>
@@ -287,8 +289,8 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
                           <button
                             onClick={() => onUpdateStatus(listing.id, 'active')}
                             className="p-2 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors border border-transparent hover:border-emerald-500/30"
-                            title={t('admin.show')}
-                            aria-label={t('admin.show')}
+                            title={t('admin.listings.showAction', { defaultValue: 'Show' })}
+                            aria-label={t('admin.listings.showAction', { defaultValue: 'Show' })}
                           >
                             <Eye className="h-4 w-4" />
                           </button>
