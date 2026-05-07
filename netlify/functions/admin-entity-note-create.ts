@@ -21,27 +21,29 @@ interface AdminEntityNoteCreateBody {
   body?: string;
 }
 
-type SupportedEntityType = 'user' | 'dealer' | 'listing';
+type SupportedEntityType = 'user' | 'dealer' | 'listing' | 'model';
 
 const ENTITY_PERMISSION_MAP: Record<
   SupportedEntityType,
-  'users.edit' | 'dealers.edit' | 'listings.moderate'
+  'users.edit' | 'dealers.edit' | 'listings.moderate' | 'models.publish'
 > = {
   user: 'users.edit',
   dealer: 'dealers.edit',
   listing: 'listings.moderate',
+  model: 'models.publish',
 };
 
-const ENTITY_COLLECTION_MAP: Record<SupportedEntityType, 'users' | 'dealers' | 'listings'> = {
+const ENTITY_COLLECTION_MAP: Record<SupportedEntityType, 'users' | 'dealers' | 'listings' | 'models'> = {
   user: 'users',
   dealer: 'dealers',
   listing: 'listings',
+  model: 'models',
 };
 
 const getEntityType = (value: unknown): SupportedEntityType => {
   const entityType = getRequiredString(value, 'entityType', 32);
-  if (entityType !== 'user' && entityType !== 'dealer' && entityType !== 'listing') {
-    throw new Error('entityType must be either user, dealer, or listing.');
+  if (entityType !== 'user' && entityType !== 'dealer' && entityType !== 'listing' && entityType !== 'model') {
+    throw new Error('entityType must be either user, dealer, listing, or model.');
   }
   return entityType;
 };
@@ -51,7 +53,9 @@ const buildSummary = (entityType: SupportedEntityType, label: string) =>
     ? `Added internal admin note to user ${label}.`
     : entityType === 'dealer'
       ? `Added internal admin note to dealer ${label}.`
-      : `Added internal admin note to listing ${label}.`;
+      : entityType === 'listing'
+        ? `Added internal admin note to listing ${label}.`
+        : `Added internal admin note to model ${label}.`;
 
 export const handler = async (event: FunctionEvent) => {
   if (event.httpMethod !== 'POST') {
@@ -74,7 +78,9 @@ export const handler = async (event: FunctionEvent) => {
             ? 'User not found.'
             : entityType === 'dealer'
               ? 'Dealer not found.'
-              : 'Listing not found.',
+              : entityType === 'listing'
+                ? 'Listing not found.'
+                : 'Model not found.',
       });
     }
 
@@ -90,9 +96,13 @@ export const handler = async (event: FunctionEvent) => {
             : typeof targetData.companyName === 'string'
               ? targetData.companyName
               : entityId
-          : typeof targetData.title === 'string'
-            ? targetData.title
-            : [targetData.make, targetData.model]
+          : entityType === 'listing'
+            ? typeof targetData.title === 'string'
+              ? targetData.title
+              : [targetData.make, targetData.model]
+                  .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+                  .join(' ') || entityId
+            : [targetData.brand, targetData.model_name]
                 .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
                 .join(' ') || entityId;
 

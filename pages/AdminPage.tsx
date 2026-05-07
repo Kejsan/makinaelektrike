@@ -98,6 +98,10 @@ import {
   lookupAdminListing,
   type AdminListingLookupResult,
 } from '../services/adminListings';
+import {
+  lookupAdminModel,
+  type AdminModelLookupResult,
+} from '../services/adminModels';
 import { createAdminEntityNote } from '../services/adminNotes';
 import {
   removeDealerStaffMember as removeDealerTeamMember,
@@ -273,6 +277,12 @@ const AdminPage: React.FC = () => {
   const [listingControlError, setListingControlError] = useState<string | null>(null);
   const [listingControlNoteDraft, setListingControlNoteDraft] = useState('');
   const [listingControlNoteSaving, setListingControlNoteSaving] = useState(false);
+  const [modelControlModel, setModelControlModel] = useState<Model | null>(null);
+  const [modelControlDetail, setModelControlDetail] = useState<AdminModelLookupResult | null>(null);
+  const [modelControlLoading, setModelControlLoading] = useState(false);
+  const [modelControlError, setModelControlError] = useState<string | null>(null);
+  const [modelControlNoteDraft, setModelControlNoteDraft] = useState('');
+  const [modelControlNoteSaving, setModelControlNoteSaving] = useState(false);
   const [activationError, setActivationError] = useState<string | null>(null);
   const {
     dealers,
@@ -377,6 +387,13 @@ const AdminPage: React.FC = () => {
     hasPermission('listings.moderate') ||
     hasPermission('listings.reassign');
   const canModerateListings = hasPermission('listings.moderate');
+  const canReadModels =
+    hasPermission('models.read') ||
+    hasPermission('models.publish') ||
+    hasPermission('models.merge');
+  const canManageModels =
+    hasPermission('models.publish') ||
+    hasPermission('models.merge');
   const canViewAudit = hasPermission('audit.view');
 
   // Reset selection and search on tab/filter change
@@ -1664,6 +1681,52 @@ const AdminPage: React.FC = () => {
     setListingControlNoteSaving(false);
   }, []);
 
+  const loadModelControlDetail = useCallback(
+    async (modelId: string) => {
+      if (!canReadModels) {
+        return;
+      }
+
+      setModelControlLoading(true);
+      setModelControlError(null);
+      try {
+        const detail = await lookupAdminModel(modelId);
+        setModelControlDetail(detail);
+      } catch (error) {
+        console.error('Failed to load model control detail', error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : t('admin.modelControlLoadFailed', {
+                defaultValue: 'Failed to load the model control center.',
+              });
+        setModelControlError(errorMessage);
+      } finally {
+        setModelControlLoading(false);
+      }
+    },
+    [canReadModels, t],
+  );
+
+  const openModelControlCenter = useCallback(
+    (model: Model) => {
+      setModelControlModel(model);
+      setModelControlDetail(null);
+      setModelControlError(null);
+      setModelControlNoteDraft('');
+      void loadModelControlDetail(model.id);
+    },
+    [loadModelControlDetail],
+  );
+
+  const closeModelControlCenter = useCallback(() => {
+    setModelControlModel(null);
+    setModelControlDetail(null);
+    setModelControlError(null);
+    setModelControlNoteDraft('');
+    setModelControlNoteSaving(false);
+  }, []);
+
   const handleDealerOwnerReassign = useCallback(async () => {
     if (!dealerControlDealer || !canEditDealers) {
       return;
@@ -1974,6 +2037,69 @@ const AdminPage: React.FC = () => {
     t,
   ]);
 
+  const handleModelControlNoteCreate = useCallback(async () => {
+    if (!modelControlModel) {
+      return;
+    }
+
+    if (!canManageModels) {
+      addToast(
+        t('admin.modelNotePermissionDenied', {
+          defaultValue: 'You do not have permission to add internal model notes.',
+        }),
+        'error',
+      );
+      return;
+    }
+
+    const body = modelControlNoteDraft.trim();
+    if (!body) {
+      setModelControlError(
+        t('admin.modelNoteRequired', {
+          defaultValue: 'Enter a note before saving it.',
+        }),
+      );
+      return;
+    }
+
+    setModelControlNoteSaving(true);
+    setModelControlError(null);
+    try {
+      await createAdminEntityNote({
+        entityType: 'model',
+        entityId: modelControlModel.id,
+        body,
+      });
+      await loadModelControlDetail(modelControlModel.id);
+      setModelControlNoteDraft('');
+      addToast(
+        t('admin.modelNoteCreated', {
+          defaultValue: 'Internal model note added successfully.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to create model admin note', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.modelNoteCreateFailed', {
+              defaultValue: 'Failed to add the internal model note.',
+            });
+      setModelControlError(errorMessage);
+      addToast(errorMessage, 'error');
+    } finally {
+      setModelControlNoteSaving(false);
+    }
+  }, [
+    addToast,
+    canManageModels,
+    loadModelControlDetail,
+    modelControlModel,
+    modelControlNoteDraft,
+    t,
+  ]);
+
   const handleRejectDealer = async (dealerId: string) => {
     await handleDealerStatusAction(dealerId, 'reject');
   };
@@ -2245,6 +2371,9 @@ const AdminPage: React.FC = () => {
         modelId: model.id,
         isActive: model.isActive === false,
       });
+      if (modelControlModel?.id === model.id) {
+        await loadModelControlDetail(model.id);
+      }
     } catch (error) {
       console.error('Failed to update model visibility:', error);
       addToast(
@@ -2267,6 +2396,9 @@ const AdminPage: React.FC = () => {
         modelId,
         delete: true,
       });
+      if (modelControlModel?.id === modelId) {
+        closeModelControlCenter();
+      }
     } catch (error) {
       console.error('Failed to delete model:', error);
       addToast(
@@ -4608,6 +4740,16 @@ const AdminPage: React.FC = () => {
                       )}
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-2">
+                      {canReadModels && (
+                        <button
+                          onClick={() => openModelControlCenter(model)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-indigo-500/20 px-3 py-2 text-xs font-semibold text-indigo-100 transition hover:bg-indigo-500/30"
+                          aria-label={t('admin.modelControlCenter', { defaultValue: 'Control center' })}
+                        >
+                          <Shield size={14} />
+                          <span>{t('admin.modelControlCenter', { defaultValue: 'Control center' })}</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => handleToggleModelVisibility(model)}
                         disabled={modelUpdateLoading}
@@ -6379,6 +6521,514 @@ const AdminPage: React.FC = () => {
               <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-gray-400">
                 {t('admin.listingControlNoData', {
                   defaultValue: 'Listing relationship data is not available yet.',
+                })}
+              </div>
+            )}
+          </div>
+        </AdminModal>
+      )}
+      {modelControlModel && (
+        <AdminModal
+          title={t('admin.modelControlCenterTitle', {
+            defaultValue: 'Model control center: {{name}}',
+            name: [modelControlModel.brand, modelControlModel.model_name].filter(Boolean).join(' '),
+          })}
+          onClose={closeModelControlCenter}
+        >
+          <div className="space-y-6">
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2">
+                <p className="text-sm text-gray-300">
+                  {t('admin.modelControlCenterDescription', {
+                    defaultValue:
+                      'Inspect canonical EV model ownership, linked dealers, linked listings, recent admin actions, and internal notes.',
+                  })}
+                </p>
+                <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+                  <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                    ID: {modelControlModel.id}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                    {modelControlDetail?.model.isActive === false
+                      ? t('admin.hidden', { defaultValue: 'Hidden' })
+                      : t('admin.visible', { defaultValue: 'Visible' })}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadModelControlDetail(modelControlModel.id)}
+                disabled={modelControlLoading}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {modelControlLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw size={16} />}
+                <span>{t('admin.refreshModelControlCenter', { defaultValue: 'Refresh model data' })}</span>
+              </button>
+            </div>
+
+            {modelControlError && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                {modelControlError}
+              </div>
+            )}
+
+            {modelControlLoading && !modelControlDetail ? (
+              <AdminLazyFallback
+                label={t('admin.loadingModelControlCenter', {
+                  defaultValue: 'Loading model control center...',
+                })}
+              />
+            ) : modelControlDetail ? (
+              <>
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.modelOverview', { defaultValue: 'Model overview' })}
+                      </h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      {modelControlDetail.model.heroImageUrl ? (
+                        <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+                          <img
+                            src={modelControlDetail.model.heroImageUrl}
+                            alt={[modelControlDetail.model.brand, modelControlDetail.model.modelName]
+                              .filter(Boolean)
+                              .join(' ')}
+                            className="h-52 w-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex h-52 items-center justify-center rounded-2xl border border-dashed border-white/10 bg-black/20 text-sm text-gray-500">
+                          {t('admin.modelNoPrimaryImage', { defaultValue: 'No primary image on file.' })}
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-base font-semibold text-white">
+                            {[modelControlDetail.model.brand, modelControlDetail.model.modelName]
+                              .filter(Boolean)
+                              .join(' ')}
+                          </p>
+                          {modelControlDetail.model.isFeatured && (
+                            <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-200">
+                              {t('admin.featured', { defaultValue: 'Featured' })}
+                            </span>
+                          )}
+                          {modelControlDetail.model.isActive === false && (
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                              {t('admin.hidden', { defaultValue: 'Hidden' })}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+                          {modelControlDetail.model.source && (
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                              Source: {modelControlDetail.model.source}
+                            </span>
+                          )}
+                          {modelControlDetail.model.bodyType && (
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                              {modelControlDetail.model.bodyType}
+                            </span>
+                          )}
+                          {modelControlDetail.model.chargePort && (
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                              {modelControlDetail.model.chargePort}
+                            </span>
+                          )}
+                          {modelControlDetail.model.seats !== null && (
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                              {modelControlDetail.model.seats} seats
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.batteryCapacityLabel', { defaultValue: 'Battery capacity' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {modelControlDetail.model.batteryCapacity !== null
+                              ? `${modelControlDetail.model.batteryCapacity} kWh`
+                              : t('admin.valueUnavailable', { defaultValue: 'Unavailable' })}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.rangeLabel', { defaultValue: 'Range (WLTP)' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {modelControlDetail.model.rangeWltp !== null
+                              ? `${modelControlDetail.model.rangeWltp} km`
+                              : t('admin.valueUnavailable', { defaultValue: 'Unavailable' })}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.powerLabel', { defaultValue: 'Power' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {modelControlDetail.model.powerKw !== null
+                              ? `${modelControlDetail.model.powerKw} kW`
+                              : t('admin.valueUnavailable', { defaultValue: 'Unavailable' })}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.mediaSummaryLabel', { defaultValue: 'Media' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {t('admin.mediaSummaryValue', {
+                              defaultValue: '{{images}} images, {{gallery}} gallery items',
+                              images: modelControlDetail.model.imageCount,
+                              gallery: modelControlDetail.model.galleryCount,
+                            })}
+                          </p>
+                        </div>
+                      </div>
+
+                      {modelControlDetail.model.notes && (
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.modelDataNotes', { defaultValue: 'Model data notes' })}
+                          </p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm text-gray-200">
+                            {modelControlDetail.model.notes}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  <div className="space-y-6">
+                    <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div className="mb-4 flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-gray-cyan" />
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                          {t('admin.modelOwnershipAndRelationships', {
+                            defaultValue: 'Ownership and relationships',
+                          })}
+                        </h3>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.ownerDealerLabel', { defaultValue: 'Owner dealer' })}
+                          </p>
+                          {modelControlDetail.ownerDealer ? (
+                            <>
+                              <p className="mt-1 text-sm font-semibold text-white">
+                                {modelControlDetail.ownerDealer.name}
+                              </p>
+                              <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-medium">
+                                <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-gray-300">
+                                  {modelControlDetail.ownerDealer.status ?? 'unknown'}
+                                </span>
+                                {modelControlDetail.ownerDealer.planId && (
+                                  <span className="inline-flex items-center rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-sky-100">
+                                    {modelControlDetail.ownerDealer.planId.toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <p className="mt-1 text-sm text-gray-500">
+                              {t('admin.modelNoOwnerDealerLinked', {
+                                defaultValue: 'No owner dealer is linked.',
+                              })}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.ownerAccountLabel', { defaultValue: 'Owner account' })}
+                          </p>
+                          {modelControlDetail.owner ? (
+                            <>
+                              <p className="mt-1 text-sm font-semibold text-white">
+                                {modelControlDetail.owner.displayName ||
+                                  modelControlDetail.owner.email ||
+                                  modelControlDetail.owner.uid}
+                              </p>
+                              <p className="mt-1 text-xs text-gray-500">
+                                {modelControlDetail.owner.email ?? modelControlDetail.owner.uid}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="mt-1 text-sm text-gray-500">
+                              {t('admin.modelNoOwnerLinked', {
+                                defaultValue: 'No owner account is linked.',
+                              })}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div className="mb-4 flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4 text-gray-cyan" />
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                          {t('admin.modelOperationalSnapshot', {
+                            defaultValue: 'Operational snapshot',
+                          })}
+                        </h3>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.linkedDealersLabel', { defaultValue: 'Linked dealers' })}
+                          </p>
+                          <p className="mt-1 text-lg font-semibold text-white">
+                            {modelControlDetail.relationships.dealerCount}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {t('admin.activeDealersCountLabel', {
+                              defaultValue: 'Active {{count}}',
+                              count: modelControlDetail.relationships.activeDealerCount,
+                            })}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.linkedListingsLabel', { defaultValue: 'Linked listings' })}
+                          </p>
+                          <p className="mt-1 text-lg font-semibold text-white">
+                            {modelControlDetail.relationships.listingCounts.total}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {t('admin.pendingActiveSplit', {
+                              defaultValue: 'Pending {{pending}} / Active {{active}}',
+                              pending: modelControlDetail.relationships.listingCounts.pending,
+                              active:
+                                modelControlDetail.relationships.listingCounts.active +
+                                modelControlDetail.relationships.listingCounts.approved,
+                            })}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.createdOn', { defaultValue: 'Created on' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {formatDateTime(modelControlDetail.model.createdAt) ??
+                              t('admin.dateUnavailable', { defaultValue: 'Unavailable' })}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.updatedOn', { defaultValue: 'Updated on' })}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">
+                            {formatDateTime(modelControlDetail.model.updatedAt) ??
+                              t('admin.dateUnavailable', { defaultValue: 'Unavailable' })}
+                          </p>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <ClipboardList className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.modelLinkedDealersTitle', { defaultValue: 'Linked dealers' })}
+                      </h3>
+                    </div>
+
+                    {modelControlDetail.relationships.recentDealers.length === 0 ? (
+                      <p className="text-sm text-gray-500">
+                        {t('admin.modelLinkedDealersEmpty', {
+                          defaultValue: 'No dealers are linked to this model yet.',
+                        })}
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {modelControlDetail.relationships.recentDealers.map(dealer => (
+                          <article
+                            key={dealer.id}
+                            className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-white">{dealer.name}</p>
+                              <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                                {dealer.status ?? 'unknown'}
+                              </span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
+                              <span>ID: {dealer.id}</span>
+                              <span>{dealer.isActive ? 'Active' : 'Hidden'}</span>
+                              {dealer.planId && <span>{dealer.planId.toUpperCase()}</span>}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <ClipboardList className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.modelLinkedListingsTitle', { defaultValue: 'Linked listings' })}
+                      </h3>
+                    </div>
+
+                    {modelControlDetail.relationships.recentListings.length === 0 ? (
+                      <p className="text-sm text-gray-500">
+                        {t('admin.modelLinkedListingsEmpty', {
+                          defaultValue: 'No listings are directly linked to this model yet.',
+                        })}
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {modelControlDetail.relationships.recentListings.map(listing => (
+                          <article
+                            key={listing.id}
+                            className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-white">{listing.title}</p>
+                              <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                                {listing.status ?? 'unknown'}
+                              </span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
+                              <span>ID: {listing.id}</span>
+                              {listing.dealerName && <span>{listing.dealerName}</span>}
+                              {listing.price && <span>{listing.price}</span>}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                </div>
+
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Eye className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.recentAdminHistory', { defaultValue: 'Recent admin history' })}
+                      </h3>
+                    </div>
+
+                    {modelControlDetail.recentAuditLogs.length === 0 ? (
+                      <p className="text-sm text-gray-500">
+                        {t('admin.modelRecentHistoryEmpty', {
+                          defaultValue: 'No recent privileged actions are linked to this model yet.',
+                        })}
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {modelControlDetail.recentAuditLogs.map(log => (
+                          <article
+                            key={log.id}
+                            className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex items-center rounded-full border border-gray-cyan/30 bg-gray-cyan/10 px-2 py-0.5 text-[10px] font-semibold text-gray-100">
+                                {formatAuditActionLabel(log.action)}
+                              </span>
+                              {log.createdAt && (
+                                <span className="text-xs text-gray-500">
+                                  {formatDateTime(typeof log.createdAt === 'string' ? log.createdAt : null)}
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-2 text-sm font-semibold text-white">{log.summary}</p>
+                            <p className="mt-2 text-xs text-gray-500">
+                              {t('admin.auditActorLabel', { defaultValue: 'Actor' })}: {log.actorEmail || log.actorUid}
+                            </p>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Pencil className="h-4 w-4 text-gray-cyan" />
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                        {t('admin.internalAdminNotes', { defaultValue: 'Internal admin notes' })}
+                      </h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="flex flex-col gap-2 text-sm text-gray-300">
+                        <span className="font-medium text-white">
+                          {t('admin.addInternalNote', { defaultValue: 'Add internal note' })}
+                        </span>
+                        <textarea
+                          value={modelControlNoteDraft}
+                          onChange={event => setModelControlNoteDraft(event.target.value)}
+                          disabled={!canManageModels || modelControlNoteSaving}
+                          rows={4}
+                          placeholder={t('admin.modelInternalNotePlaceholder', {
+                            defaultValue:
+                              'Track canonical data concerns, ownership context, duplicate risk, or review decisions for this model.',
+                          })}
+                          className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-gray-cyan/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => void handleModelControlNoteCreate()}
+                        disabled={!canManageModels || modelControlNoteSaving}
+                        className="inline-flex items-center gap-2 rounded-xl bg-gray-cyan px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-cyan/90 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {modelControlNoteSaving ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Plus size={16} />
+                        )}
+                        <span>{t('admin.saveInternalNote', { defaultValue: 'Save internal note' })}</span>
+                      </button>
+
+                      {modelControlDetail.adminNotes.length === 0 ? (
+                        <p className="rounded-xl border border-white/10 bg-black/20 px-4 py-4 text-sm text-gray-500">
+                          {t('admin.modelInternalNotesEmpty', {
+                            defaultValue: 'No internal admin notes have been recorded for this model yet.',
+                          })}
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {modelControlDetail.adminNotes.map(note => (
+                            <article
+                              key={note.id}
+                              className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                            >
+                              <p className="whitespace-pre-wrap text-sm text-gray-200">{note.body}</p>
+                              <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
+                                <span>{note.createdByEmail || note.createdByUid}</span>
+                                {note.createdAt && (
+                                  <span>{formatDateTime(typeof note.createdAt === 'string' ? note.createdAt : null)}</span>
+                                )}
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-gray-400">
+                {t('admin.modelControlNoData', {
+                  defaultValue: 'Model relationship data is not available yet.',
                 })}
               </div>
             )}
