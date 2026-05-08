@@ -1,5 +1,7 @@
+import { auth, storage } from './firebase';
+import { fetchFunctionJson } from './serverFunctions';
+import { optimizeImageForUpload, encodeFileAsBase64 } from '../utils/imageUpload';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { storage } from './firebase';
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set([
@@ -49,17 +51,65 @@ export const uploadFile = async (objectPath: string, file: File): Promise<string
 
 const buildObjectPath = (segments: string[]) => segments.filter(Boolean).join('/');
 
-// --- helper functions ---
+interface DealerMediaUploadResponse {
+  ok: true;
+  url: string;
+}
+
+const getRequiredIdToken = async () => {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('You must be signed in to upload dealer media.');
+  }
+
+  return currentUser.getIdToken();
+};
+
+const uploadDealerMediaViaFunction = async (
+  dealerId: string,
+  file: File,
+  variant: 'hero' | 'gallery',
+): Promise<string> => {
+  const optimizedFile = await optimizeImageForUpload(file, {
+    maxDimension: variant === 'hero' ? 1600 : 1400,
+    targetMaxBytes: variant === 'hero' ? 900 * 1024 : 750 * 1024,
+  });
+  const idToken = await getRequiredIdToken();
+  const dataBase64 = await encodeFileAsBase64(optimizedFile);
+  const folder = variant === 'hero' ? 'hero' : 'gallery';
+
+  const response = await fetchFunctionJson<
+    DealerMediaUploadResponse,
+    {
+      dealerId: string;
+      variant: 'hero' | 'gallery';
+      fileName: string;
+      contentType: string;
+      dataBase64: string;
+    }
+  >('dealer-media-upload', {
+    method: 'POST',
+    body: {
+      dealerId,
+      variant,
+      fileName: buildFileName(optimizedFile, `dealer-${folder}`),
+      contentType: optimizedFile.type,
+      dataBase64,
+    },
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+    },
+  });
+
+  return response.url;
+};
 
 const uploadDealerMedia = async (
   dealerId: string,
   file: File,
   variant: 'hero' | 'gallery',
 ): Promise<string> => {
-  const folder = variant === 'hero' ? 'hero' : 'gallery';
-  const fileName = buildFileName(file, `dealer-${folder}`);
-  const objectPath = buildObjectPath(['dealers', dealerId, folder, fileName]);
-  return uploadFile(objectPath, file);
+  return uploadDealerMediaViaFunction(dealerId, file, variant);
 };
 
 const uploadModelMedia = async (
