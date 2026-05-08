@@ -350,6 +350,17 @@ export interface SponsorshipOrderFormValues {
   internalNotes: string;
 }
 
+export interface DealerPlacementRequestFormValues {
+  name: string;
+  sponsorshipProductId: string;
+  sponsoredEntityType: Extract<PlacementEntityType, 'dealer' | 'listing' | 'model'> | '';
+  sponsoredEntityId: string;
+  zoneIds: string[];
+  startAt: string;
+  endAt: string;
+  notes: string;
+}
+
 export interface PromotionalCampaign extends FirestoreTimestamps {
   id: string;
   name: string;

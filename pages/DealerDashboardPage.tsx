@@ -18,7 +18,9 @@ import {
   ShieldCheck,
   UserPlus,
   Users,
-  Copy
+  Copy,
+  Megaphone,
+  CreditCard
 } from 'lucide-react';
 import { DataContext } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,11 +39,29 @@ import {
   type DealerStaffMember,
   type DealerTeamCapacity,
 } from '../services/dealerStaff';
-import type { AccessInvite, Dealer, DealerStaffRole, Model } from '../types';
+import {
+  cancelDealerPlacementRequest,
+  createDealerPlacementRequest,
+  listDealerPlacements,
+} from '../services/dealerPlacements';
+import type {
+  AccessInvite,
+  Dealer,
+  DealerPlacementRequestFormValues,
+  DealerStaffRole,
+  Model,
+  PlacementZone,
+  PromotionalCampaign,
+  SponsorshipOrder,
+  SponsorshipProduct,
+} from '../types';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import { DEALERSHIP_PLACEHOLDER_IMAGE, MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
 import Link from '../components/LocalizedLink';
+import DealerPlacementRequestForm, {
+  type DealerPlacementEntityOption,
+} from '../components/dealer/DealerPlacementRequestForm';
 
 interface ProfileFormState {
   name: string;
@@ -127,7 +147,7 @@ const parseNumericField = (value: string) => {
 
 const DealerDashboardPage: React.FC = () => {
   const { t, i18n } = useTranslation();
-  const { user, profile } = useAuth();
+  const { user, profile, dealerPlan, dealerEntitlements } = useAuth();
   const {
     dealers,
     models,
@@ -169,6 +189,15 @@ const DealerDashboardPage: React.FC = () => {
   const [teamInviteSubmitting, setTeamInviteSubmitting] = useState(false);
   const [teamInviteRevokingId, setTeamInviteRevokingId] = useState<string | null>(null);
   const [teamMemberRemovingId, setTeamMemberRemovingId] = useState<string | null>(null);
+  const [placementProducts, setPlacementProducts] = useState<SponsorshipProduct[]>([]);
+  const [placementZones, setPlacementZones] = useState<PlacementZone[]>([]);
+  const [placementOrders, setPlacementOrders] = useState<SponsorshipOrder[]>([]);
+  const [placementCampaigns, setPlacementCampaigns] = useState<PromotionalCampaign[]>([]);
+  const [placementsLoading, setPlacementsLoading] = useState(false);
+  const [placementsLoaded, setPlacementsLoaded] = useState(false);
+  const [placementsError, setPlacementsError] = useState<string | null>(null);
+  const [placementRequestSubmitting, setPlacementRequestSubmitting] = useState(false);
+  const [placementOrderCancellingId, setPlacementOrderCancellingId] = useState<string | null>(null);
 
   const dealer: Dealer | null = useMemo(() => {
     if (!user) {
@@ -739,6 +768,8 @@ const DealerDashboardPage: React.FC = () => {
         dealerStaffRole === 'manager'
       ),
   );
+  const canViewDealerPromotions = canManageDealerTeam;
+  const canManageDealerPromotions = canManageDealerTeam;
   const dealerId = dealer?.id ?? null;
 
   useEffect(() => {
@@ -790,6 +821,59 @@ const DealerDashboardPage: React.FC = () => {
       cancelled = true;
     };
   }, [canViewDealerTeam, dealerId, teamLoaded]);
+
+  useEffect(() => {
+    setPlacementProducts([]);
+    setPlacementZones([]);
+    setPlacementOrders([]);
+    setPlacementCampaigns([]);
+    setPlacementsLoading(false);
+    setPlacementsLoaded(false);
+    setPlacementsError(null);
+  }, [dealerId]);
+
+  useEffect(() => {
+    if (!dealerId || !canViewDealerPromotions || placementsLoaded) {
+      return;
+    }
+
+    let cancelled = false;
+    setPlacementsLoading(true);
+    setPlacementsError(null);
+
+    void listDealerPlacements(dealerId)
+      .then(result => {
+        if (cancelled) {
+          return;
+        }
+
+        setPlacementProducts(result.products);
+        setPlacementZones(result.zones);
+        setPlacementOrders(result.orders);
+        setPlacementCampaigns(result.campaigns);
+        setPlacementsLoaded(true);
+      })
+      .catch(error => {
+        if (cancelled) {
+          return;
+        }
+        console.error('Failed to load dealer placements', error);
+        setPlacementsError(
+          error instanceof Error
+            ? error.message
+            : 'Dealer placements could not be loaded.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPlacementsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canViewDealerPromotions, dealerId, placementsLoaded]);
 
   const handleCreateTeamInvite = async () => {
     if (!dealer || !canManageDealerTeam) {
@@ -933,6 +1017,76 @@ const DealerDashboardPage: React.FC = () => {
     }
   };
 
+  const handleCreatePlacementRequest = async (values: DealerPlacementRequestFormValues) => {
+    if (!dealerId || !canManageDealerPromotions) {
+      return;
+    }
+
+    setPlacementRequestSubmitting(true);
+    setPlacementsError(null);
+    try {
+      const order = await createDealerPlacementRequest({
+        dealerId,
+        values,
+      });
+      setPlacementOrders(prev => [order, ...prev.filter(entry => entry.id !== order.id)]);
+      addToast(
+        t('dealerDashboardPage.promoRequestCreated', {
+          defaultValue: 'Promotion request submitted successfully.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to create dealer placement request', error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : t('dealerDashboardPage.promoRequestCreateFailed', {
+              defaultValue: 'The promotion request could not be submitted.',
+            });
+      setPlacementsError(message);
+      addToast(message, 'error');
+    } finally {
+      setPlacementRequestSubmitting(false);
+    }
+  };
+
+  const handleCancelPlacementOrder = async (orderId: string) => {
+    if (!dealerId || !canManageDealerPromotions) {
+      return;
+    }
+
+    setPlacementOrderCancellingId(orderId);
+    setPlacementsError(null);
+    try {
+      const updatedOrder = await cancelDealerPlacementRequest({
+        dealerId,
+        orderId,
+      });
+      setPlacementOrders(prev =>
+        prev.map(order => (order.id === updatedOrder.id ? updatedOrder : order)),
+      );
+      addToast(
+        t('dealerDashboardPage.promoRequestCancelled', {
+          defaultValue: 'Promotion request cancelled.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to cancel dealer placement request', error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : t('dealerDashboardPage.promoRequestCancelFailed', {
+              defaultValue: 'The promotion request could not be cancelled.',
+            });
+      setPlacementsError(message);
+      addToast(message, 'error');
+    } finally {
+      setPlacementOrderCancellingId(null);
+    }
+  };
+
   if (!dealer) {
     if (dataLoading) {
       return (
@@ -993,6 +1147,78 @@ const DealerDashboardPage: React.FC = () => {
       }),
     },
   ];
+
+  const placementEntityOptionsByType = useMemo<
+    Record<'dealer' | 'listing' | 'model', DealerPlacementEntityOption[]>
+  >(
+    () => ({
+      dealer: [
+        {
+          id: dealer.id,
+          type: 'dealer',
+          label: dealer.name || dealer.companyName || dealer.id,
+          description: dealer.city ?? null,
+        },
+      ],
+      listing: dealerListings.map(listing => ({
+        id: listing.id,
+        type: 'listing',
+        label: listing.title,
+        description: `${listing.make} ${listing.model} ${listing.year}`,
+      })),
+      model: assignedModels.map(model => ({
+        id: model.id,
+        type: 'model',
+        label: `${model.brand} ${model.model_name}`,
+        description: model.body_type ?? null,
+      })),
+    }),
+    [assignedModels, dealer, dealerListings],
+  );
+
+  const placementProductById = useMemo(
+    () =>
+      placementProducts.reduce<Record<string, SponsorshipProduct>>((acc, product) => {
+        acc[product.id] = product;
+        return acc;
+      }, {}),
+    [placementProducts],
+  );
+  const placementZoneById = useMemo(
+    () =>
+      placementZones.reduce<Record<string, PlacementZone>>((acc, zone) => {
+        acc[zone.id] = zone;
+        return acc;
+      }, {}),
+    [placementZones],
+  );
+  const placementCampaignById = useMemo(
+    () =>
+      placementCampaigns.reduce<Record<string, PromotionalCampaign>>((acc, campaign) => {
+        acc[campaign.id] = campaign;
+        return acc;
+      }, {}),
+    [placementCampaigns],
+  );
+  const quotedPlacementOrders = useMemo(
+    () => placementOrders.filter(order => order.status === 'quoted').length,
+    [placementOrders],
+  );
+  const livePlacementOrders = useMemo(
+    () => placementOrders.filter(order => order.status === 'active').length,
+    [placementOrders],
+  );
+  const pendingPaymentOrders = useMemo(
+    () =>
+      placementOrders.filter(
+        order =>
+          order.status !== 'cancelled' &&
+          order.status !== 'expired' &&
+          order.paymentStatus !== 'paid' &&
+          order.paymentStatus !== 'waived',
+      ).length,
+    [placementOrders],
+  );
 
   return (
     <div className="py-16">
@@ -1211,6 +1437,256 @@ const DealerDashboardPage: React.FC = () => {
             )}
           </div>
         </div>
+
+        {canViewDealerPromotions && (
+          <section className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-cyan">
+                  {t('dealerDashboardPage.promotionsLabel', { defaultValue: 'Promotions and billing' })}
+                </p>
+                <h2 className="mt-2 text-2xl font-bold text-white">
+                  {t('dealerDashboardPage.promotionsTitle', {
+                    defaultValue: 'Request premium placements and track commercial status',
+                  })}
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-300">
+                  {t('dealerDashboardPage.promotionsDescription', {
+                    defaultValue:
+                      'Submit paid placement requests for your dealer profile, listings, or EV models, then follow quotes, invoice references, payment state, and live campaign status from one place.',
+                  })}
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  {
+                    icon: <Megaphone className="h-4 w-4" />,
+                    label: t('dealerDashboardPage.promotionsQuotedStat', { defaultValue: 'Quoted requests' }),
+                    value: quotedPlacementOrders,
+                  },
+                  {
+                    icon: <CreditCard className="h-4 w-4" />,
+                    label: t('dealerDashboardPage.promotionsPaymentStat', { defaultValue: 'Awaiting payment' }),
+                    value: pendingPaymentOrders,
+                  },
+                  {
+                    icon: <ShieldCheck className="h-4 w-4" />,
+                    label: t('dealerDashboardPage.promotionsLiveStat', { defaultValue: 'Live campaigns' }),
+                    value: livePlacementOrders,
+                  },
+                ].map(stat => (
+                  <div key={stat.label} className="rounded-xl border border-white/10 bg-gray-950/50 px-4 py-3">
+                    <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                      {stat.icon}
+                      <span>{stat.label}</span>
+                    </div>
+                    <p className="mt-2 text-2xl font-black text-white">{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {placementsError && (
+              <div className="mt-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                {placementsError}
+              </div>
+            )}
+
+            <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-4 flex items-center gap-2">
+                  <Megaphone className="h-4 w-4 text-gray-cyan" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                    {t('dealerDashboardPage.promoRequestSection', {
+                      defaultValue: 'New promotion request',
+                    })}
+                  </h3>
+                </div>
+
+                {placementsLoading && !placementsLoaded ? (
+                  <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-gray-300">
+                    <Loader2 className="h-4 w-4 animate-spin text-gray-cyan" />
+                    <span>{t('common.loading', { defaultValue: 'Loading…' })}</span>
+                  </div>
+                ) : !(dealerEntitlements?.campaignPurchaseEligibility && dealerEntitlements?.promotionEligibility) ? (
+                  <div className="space-y-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-5">
+                    <p className="text-sm font-semibold text-amber-100">
+                      {t('dealerDashboardPage.promoUpgradeTitle', {
+                        defaultValue: 'Paid dealer plan required',
+                      })}
+                    </p>
+                    <p className="text-sm leading-6 text-amber-50/90">
+                      {t('dealerDashboardPage.promoUpgradeDescription', {
+                        defaultValue:
+                          'Your current plan does not include paid placement requests. Upgrade the dealer account to unlock featured inventory, richer merchandising, and billing support.',
+                      })}
+                    </p>
+                    <div className="flex flex-wrap gap-2 text-xs text-amber-100/90">
+                      <span className="rounded-full border border-amber-400/30 bg-black/20 px-3 py-1">
+                        {t('dealerDashboardPage.currentPlanLabel', {
+                          defaultValue: 'Current plan: {{plan}}',
+                          plan: dealerPlan?.name ?? 'Free Dealer',
+                        })}
+                      </span>
+                    </div>
+                    <Link
+                      to="/contact"
+                      className="inline-flex items-center justify-center rounded-xl border border-amber-300/30 bg-black/20 px-4 py-3 text-sm font-semibold text-amber-50 transition hover:bg-black/30"
+                    >
+                      {t('dealerDashboardPage.contactForUpgrade', {
+                        defaultValue: 'Contact us about upgrading',
+                      })}
+                    </Link>
+                  </div>
+                ) : placementProducts.length === 0 ? (
+                  <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-gray-400">
+                    {t('dealerDashboardPage.noPromoProducts', {
+                      defaultValue: 'No eligible placement products are available for this dealer account yet.',
+                    })}
+                  </div>
+                ) : (
+                  <DealerPlacementRequestForm
+                    products={placementProducts}
+                    zones={placementZones}
+                    entityOptionsByType={placementEntityOptionsByType}
+                    onSubmit={handleCreatePlacementRequest}
+                    isSubmitting={placementRequestSubmitting}
+                  />
+                )}
+              </div>
+
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="mb-4 flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-gray-cyan" />
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-white/80">
+                      {t('dealerDashboardPage.promoOrderHistoryTitle', {
+                        defaultValue: 'Requests, quotes, and invoices',
+                      })}
+                    </h3>
+                  </div>
+
+                  {placementsLoading && !placementsLoaded ? (
+                    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-gray-300">
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-cyan" />
+                      <span>{t('common.loading', { defaultValue: 'Loading…' })}</span>
+                    </div>
+                  ) : placementOrders.length === 0 ? (
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-gray-400">
+                      {t('dealerDashboardPage.promoOrdersEmpty', {
+                        defaultValue: 'No promotion requests have been submitted yet.',
+                      })}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {placementOrders.map(order => {
+                        const product = placementProductById[order.sponsorshipProductId];
+                        const linkedCampaign = order.campaignId
+                          ? placementCampaignById[order.campaignId]
+                          : null;
+                        const canCancelOrder =
+                          canManageDealerPromotions &&
+                          (order.status === 'draft' || order.status === 'quoted');
+
+                        return (
+                          <article key={order.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-white">{order.name}</p>
+                              <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                                {order.status}
+                              </span>
+                              <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-100">
+                                {order.paymentStatus}
+                              </span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-gray-400">
+                              <span>
+                                {t('dealerDashboardPage.promoProductLabel', { defaultValue: 'Placement product' })}:{' '}
+                                {product?.name ?? order.sponsorshipProductId}
+                              </span>
+                              {order.invoiceReference && (
+                                <span>
+                                  {t('dealerDashboardPage.invoiceReferenceLabel', {
+                                    defaultValue: 'Invoice / reference',
+                                  })}:{' '}
+                                  {order.invoiceReference}
+                                </span>
+                              )}
+                              {(order.priceAmount != null || order.priceLabel) && (
+                                <span>
+                                  {t('dealerDashboardPage.promoBillingLabel', {
+                                    defaultValue: 'Billing',
+                                  })}:{' '}
+                                  {order.priceAmount != null
+                                    ? `${order.currency ?? 'EUR'} ${order.priceAmount}`
+                                    : order.priceLabel}
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-gray-400">
+                              {order.startAt && (
+                                <span>
+                                  {t('dealerDashboardPage.promoStartLabel', { defaultValue: 'Preferred start' })}:{' '}
+                                  {enquiryDateFormatter.format(new Date(order.startAt))}
+                                </span>
+                              )}
+                              {order.endAt && (
+                                <span>
+                                  {t('dealerDashboardPage.promoEndLabel', { defaultValue: 'Preferred end' })}:{' '}
+                                  {enquiryDateFormatter.format(new Date(order.endAt))}
+                                </span>
+                              )}
+                              {linkedCampaign && (
+                                <span>
+                                  {t('dealerDashboardPage.linkedCampaignLabel', {
+                                    defaultValue: 'Linked campaign',
+                                  })}:{' '}
+                                  {linkedCampaign.name} ({linkedCampaign.status})
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {order.zoneIds.map(zoneId => (
+                                <span
+                                  key={`${order.id}-${zoneId}`}
+                                  className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300"
+                                >
+                                  {placementZoneById[zoneId]?.name ?? zoneId}
+                                </span>
+                              ))}
+                            </div>
+                            {order.notes && (
+                              <p className="mt-3 text-sm text-gray-300">{order.notes}</p>
+                            )}
+                            {canCancelOrder && (
+                              <button
+                                type="button"
+                                onClick={() => void handleCancelPlacementOrder(order.id)}
+                                disabled={placementOrderCancellingId === order.id}
+                                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {placementOrderCancellingId === order.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                                <span>
+                                  {t('dealerDashboardPage.cancelPromoRequest', {
+                                    defaultValue: 'Cancel request',
+                                  })}
+                                </span>
+                              </button>
+                            )}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {canViewDealerTeam && (
           <section className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">

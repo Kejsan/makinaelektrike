@@ -25,6 +25,8 @@ import {
   ImageIcon,
   MapPin,
   MessageSquare,
+  Receipt,
+  CreditCard,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -2997,6 +2999,7 @@ const AdminPage: React.FC = () => {
   const handleSponsorshipOrderStatusUpdate = async (
     order: SponsorshipOrder,
     status: SponsorshipOrder['status'],
+    overrides?: Partial<Pick<SponsorshipOrder, 'paymentStatus' | 'paidAt'>>,
   ) => {
     if (!canManagePlacements) {
       return;
@@ -3016,14 +3019,19 @@ const AdminPage: React.FC = () => {
           sponsoredEntityType: order.sponsoredEntityType ?? '',
           sponsoredEntityId: order.sponsoredEntityId ?? '',
           status,
-          paymentStatus: order.paymentStatus,
+          paymentStatus: overrides?.paymentStatus ?? order.paymentStatus,
           priceAmount: order.priceAmount ?? '',
           currency: order.currency ?? 'EUR',
           priceLabel: order.priceLabel ?? '',
           invoiceReference: order.invoiceReference ?? '',
           startAt: typeof order.startAt === 'string' ? order.startAt : '',
           endAt: typeof order.endAt === 'string' ? order.endAt : '',
-          paidAt: typeof order.paidAt === 'string' ? order.paidAt : '',
+          paidAt:
+            typeof overrides?.paidAt === 'string'
+              ? overrides.paidAt
+              : typeof order.paidAt === 'string'
+                ? order.paidAt
+                : '',
           notes: order.notes ?? '',
           internalNotes: order.internalNotes ?? '',
         },
@@ -6926,6 +6934,41 @@ const AdminPage: React.FC = () => {
                             <Pencil size={14} />
                             <span>{t('admin.edit')}</span>
                           </button>
+                          {order.status === 'draft' && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void handleSponsorshipOrderStatusUpdate(order, 'quoted', {
+                                  paymentStatus:
+                                    order.paymentStatus === 'unpaid' ? 'pending' : order.paymentStatus,
+                                })
+                              }
+                              disabled={placementSaving}
+                              className="inline-flex items-center gap-1 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <Receipt className="h-3.5 w-3.5" />
+                              <span>{t('admin.quoteOrderLabel', { defaultValue: 'Quote' })}</span>
+                            </button>
+                          )}
+                          {order.paymentStatus !== 'paid' &&
+                            order.status !== 'cancelled' &&
+                            order.status !== 'expired' &&
+                            order.status !== 'active' && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void handleSponsorshipOrderStatusUpdate(order, 'paid', {
+                                    paymentStatus: 'paid',
+                                    paidAt: new Date().toISOString(),
+                                  })
+                                }
+                                disabled={placementSaving}
+                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                <CreditCard className="h-3.5 w-3.5" />
+                                <span>{t('admin.markPaidLabel', { defaultValue: 'Mark paid' })}</span>
+                              </button>
+                            )}
                           {order.status !== 'reserved' && order.status !== 'active' && order.status !== 'cancelled' && (
                             <button
                               type="button"
