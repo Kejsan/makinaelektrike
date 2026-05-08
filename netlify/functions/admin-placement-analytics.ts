@@ -1,5 +1,6 @@
 import type { FunctionEvent } from './_lib/http';
 import {
+  badRequest,
   forbidden,
   internalError,
   json,
@@ -14,6 +15,10 @@ import {
   serializePlacementAnalyticsZoneSummary,
   serializePlacementCampaignAnalytics,
 } from './_lib/placementAnalytics';
+import { serializeTimestamp } from './_lib/placements';
+
+const DEFAULT_RANGE_DAYS = 14;
+const ALLOWED_RANGE_DAYS = new Set([7, 14, 30, 90]);
 
 const pickLatestTimestamp = (
   current: string | null | undefined,
@@ -28,6 +33,46 @@ const pickLatestTimestamp = (
   return current;
 };
 
+const parseRangeDays = (raw: string | undefined) => {
+  if (!raw) {
+    return DEFAULT_RANGE_DAYS;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || !ALLOWED_RANGE_DAYS.has(parsed)) {
+    throw new Error('days must be one of 7, 14, 30, or 90.');
+  }
+
+  return parsed;
+};
+
+const normalizeZoneKey = (raw: string | undefined) => {
+  if (typeof raw !== 'string') {
+    return null;
+  }
+
+  const trimmed = raw.trim().toLowerCase();
+  return trimmed || null;
+};
+
+const buildDateKeys = (days: number) => {
+  const baseDate = new Date();
+  const utcToday = new Date(Date.UTC(
+    baseDate.getUTCFullYear(),
+    baseDate.getUTCMonth(),
+    baseDate.getUTCDate(),
+  ));
+  const keys: string[] = [];
+
+  for (let offset = days - 1; offset >= 0; offset -= 1) {
+    const date = new Date(utcToday);
+    date.setUTCDate(utcToday.getUTCDate() - offset);
+    keys.push(date.toISOString().slice(0, 10));
+  }
+
+  return keys;
+};
+
 export const handler = async (event: FunctionEvent) => {
   if (event.httpMethod !== 'GET') {
     return methodNotAllowed(['GET']);
@@ -35,16 +80,26 @@ export const handler = async (event: FunctionEvent) => {
 
   try {
     await requireAdminPermission(event, 'placements.analytics_read');
+    const rangeDays = parseRangeDays(event.queryStringParameters?.days);
+    const selectedZoneKey = normalizeZoneKey(event.queryStringParameters?.zoneKey);
+    const dateKeys = buildDateKeys(rangeDays);
+    const dateKeySet = new Set(dateKeys);
     const firestore = getAdminFirestore();
-    const [campaignSnapshot, dailySnapshot, zoneSnapshot] = await Promise.all([
-      firestore.collection('placementCampaignAnalytics').get(),
+    const [dailySnapshot, zoneSnapshot, dailyZoneSnapshot] = await Promise.all([
       firestore.collectionGroup('daily').get(),
       firestore.collectionGroup('zones').get(),
+      selectedZoneKey ? firestore.collectionGroup('dailyZones').get() : Promise.resolve(null),
     ]);
-
-    const analytics = campaignSnapshot.docs
-      .map(doc => serializePlacementCampaignAnalytics(doc.id, doc.data()))
-      .sort((left, right) => right.impressions - left.impressions);
+    const campaignMap = new Map<
+      string,
+      {
+        impressions: number;
+        clicks: number;
+        lastImpressionAt?: string | null;
+        lastClickAt?: string | null;
+        updatedAt?: string | null;
+      }
+    >();
     const dailyMap = new Map<string, { impressions: number; clicks: number }>();
     const zoneMap = new Map<
       string,
@@ -57,16 +112,66 @@ export const handler = async (event: FunctionEvent) => {
       }
     >();
 
+    dateKeys.forEach(dateKey => {
+      dailyMap.set(dateKey, { impressions: 0, clicks: 0 });
+    });
+
+    const accumulateCampaign = (
+      campaignId: string,
+      data: {
+        impressions?: number;
+        clicks?: number;
+        lastImpressionAt?: string | null;
+        lastClickAt?: string | null;
+        updatedAt?: string | null;
+      },
+    ) => {
+      const current = campaignMap.get(campaignId) ?? {
+        impressions: 0,
+        clicks: 0,
+        lastImpressionAt: null,
+        lastClickAt: null,
+        updatedAt: null,
+      };
+
+      current.impressions += typeof data.impressions === 'number' ? data.impressions : 0;
+      current.clicks += typeof data.clicks === 'number' ? data.clicks : 0;
+      current.lastImpressionAt = pickLatestTimestamp(current.lastImpressionAt, data.lastImpressionAt);
+      current.lastClickAt = pickLatestTimestamp(current.lastClickAt, data.lastClickAt);
+      current.updatedAt = pickLatestTimestamp(current.updatedAt, data.updatedAt);
+      campaignMap.set(campaignId, current);
+    };
+
     dailySnapshot.docs.forEach(doc => {
       if (doc.ref.parent.parent?.parent?.id !== 'placementCampaignAnalytics') {
         return;
       }
 
-      const entry = serializePlacementAnalyticsDailyBucket(doc.id, doc.data());
+      const data = doc.data();
+      const dateKey = typeof data.dateKey === 'string' ? data.dateKey : doc.id;
+      if (!dateKeySet.has(dateKey)) {
+        return;
+      }
+
+      const campaignId = doc.ref.parent.parent?.id;
+      if (!campaignId) {
+        return;
+      }
+
+      const entry = serializePlacementAnalyticsDailyBucket(dateKey, data);
       const current = dailyMap.get(entry.dateKey) ?? { impressions: 0, clicks: 0 };
       current.impressions += entry.impressions;
       current.clicks += entry.clicks;
       dailyMap.set(entry.dateKey, current);
+      if (!selectedZoneKey) {
+        accumulateCampaign(campaignId, {
+          impressions: entry.impressions,
+          clicks: entry.clicks,
+          lastImpressionAt: serializeTimestamp(data.lastImpressionAt),
+          lastClickAt: serializeTimestamp(data.lastClickAt),
+          updatedAt: serializeTimestamp(data.updatedAt),
+        });
+      }
     });
 
     zoneSnapshot.docs.forEach(doc => {
@@ -91,10 +196,47 @@ export const handler = async (event: FunctionEvent) => {
       zoneMap.set(entry.zoneKey, current);
     });
 
-    const daily = Array.from(dailyMap.entries())
-      .map(([dateKey, data]) => serializePlacementAnalyticsDailyBucket(dateKey, data))
-      .sort((left, right) => left.dateKey.localeCompare(right.dateKey))
-      .slice(-14);
+    if (selectedZoneKey && dailyZoneSnapshot) {
+      dailyMap.clear();
+      dateKeys.forEach(dateKey => {
+        dailyMap.set(dateKey, { impressions: 0, clicks: 0 });
+      });
+
+      dailyZoneSnapshot.docs.forEach(doc => {
+        if (doc.ref.parent.parent?.parent?.id !== 'placementCampaignAnalytics') {
+          return;
+        }
+
+        const data = doc.data();
+        const zoneKey = typeof data.zoneKey === 'string' ? data.zoneKey : null;
+        const dateKey = typeof data.dateKey === 'string' ? data.dateKey : null;
+        const campaignId = doc.ref.parent.parent?.id;
+        if (!campaignId || zoneKey !== selectedZoneKey || !dateKey || !dateKeySet.has(dateKey)) {
+          return;
+        }
+
+        const entry = serializePlacementAnalyticsDailyBucket(dateKey, data);
+        const current = dailyMap.get(entry.dateKey) ?? { impressions: 0, clicks: 0 };
+        current.impressions += entry.impressions;
+        current.clicks += entry.clicks;
+        dailyMap.set(entry.dateKey, current);
+
+        accumulateCampaign(campaignId, {
+          impressions: entry.impressions,
+          clicks: entry.clicks,
+          lastImpressionAt: serializeTimestamp(data.lastImpressionAt),
+          lastClickAt: serializeTimestamp(data.lastClickAt),
+          updatedAt: serializeTimestamp(data.updatedAt),
+        });
+      });
+    }
+
+    const analytics = Array.from(campaignMap.entries())
+      .map(([campaignId, data]) => serializePlacementCampaignAnalytics(campaignId, data))
+      .sort((left, right) => right.impressions - left.impressions);
+    const daily = dateKeys.map(dateKey =>
+      serializePlacementAnalyticsDailyBucket(dateKey, dailyMap.get(dateKey) ?? { impressions: 0, clicks: 0 }),
+    );
     const zones = Array.from(zoneMap.entries())
       .map(([zoneKey, data]) => serializePlacementAnalyticsZoneSummary(zoneKey, data))
       .sort((left, right) => right.impressions - left.impressions);
@@ -103,10 +245,17 @@ export const handler = async (event: FunctionEvent) => {
       ok: true,
       analytics,
       daily,
+      filters: {
+        days: rangeDays,
+        zoneKey: selectedZoneKey,
+      },
       zones,
     });
   } catch (error) {
     const message = (error as Error).message;
+    if (message.startsWith('days must be')) {
+      return badRequest(message);
+    }
     if (message.startsWith('Missing authorization') || message.startsWith('Authorization header')) {
       return unauthorized(message);
     }

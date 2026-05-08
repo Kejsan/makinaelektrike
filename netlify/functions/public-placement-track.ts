@@ -91,6 +91,11 @@ export const handler = async (event: FunctionEvent) => {
       .doc(campaignId)
       .collection('zones')
       .doc(zoneKey);
+    const dailyZoneRef = firestore
+      .collection('placementCampaignAnalytics')
+      .doc(campaignId)
+      .collection('dailyZones')
+      .doc(`${dailyKey}__${zoneKey}`);
 
     const incrementField = eventType === 'impression' ? 'impressions' : 'clicks';
     const lastField = eventType === 'impression' ? 'lastImpressionAt' : 'lastClickAt';
@@ -123,6 +128,19 @@ export const handler = async (event: FunctionEvent) => {
           [lastField]: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
           campaignId,
+          zoneKey,
+          lastPagePath: pagePath,
+          lastLocale: locale,
+        },
+        { merge: true },
+      ),
+      dailyZoneRef.set(
+        {
+          [incrementField]: FieldValue.increment(1),
+          [lastField]: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+          campaignId,
+          dateKey: dailyKey,
           zoneKey,
           lastPagePath: pagePath,
           lastLocale: locale,

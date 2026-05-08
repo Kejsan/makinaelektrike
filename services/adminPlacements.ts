@@ -2,6 +2,7 @@ import { auth } from './firebase';
 import { fetchFunctionJson } from './serverFunctions';
 import type {
   PlacementAnalyticsDailyBucket,
+  PlacementAnalyticsFilters,
   PlacementCampaignAnalyticsSummary,
   PlacementAnalyticsZoneSummary,
   PlacementZone,
@@ -23,6 +24,7 @@ interface PlacementAnalyticsResponse {
   ok: true;
   analytics: PlacementCampaignAnalyticsSummary[];
   daily: PlacementAnalyticsDailyBucket[];
+  filters: PlacementAnalyticsFilters;
   zones: PlacementAnalyticsZoneSummary[];
 }
 
@@ -79,9 +81,16 @@ export const listAdminPlacements = async () =>
     method: 'GET',
   });
 
-export const listAdminPlacementAnalytics = async () =>
+export const listAdminPlacementAnalytics = async (options?: {
+  days?: number;
+  zoneKey?: string;
+}) =>
   withAdminAuth<PlacementAnalyticsResponse>('admin-placement-analytics', {
     method: 'GET',
+    query: {
+      days: options?.days,
+      zoneKey: options?.zoneKey,
+    },
   });
 
 export const savePlacementZone = async (payload: {

@@ -20,6 +20,7 @@ import {
   Home,
   ExternalLink,
   Search,
+  Download,
   Eye,
   EyeOff,
   ImageIcon,
@@ -42,6 +43,7 @@ import {
   DealerSubscriptionStatus,
   Listing,
   Model,
+  PlacementAnalyticsFilters,
   PlacementAnalyticsDailyBucket,
   PlacementCampaignAnalyticsSummary,
   PlacementAnalyticsZoneSummary,
@@ -209,6 +211,7 @@ const DEALER_SUBSCRIPTION_STATUSES: DealerSubscriptionStatus[] = [
   'cancelled',
 ];
 const ADMIN_ACCOUNT_STATUSES: AccountStatus[] = ['active', 'suspended', 'disabled', 'archived'];
+const PLACEMENT_ANALYTICS_RANGE_OPTIONS = [7, 14, 30, 90] as const;
 
 const formatDate = (value: Dealer['createdAt']) => {
   if (!value) {
@@ -249,6 +252,15 @@ const formatJsonBlock = (value: Record<string, unknown> | null | undefined) => {
   }
 
   return JSON.stringify(value, null, 2);
+};
+
+const escapeCsvValue = (value: string | number | null | undefined) => {
+  const rawValue = value == null ? '' : String(value);
+  if (rawValue.includes(',') || rawValue.includes('"') || rawValue.includes('\n')) {
+    return `"${rawValue.replace(/"/g, '""')}"`;
+  }
+
+  return rawValue;
 };
 
 const formatAuditActionLabel = (action: string) =>
@@ -334,12 +346,15 @@ const AdminPage: React.FC = () => {
   const [placementsLoading, setPlacementsLoading] = useState(false);
   const [placementsLoaded, setPlacementsLoaded] = useState(false);
   const [placementsError, setPlacementsError] = useState<string | null>(null);
+  const [placementAnalyticsFilters, setPlacementAnalyticsFilters] =
+    useState<PlacementAnalyticsFilters>({ days: 14, zoneKey: null });
   const [placementAnalytics, setPlacementAnalytics] = useState<PlacementCampaignAnalyticsSummary[]>([]);
   const [placementZoneAnalytics, setPlacementZoneAnalytics] = useState<PlacementAnalyticsZoneSummary[]>([]);
   const [placementDailyAnalytics, setPlacementDailyAnalytics] = useState<PlacementAnalyticsDailyBucket[]>([]);
   const [placementAnalyticsLoading, setPlacementAnalyticsLoading] = useState(false);
   const [placementAnalyticsLoaded, setPlacementAnalyticsLoaded] = useState(false);
   const [placementAnalyticsError, setPlacementAnalyticsError] = useState<string | null>(null);
+  const [placementAnalyticsExporting, setPlacementAnalyticsExporting] = useState(false);
   const [placementSaving, setPlacementSaving] = useState(false);
   const [placementBootstrapLoading, setPlacementBootstrapLoading] = useState(false);
   const [placementZoneFormState, setPlacementZoneFormState] = useState<FormState<PlacementZone>>(null);
@@ -812,10 +827,14 @@ const AdminPage: React.FC = () => {
       }
       setPlacementAnalyticsError(null);
       try {
-        const response = await listAdminPlacementAnalytics();
+        const response = await listAdminPlacementAnalytics({
+          days: placementAnalyticsFilters.days,
+          zoneKey: placementAnalyticsFilters.zoneKey ?? undefined,
+        });
         setPlacementAnalytics(response.analytics);
         setPlacementZoneAnalytics(response.zones);
         setPlacementDailyAnalytics(response.daily);
+        setPlacementAnalyticsFilters(response.filters);
         setPlacementAnalyticsLoaded(true);
       } catch (error) {
         console.error('Failed to load placement analytics', error);
@@ -832,7 +851,7 @@ const AdminPage: React.FC = () => {
         }
       }
     },
-    [canReadPlacementAnalytics, t],
+    [canReadPlacementAnalytics, placementAnalyticsFilters.days, placementAnalyticsFilters.zoneKey, t],
   );
 
   const handlePlacementBootstrap = useCallback(async () => {
@@ -880,6 +899,124 @@ const AdminPage: React.FC = () => {
       loadPlacementAnalytics(),
     ]);
   }, [loadPlacementAnalytics, loadPlacementsCatalog]);
+
+  const handlePlacementAnalyticsFilterChange = useCallback(
+    (updates: Partial<PlacementAnalyticsFilters>) => {
+      setPlacementAnalyticsFilters(prev => ({
+        days: typeof updates.days === 'number' ? updates.days : prev.days,
+        zoneKey: updates.zoneKey === undefined ? prev.zoneKey ?? null : updates.zoneKey,
+      }));
+      setPlacementAnalyticsLoaded(false);
+    },
+    [],
+  );
+
+  const handlePlacementAnalyticsExport = useCallback(() => {
+    if (!canReadPlacementAnalytics) {
+      return;
+    }
+
+    if (!placementAnalytics.length) {
+      addToast(
+        t('admin.noPlacementAnalyticsToExport', {
+          defaultValue: 'There is no placement analytics data to export for the current view.',
+        }),
+        'error',
+      );
+      return;
+    }
+
+    setPlacementAnalyticsExporting(true);
+    try {
+      const zoneNameById = placementZones.reduce<Record<string, string>>((acc, zone) => {
+        acc[zone.id] = zone.name;
+        return acc;
+      }, {});
+      const selectedZoneName = placementAnalyticsFilters.zoneKey
+        ? placementZones.find(zone => zone.key === placementAnalyticsFilters.zoneKey)?.name ??
+          placementAnalyticsFilters.zoneKey
+        : t('admin.allZonesLabel', { defaultValue: 'All zones' });
+      const headers = [
+        'Campaign Name',
+        'Campaign ID',
+        'Promotion Type',
+        'Status',
+        'Range Days',
+        'Zone Filter',
+        'Assigned Zones',
+        'Impressions',
+        'Clicks',
+        'CTR',
+        'Last Impression',
+        'Last Click',
+      ];
+      const campaignById = promotionalCampaigns.reduce<Record<string, PromotionalCampaign>>(
+        (acc, campaign) => {
+          acc[campaign.id] = campaign;
+          return acc;
+        },
+        {},
+      );
+      const lines = [
+        headers.map(escapeCsvValue).join(','),
+        ...placementAnalytics.map(entry => {
+          const campaign = campaignById[entry.campaignId];
+          const assignedZones = campaign?.zoneIds
+            ?.map(zoneId => zoneNameById[zoneId] ?? zoneId)
+            .join(' | ') ?? '';
+
+          return [
+            campaign?.name ?? entry.campaignId,
+            entry.campaignId,
+            campaign?.promotionType ?? '',
+            campaign?.status ?? '',
+            placementAnalyticsFilters.days,
+            selectedZoneName,
+            assignedZones,
+            entry.impressions,
+            entry.clicks,
+            entry.ctr.toFixed(2),
+            entry.lastImpressionAt ?? '',
+            entry.lastClickAt ?? '',
+          ]
+            .map(escapeCsvValue)
+            .join(',');
+        }),
+      ];
+
+      const blob = new Blob([lines.join('\n')], {
+        type: 'text/csv;charset=utf-8;',
+      });
+      const safeZoneKey = (placementAnalyticsFilters.zoneKey ?? 'all-zones').replace(/[^a-z0-9_-]+/gi, '-');
+      const fileName = `placement-analytics-${placementAnalyticsFilters.days}d-${safeZoneKey}.csv`;
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(objectUrl);
+
+      addToast(
+        t('admin.placementAnalyticsExportSuccess', {
+          defaultValue: 'Placement analytics export prepared for download.',
+        }),
+        'success',
+      );
+    } finally {
+      setPlacementAnalyticsExporting(false);
+    }
+  }, [
+    addToast,
+    canReadPlacementAnalytics,
+    placementAnalytics,
+    placementAnalyticsFilters.days,
+    placementAnalyticsFilters.zoneKey,
+    placementZones,
+    promotionalCampaigns,
+    t,
+  ]);
 
   const getBulkModalTitle = (entity: BulkImportEntity) => {
     switch (entity) {
@@ -6015,6 +6152,9 @@ const AdminPage: React.FC = () => {
       totalPlacementImpressions > 0
         ? ((totalPlacementClicks / totalPlacementImpressions) * 100).toFixed(2)
         : '0.00';
+    const selectedPlacementZone = placementAnalyticsFilters.zoneKey
+      ? placementZones.find(zone => zone.key === placementAnalyticsFilters.zoneKey) ?? null
+      : null;
     const zoneNameByKey = placementZones.reduce<Record<string, string>>((acc, zone) => {
       acc[zone.key] = zone.name;
       return acc;
@@ -6178,6 +6318,93 @@ const AdminPage: React.FC = () => {
         )}
 
         {canReadPlacementAnalytics && (
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-white">
+                  {t('admin.placementAnalyticsFiltersTitle', { defaultValue: 'Performance filters' })}
+                </h3>
+                <p className="mt-1 text-sm text-gray-400">
+                  {t('admin.placementAnalyticsFiltersDescription', {
+                    defaultValue:
+                      'Filters apply to placement totals, campaign rankings, and the daily trend. The zone leaderboard remains all-time.',
+                  })}
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                <label className="flex min-w-[160px] flex-col gap-2 text-sm text-gray-300">
+                  <span>{t('admin.analyticsRangeLabel', { defaultValue: 'Time range' })}</span>
+                  <select
+                    value={placementAnalyticsFilters.days}
+                    disabled={placementAnalyticsLoading}
+                    onChange={event =>
+                      handlePlacementAnalyticsFilterChange({
+                        days: Number(event.target.value),
+                      })
+                    }
+                    className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/60"
+                  >
+                    {PLACEMENT_ANALYTICS_RANGE_OPTIONS.map(days => (
+                      <option key={days} value={days}>
+                        {t('admin.analyticsRangeOption', {
+                          defaultValue: 'Last {{days}} days',
+                          days,
+                        })}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="flex min-w-[220px] flex-col gap-2 text-sm text-gray-300">
+                  <span>{t('admin.zoneDrilldownLabel', { defaultValue: 'Zone drill-down' })}</span>
+                  <select
+                    value={placementAnalyticsFilters.zoneKey ?? ''}
+                    disabled={placementAnalyticsLoading}
+                    onChange={event =>
+                      handlePlacementAnalyticsFilterChange({
+                        zoneKey: event.target.value || null,
+                      })
+                    }
+                    className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/60"
+                  >
+                    <option value="">
+                      {t('admin.allZonesLabel', { defaultValue: 'All zones' })}
+                    </option>
+                    {placementZones.map(zone => (
+                      <option key={zone.id} value={zone.key}>
+                        {zone.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handlePlacementAnalyticsExport}
+                  disabled={placementAnalyticsExporting || placementAnalyticsLoading || placementAnalytics.length === 0}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {placementAnalyticsExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download size={16} />}
+                  <span>{t('admin.exportPlacementAnalytics', { defaultValue: 'Export CSV' })}</span>
+                </button>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs text-gray-400">
+              <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2.5 py-1">
+                {t('admin.analyticsRangeOption', {
+                  defaultValue: 'Last {{days}} days',
+                  days: placementAnalyticsFilters.days,
+                })}
+              </span>
+              <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2.5 py-1">
+                {selectedPlacementZone?.name ??
+                  t('admin.allZonesLabel', { defaultValue: 'All zones' })}
+              </span>
+            </div>
+          </section>
+        )}
+
+        {canReadPlacementAnalytics && (
           <div className="grid gap-4 xl:grid-cols-2">
             <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
               <div className="mb-4">
@@ -6187,7 +6414,7 @@ const AdminPage: React.FC = () => {
                 <p className="mt-1 text-sm text-gray-400">
                   {t('admin.topPlacementZonesDescription', {
                     defaultValue:
-                      'See which page slots are attracting the most sponsored visibility and engagement.',
+                      'See which page slots are attracting the most sponsored visibility and engagement across all tracked time.',
                   })}
                 </p>
               </div>
@@ -6252,13 +6479,22 @@ const AdminPage: React.FC = () => {
             <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
               <div className="mb-4">
                 <h3 className="text-lg font-semibold text-white">
-                  {t('admin.topPerformingPlacements', { defaultValue: 'Top-performing placements' })}
+                  {selectedPlacementZone
+                    ? t('admin.zonePlacementPerformance', {
+                        defaultValue: 'Zone campaign performance',
+                      })
+                    : t('admin.topPerformingPlacements', { defaultValue: 'Top-performing placements' })}
                 </h3>
                 <p className="mt-1 text-sm text-gray-400">
-                  {t('admin.topPerformingPlacementsDescription', {
-                    defaultValue:
-                      'Rank live and historical campaigns by delivery so you can quickly identify what is working.',
-                  })}
+                  {selectedPlacementZone
+                    ? t('admin.zonePlacementPerformanceDescription', {
+                        defaultValue:
+                          'Review which campaigns are performing inside the selected placement zone for the chosen range.',
+                      })
+                    : t('admin.topPerformingPlacementsDescription', {
+                        defaultValue:
+                          'Rank live and historical campaigns by delivery so you can quickly identify what is working.',
+                      })}
                 </p>
               </div>
 
@@ -6334,13 +6570,21 @@ const AdminPage: React.FC = () => {
           <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-white">
-                {t('admin.placementDailyTrend', { defaultValue: 'Last 14 days' })}
+                {t('admin.placementDailyTrend', {
+                  defaultValue: 'Last {{days}} days',
+                  days: placementAnalyticsFilters.days,
+                })}
               </h3>
               <p className="mt-1 text-sm text-gray-400">
-                {t('admin.placementDailyTrendDescription', {
-                  defaultValue:
-                    'Review daily sponsored-delivery volume to spot momentum, gaps, or campaign fatigue.',
-                })}
+                {selectedPlacementZone
+                  ? t('admin.placementDailyTrendZoneDescription', {
+                      defaultValue:
+                        'Review daily sponsored-delivery volume for the selected placement zone and range.',
+                    })
+                  : t('admin.placementDailyTrendDescription', {
+                      defaultValue:
+                        'Review daily sponsored-delivery volume to spot momentum, gaps, or campaign fatigue.',
+                    })}
               </p>
             </div>
 

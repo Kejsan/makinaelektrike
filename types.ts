@@ -403,6 +403,11 @@ export interface PlacementAnalyticsDailyBucket {
   ctr: number;
 }
 
+export interface PlacementAnalyticsFilters {
+  days: number;
+  zoneKey?: string | null;
+}
+
 interface DealerCore {
   name: string;
   description?: string;
