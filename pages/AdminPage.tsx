@@ -114,6 +114,7 @@ import {
   type AdminModelLookupResult,
 } from '../services/adminModels';
 import {
+  bootstrapAdminPlacements,
   listAdminPlacements,
   savePlacementZone,
   savePromotionalCampaign,
@@ -330,6 +331,7 @@ const AdminPage: React.FC = () => {
   const [placementsLoaded, setPlacementsLoaded] = useState(false);
   const [placementsError, setPlacementsError] = useState<string | null>(null);
   const [placementSaving, setPlacementSaving] = useState(false);
+  const [placementBootstrapLoading, setPlacementBootstrapLoading] = useState(false);
   const [placementZoneFormState, setPlacementZoneFormState] = useState<FormState<PlacementZone>>(null);
   const [sponsorshipProductFormState, setSponsorshipProductFormState] =
     useState<FormState<SponsorshipProduct>>(null);
@@ -468,6 +470,7 @@ const AdminPage: React.FC = () => {
     hasPermission('placements.publish') ||
     hasPermission('placements.pause') ||
     hasPermission('placements.override');
+  const canOverridePlacements = hasPermission('placements.override');
   const canViewAudit = hasPermission('audit.view');
 
   // Reset selection and search on tab/filter change
@@ -786,6 +789,42 @@ const AdminPage: React.FC = () => {
     },
     [canReadPlacements, t],
   );
+
+  const handlePlacementBootstrap = useCallback(async () => {
+    if (!canOverridePlacements) {
+      return;
+    }
+
+    setPlacementBootstrapLoading(true);
+    setPlacementsError(null);
+    try {
+      const response = await bootstrapAdminPlacements();
+      await loadPlacementsCatalog({ silent: true });
+      addToast(
+        t('admin.placementsBootstrapSuccess', {
+          defaultValue:
+            'Placement inventory initialized. Zones: {{zonesCreated}} created, {{zonesUpdated}} updated. Products: {{productsCreated}} created, {{productsUpdated}} updated.',
+          zonesCreated: response.zones.created,
+          zonesUpdated: response.zones.updated,
+          productsCreated: response.products.created,
+          productsUpdated: response.products.updated,
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to bootstrap placements inventory', error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : t('admin.placementsBootstrapFailed', {
+              defaultValue: 'Failed to initialize the placements inventory.',
+            });
+      setPlacementsError(message);
+      addToast(message, 'error');
+    } finally {
+      setPlacementBootstrapLoading(false);
+    }
+  }, [addToast, canOverridePlacements, loadPlacementsCatalog, t]);
 
   const getBulkModalTitle = (entity: BulkImportEntity) => {
     switch (entity) {
@@ -5908,6 +5947,19 @@ const AdminPage: React.FC = () => {
               {placementsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw size={16} />}
               <span>{t('admin.refreshPlacements', { defaultValue: 'Refresh' })}</span>
             </button>
+            {canOverridePlacements && (
+              <button
+                type="button"
+                onClick={() => void handlePlacementBootstrap()}
+                disabled={placementBootstrapLoading}
+                className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {placementBootstrapLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle size={16} />}
+                <span>
+                  {t('admin.bootstrapPlacements', { defaultValue: 'Bootstrap public inventory' })}
+                </span>
+              </button>
+            )}
             {canManagePlacements && (
               <>
                 <button

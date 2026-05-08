@@ -22,6 +22,20 @@ interface PlacementSaveResponse<T> {
   entity: T;
 }
 
+interface PlacementBootstrapResponse {
+  ok: true;
+  zones: {
+    created: number;
+    updated: number;
+    unchanged: number;
+  };
+  products: {
+    created: number;
+    updated: number;
+    unchanged: number;
+  };
+}
+
 const getRequiredIdToken = async () => {
   const currentUser = auth.currentUser;
   if (!currentUser) {
@@ -101,4 +115,9 @@ export const savePromotionalCampaign = async (payload: {
       id: payload.id,
       values: payload.values,
     },
+  });
+
+export const bootstrapAdminPlacements = async () =>
+  withAdminAuth<PlacementBootstrapResponse>('admin-placement-bootstrap', {
+    method: 'POST',
   });
