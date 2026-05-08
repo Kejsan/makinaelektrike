@@ -120,8 +120,13 @@ const SponsorshipOrderForm: React.FC<SponsorshipOrderFormProps> = ({
     [products],
   );
   const campaignOptions = useMemo(
-    () => campaigns.filter(campaign => campaign.status !== 'archived'),
-    [campaigns],
+    () =>
+      campaigns.filter(
+        campaign =>
+          campaign.status !== 'archived' &&
+          (campaign.promotionType === 'sponsored_promotion' || campaign.id === initialValues?.campaignId),
+      ),
+    [campaigns, initialValues?.campaignId],
   );
 
   const selectedCampaign = campaignOptions.find(campaign => campaign.id === formState.campaignId) ?? null;
@@ -134,6 +139,8 @@ const SponsorshipOrderForm: React.FC<SponsorshipOrderFormProps> = ({
     setFormState(prev => ({
       ...prev,
       zoneIds: prev.zoneIds.length > 0 ? prev.zoneIds : selectedCampaign.zoneIds,
+      sponsorshipProductId:
+        prev.sponsorshipProductId || (selectedCampaign.sponsorshipProductId ?? ''),
       sponsoredEntityType:
         prev.sponsoredEntityType || (selectedCampaign.sponsoredEntityType ?? ''),
       sponsoredEntityId:
@@ -296,6 +303,15 @@ const SponsorshipOrderForm: React.FC<SponsorshipOrderFormProps> = ({
               </option>
             ))}
           </select>
+          {selectedCampaign && (
+            <span className="mt-1 block text-xs text-gray-500">
+              {t('admin.linkedCampaignCoverageHint', {
+                defaultValue:
+                  'Linked campaign status: {{status}}. The order must cover the campaign zones and schedule.',
+                status: selectedCampaign.status,
+              })}
+            </span>
+          )}
         </label>
       </div>
 

@@ -12,7 +12,7 @@ import {
 import { requireAuthenticatedProfile } from './_lib/adminAccess';
 import { getAdminFirestore } from './_lib/firebaseAdmin';
 import { buildAuditActor, writeAdminAuditLog } from './_lib/auditLog';
-import { findPlacementOrderConflicts } from './_lib/placementOrders';
+import { findPlacementOrderConflicts, parsePlacementDate } from './_lib/placementOrders';
 import {
   parseDealerPlanIds,
   parsePlacementEntityTypes,
@@ -91,6 +91,9 @@ const parseIsoDate = (value: unknown, field: string) => {
 const requiresInventoryReservation = (status: SponsorshipOrderStatus) =>
   status === 'reserved' || status === 'paid' || status === 'active';
 
+const campaignRequiresInventoryReservation = (status: string) =>
+  status === 'scheduled' || status === 'active' || status === 'paused';
+
 const ensureTargetExists = async (
   entityType: PlacementEntityType | null,
   entityId: string | null,
@@ -142,12 +145,13 @@ const parseOrderValues = async (
   const internalNotes =
     getOptionalString(values.internalNotes, { field: 'internalNotes', maxLength: 4000 }) ?? null;
 
-  const [dealerSnapshot, productSnapshot, campaignSnapshot, orderSnapshot, zoneSnapshots] =
+  const [dealerSnapshot, productSnapshot, campaignSnapshot, orderSnapshot, campaignCollectionSnapshot, zoneSnapshots] =
     await Promise.all([
       firestore.collection('dealers').doc(dealerId).get(),
       firestore.collection('sponsorshipProducts').doc(sponsorshipProductId).get(),
       campaignId ? firestore.collection('promotionalCampaigns').doc(campaignId).get() : Promise.resolve(null),
       firestore.collection('sponsorshipOrders').get(),
+      firestore.collection('promotionalCampaigns').get(),
       Promise.all(zoneIds.map(zoneId => firestore.collection('placementZones').doc(zoneId).get())),
     ]);
 
@@ -171,6 +175,9 @@ const parseOrderValues = async (
   const campaign = campaignSnapshot?.exists
     ? serializePromotionalCampaign(campaignSnapshot.id, campaignSnapshot.data() ?? {})
     : null;
+  const campaigns = campaignCollectionSnapshot.docs.map(doc =>
+    serializePromotionalCampaign(doc.id, doc.data() ?? {}),
+  );
   const zones = zoneSnapshots.map(snapshot => serializePlacementZone(snapshot.id, snapshot.data() ?? {}));
   const existingOrders = orderSnapshot.docs.map(doc => serializeSponsorshipOrder(doc.id, doc.data() ?? {}));
 
@@ -195,11 +202,49 @@ const parseOrderValues = async (
       throw new Error('Order zoneIds must include all linked campaign zone assignments.');
     }
   }
-  if (campaign && campaign.sponsoredEntityType && sponsoredEntityType && campaign.sponsoredEntityType !== sponsoredEntityType) {
+  if (campaign && campaign.promotionType !== 'sponsored_promotion') {
+    throw new Error('Only sponsored promotional campaigns can be linked to a sponsorship order.');
+  }
+  if (
+    campaign &&
+    campaign.sponsorshipProductId &&
+    campaign.sponsorshipProductId !== sponsorshipProductId
+  ) {
+    throw new Error('The linked campaign sponsorshipProductId does not match the order.');
+  }
+  if (
+    campaign &&
+    campaign.sponsoredEntityType &&
+    campaign.sponsoredEntityType !== sponsoredEntityType
+  ) {
     throw new Error('The linked campaign sponsoredEntityType does not match the order.');
   }
-  if (campaign && campaign.sponsoredEntityId && sponsoredEntityId && campaign.sponsoredEntityId !== sponsoredEntityId) {
+  if (
+    campaign &&
+    campaign.sponsoredEntityId &&
+    campaign.sponsoredEntityId !== sponsoredEntityId
+  ) {
     throw new Error('The linked campaign sponsoredEntityId does not match the order.');
+  }
+  if (campaign && campaignRequiresInventoryReservation(campaign.status)) {
+    if (!requiresInventoryReservation(status)) {
+      throw new Error(
+        'Orders linked to scheduled, active, or paused sponsored campaigns must remain reserved, paid, or active.',
+      );
+    }
+
+    const campaignStartAt = parsePlacementDate(campaign.startAt);
+    const campaignEndAt = parsePlacementDate(campaign.endAt);
+    if (
+      (campaignStartAt && !startAt) ||
+      (campaignEndAt && !endAt) ||
+      (campaignStartAt && startAt && startAt.getTime() > campaignStartAt.getTime()) ||
+      (campaignEndAt && endAt && endAt.getTime() < campaignEndAt.getTime())
+    ) {
+      throw new Error(
+        'The linked campaign schedule is not fully covered by the order reservation window.',
+      );
+    }
   }
 
   await ensureTargetExists(sponsoredEntityType, sponsoredEntityId);
@@ -217,10 +262,12 @@ const parseOrderValues = async (
     const conflicts = findPlacementOrderConflicts({
       zones,
       orders: existingOrders,
+      campaigns,
       zoneIds,
       startAt,
       endAt,
       excludeOrderId: currentId,
+      excludeLinkedCampaignId: campaignId,
     });
 
     if (conflicts.length > 0) {

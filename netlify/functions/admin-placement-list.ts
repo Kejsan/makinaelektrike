@@ -55,6 +55,7 @@ export const handler = async (event: FunctionEvent) => {
     const availability = buildPlacementZoneAvailability({
       zones,
       orders,
+      campaigns,
     });
 
     return json(200, {

@@ -479,6 +479,7 @@ export interface PlacementZoneAvailabilitySummary {
   reservedAssignments: number;
   availableAssignments: number;
   blockingOrderIds: string[];
+  blockingCampaignIds: string[];
   nextReleaseAt?: string | null;
 }
 

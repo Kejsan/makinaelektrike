@@ -12,6 +12,11 @@ import {
 import { requireAuthenticatedProfile } from './_lib/adminAccess';
 import { getAdminFirestore } from './_lib/firebaseAdmin';
 import { buildAuditActor, writeAdminAuditLog } from './_lib/auditLog';
+import {
+  findPlacementSlotConflicts,
+  orderReservesInventory,
+  parsePlacementDate,
+} from './_lib/placementOrders';
 import { getOptionalString, getRequiredString } from './_lib/validation';
 import {
   parseDealerPlanIds,
@@ -23,6 +28,7 @@ import {
   parseSponsorshipProductStatus,
   serializePlacementZone,
   serializePromotionalCampaign,
+  serializeSponsorshipOrder,
   serializeSponsorshipProduct,
 } from './_lib/placements';
 import type {
@@ -108,6 +114,12 @@ const parseKind = (value: unknown) => {
 
   throw new Error('kind must be one of: zone, product, campaign.');
 };
+
+const INVENTORY_OCCUPYING_CAMPAIGN_STATUSES = new Set<PromotionalCampaignStatus>([
+  'scheduled',
+  'active',
+  'paused',
+]);
 
 const assertUniqueField = async (
   collectionName: string,
@@ -263,7 +275,10 @@ const parseProductValues = async (
   };
 };
 
-const parseCampaignValues = async (values: Record<string, unknown>) => {
+const parseCampaignValues = async (
+  values: Record<string, unknown>,
+  currentCampaignId: string,
+) => {
   const name = getRequiredString(values.name, 'name', 160);
   const description = getOptionalString(values.description, {
     field: 'description',
@@ -296,6 +311,7 @@ const parseCampaignValues = async (values: Record<string, unknown>) => {
   const startAt = parseIsoDate(values.startAt, 'startAt');
   const endAt = parseIsoDate(values.endAt, 'endAt');
   const priority = parseInteger(values.priority, 'priority', { min: 0, max: 100, required: false }) ?? 0;
+  const requiresInventoryWindow = INVENTORY_OCCUPYING_CAMPAIGN_STATUSES.has(status);
 
   if (promotionType === 'sponsored_promotion') {
     if (!sponsoredEntityType || !sponsoredEntityId) {
@@ -303,6 +319,9 @@ const parseCampaignValues = async (values: Record<string, unknown>) => {
     }
     if (!sponsorshipProductId) {
       throw new Error('Sponsored campaigns require sponsorshipProductId.');
+    }
+    if (requiresInventoryWindow && (!startAt || !endAt)) {
+      throw new Error('Sponsored campaigns in scheduled, active, or paused status require both startAt and endAt.');
     }
   }
 
@@ -318,9 +337,19 @@ const parseCampaignValues = async (values: Record<string, unknown>) => {
     throw new Error('endAt must be greater than or equal to startAt.');
   }
 
-  const zoneSnapshots = await ensureZoneIdsExist(zoneIds);
-  const productSnapshot = await ensureProductExists(sponsorshipProductId);
+  const [zoneSnapshots, productSnapshot, orderSnapshot, campaignSnapshot] = await Promise.all([
+    ensureZoneIdsExist(zoneIds),
+    ensureProductExists(sponsorshipProductId),
+    getAdminFirestore().collection('sponsorshipOrders').get(),
+    getAdminFirestore().collection('promotionalCampaigns').get(),
+  ]);
   await ensureTargetExists(sponsoredEntityType, sponsoredEntityId);
+  const existingOrders = orderSnapshot.docs.map(doc => serializeSponsorshipOrder(doc.id, doc.data() ?? {}));
+  const existingCampaigns = campaignSnapshot.docs.map(doc =>
+    serializePromotionalCampaign(doc.id, doc.data() ?? {}),
+  );
+  const linkedOrders = existingOrders.filter(order => order.campaignId === currentCampaignId);
+  const reservingLinkedOrders = linkedOrders.filter(orderReservesInventory);
 
   if (productSnapshot && sponsoredEntityType) {
     const productData = productSnapshot.data() ?? {};
@@ -348,6 +377,47 @@ const parseCampaignValues = async (values: Record<string, unknown>) => {
       throw new Error(`Zone ${snapshot.id} does not allow ${sponsoredEntityType} placements.`);
     }
   });
+
+  if (promotionType === 'sponsored_promotion' && requiresInventoryWindow) {
+    if (reservingLinkedOrders.length === 0) {
+      throw new Error('Sponsored campaigns must be linked to a reserved, paid, or active sponsorship order before they can go live.');
+    }
+
+    const campaignIsCovered = zoneIds.every(zoneId =>
+      reservingLinkedOrders.some(order => {
+        const orderStartAt = parsePlacementDate(order.startAt);
+        const orderEndAt = parsePlacementDate(order.endAt);
+        return (
+          order.zoneIds.includes(zoneId) &&
+          (!startAt || !orderStartAt || orderStartAt.getTime() <= startAt.getTime()) &&
+          (!endAt || !orderEndAt || orderEndAt.getTime() >= endAt.getTime())
+        );
+      }),
+    );
+
+    if (!campaignIsCovered) {
+      throw new Error('The linked sponsorship order does not fully cover the campaign zones or schedule.');
+    }
+  }
+
+  if (requiresInventoryWindow && zoneIds.length > 0) {
+    const conflicts = findPlacementSlotConflicts({
+      zones: zoneSnapshots.map(snapshot => serializePlacementZone(snapshot.id, snapshot.data() ?? {})),
+      orders: existingOrders,
+      campaigns: existingCampaigns,
+      zoneIds,
+      startAt,
+      endAt,
+      excludeCampaignId: currentCampaignId,
+      excludeLinkedCampaignId:
+        promotionType === 'sponsored_promotion' ? currentCampaignId : undefined,
+    });
+
+    if (conflicts.length > 0) {
+      const labels = conflicts.map(conflict => conflict.zone.name).join(', ');
+      throw new Error(`The selected schedule is already sold out for: ${labels}.`);
+    }
+  }
 
   return {
     name,
@@ -438,7 +508,7 @@ export const handler = async (event: FunctionEvent) => {
     } else if (kind === 'product') {
       nextValues = await parseProductValues(values, entityId ?? undefined);
     } else {
-      nextValues = await parseCampaignValues(values);
+      nextValues = await parseCampaignValues(values, docRef.id);
       const campaignStatus = nextValues.status as PromotionalCampaignStatus;
       const zoneIds = (nextValues.zoneIds as string[]) ?? [];
       if (zoneIds.length > 0) {
@@ -510,7 +580,8 @@ export const handler = async (event: FunctionEvent) => {
       message.includes('unique') ||
       message.includes('not found') ||
       message.includes('eligible') ||
-      message.includes('enabled')
+      message.includes('enabled') ||
+      message.includes('sold out')
     ) {
       return badRequest(message);
     }

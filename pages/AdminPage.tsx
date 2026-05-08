@@ -6280,6 +6280,19 @@ const AdminPage: React.FC = () => {
       },
       {},
     );
+    const linkedOrdersByCampaignId = sponsorshipOrders.reduce<Record<string, SponsorshipOrder[]>>(
+      (acc, order) => {
+        if (!order.campaignId) {
+          return acc;
+        }
+
+        const current = acc[order.campaignId] ?? [];
+        current.push(order);
+        acc[order.campaignId] = current;
+        return acc;
+      },
+      {},
+    );
     const topPlacementZones = placementZoneAnalytics.slice(0, 5);
     const topPlacementCampaigns = placementAnalytics.slice(0, 5);
     const maxZoneImpressions = topPlacementZones.reduce(
@@ -6709,7 +6722,7 @@ const AdminPage: React.FC = () => {
             <p className="mt-1 text-sm text-gray-400">
               {t('admin.placementInventoryOverviewDescription', {
                 defaultValue:
-                  'See current slot availability by zone based on reserved, paid, and active sponsorship orders.',
+                  'See current slot availability by zone based on reserving sponsorship orders and any live campaigns occupying inventory directly.',
               })}
             </p>
           </div>
@@ -6775,6 +6788,12 @@ const AdminPage: React.FC = () => {
                       <span>
                         {t('admin.blockingOrdersLabel', { defaultValue: 'Blocking orders' })}:{' '}
                         {entry.blockingOrderIds.length}
+                      </span>
+                    )}
+                    {entry.blockingCampaignIds.length > 0 && (
+                      <span>
+                        {t('admin.blockingCampaignsLabel', { defaultValue: 'Blocking campaigns' })}:{' '}
+                        {entry.blockingCampaignIds.length}
                       </span>
                     )}
                   </div>
@@ -6878,7 +6897,7 @@ const AdminPage: React.FC = () => {
                           {linkedCampaign && (
                             <span>
                               {t('admin.linkedCampaignLabel', { defaultValue: 'Linked campaign' })}:{' '}
-                              {linkedCampaign.name}
+                              {linkedCampaign.name} ({linkedCampaign.status})
                             </span>
                           )}
                         </div>
@@ -7273,13 +7292,30 @@ const AdminPage: React.FC = () => {
             )
           ) : (
             <div className="space-y-3">
-              {promotionalCampaigns.map(campaign => (
-                <article
-                  key={campaign.id}
-                  className="rounded-xl border border-white/10 bg-black/20 px-4 py-4"
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
+              {promotionalCampaigns.map(campaign => {
+                const linkedOrders = linkedOrdersByCampaignId[campaign.id] ?? [];
+                const reservingLinkedOrders = linkedOrders.filter(
+                  order =>
+                    order.status === 'reserved' ||
+                    order.status === 'paid' ||
+                    order.status === 'active',
+                );
+                const requiresOrderCoverage =
+                  campaign.promotionType === 'sponsored_promotion' &&
+                  (campaign.status === 'scheduled' ||
+                    campaign.status === 'active' ||
+                    campaign.status === 'paused');
+                const linkedProduct = campaign.sponsorshipProductId
+                  ? productById[campaign.sponsorshipProductId]
+                  : null;
+
+                return (
+                  <article
+                    key={campaign.id}
+                    className="rounded-xl border border-white/10 bg-black/20 px-4 py-4"
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="space-y-2">
                       {canReadPlacementAnalytics && (
                         <div className="mb-1 flex flex-wrap gap-2 text-[11px] text-gray-300">
                           <span className="inline-flex items-center rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-medium text-cyan-100">
@@ -7301,6 +7337,21 @@ const AdminPage: React.FC = () => {
                         <span className="inline-flex items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-medium text-indigo-100">
                           {campaign.promotionType}
                         </span>
+                        {requiresOrderCoverage && (
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                              reservingLinkedOrders.length > 0
+                                ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                : 'border border-amber-500/30 bg-amber-500/10 text-amber-100'
+                            }`}
+                          >
+                            {reservingLinkedOrders.length > 0
+                              ? t('admin.orderBackedLabel', { defaultValue: 'Order-backed' })
+                              : t('admin.needsOrderCoverageLabel', {
+                                  defaultValue: 'Needs reserving order',
+                                })}
+                          </span>
+                        )}
                       </div>
                       {campaign.description && <p className="text-sm text-gray-300">{campaign.description}</p>}
                       <div className="flex flex-wrap gap-2 text-[11px] text-gray-400">
@@ -7328,6 +7379,12 @@ const AdminPage: React.FC = () => {
                             {campaign.sponsoredEntityId ?? '-'}
                           </span>
                         )}
+                        {linkedProduct && (
+                          <span>
+                            {t('admin.sponsorshipProduct', { defaultValue: 'Sponsorship product' })}:{' '}
+                            {linkedProduct.name}
+                          </span>
+                        )}
                         {campaign.startAt && (
                           <span>
                             {t('admin.startsLabel', { defaultValue: 'Starts' })}:{' '}
@@ -7341,6 +7398,24 @@ const AdminPage: React.FC = () => {
                           </span>
                         )}
                       </div>
+                      {linkedOrders.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {linkedOrders.map(order => (
+                            <span
+                              key={`${campaign.id}-${order.id}`}
+                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                order.status === 'reserved' ||
+                                order.status === 'paid' ||
+                                order.status === 'active'
+                                  ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                                  : 'border border-white/10 bg-black/30 text-gray-300'
+                              }`}
+                            >
+                              {order.name} ({order.status})
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <div className="flex flex-wrap gap-2">
                         {campaign.zoneIds.map(zoneId => {
                           const zone = placementZones.find(entry => entry.id === zoneId);
@@ -7398,8 +7473,9 @@ const AdminPage: React.FC = () => {
                       </div>
                     )}
                   </div>
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
