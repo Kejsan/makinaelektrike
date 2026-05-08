@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ArrowRight, Megaphone, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { PublicPlacementResolvedItem, PublicPlacementZoneResult } from '../../types';
 import OptimizedImage from '../OptimizedImage';
 import Link from '../LocalizedLink';
 import { formatPlacementEntityTypeLabel } from '../../utils/placements';
+import {
+  buildPlacementImpressionSessionKey,
+  trackPublicPlacementEvent,
+} from '../../services/publicPlacementTracking';
 
 interface PublicPlacementRailProps {
   zone?: PublicPlacementZoneResult | null;
@@ -20,19 +24,24 @@ const PlacementLink: React.FC<{
   href: string;
   className?: string;
   children: React.ReactNode;
-}> = ({ href, className, children }) =>
+  onClick?: () => void;
+}> = ({ href, className, children, onClick }) =>
   isExternalUrl(href) ? (
-    <a href={href} className={className} target="_blank" rel="noreferrer">
+    <a href={href} className={className} target="_blank" rel="noreferrer" onClick={onClick}>
       {children}
     </a>
   ) : (
-    <Link to={href} className={className}>
+    <Link to={href} className={className} onClick={onClick}>
       {children}
     </Link>
   );
 
-const PlacementCard: React.FC<{ item: PublicPlacementResolvedItem }> = ({ item }) => {
-  const { t } = useTranslation();
+const PlacementCard: React.FC<{ item: PublicPlacementResolvedItem; zoneKey: string }> = ({
+  item,
+  zoneKey,
+}) => {
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const { i18n, t } = useTranslation();
   const badgeLabel =
     item.promotionType === 'sponsored_promotion'
       ? t('placements.sponsoredBadge', { defaultValue: 'Sponsored' })
@@ -47,10 +56,67 @@ const PlacementCard: React.FC<{ item: PublicPlacementResolvedItem }> = ({ item }
   });
   const meta = item.entity?.meta ?? [];
   const imageUrl = item.imageUrl ?? null;
+  const pagePath =
+    typeof window !== 'undefined'
+      ? `${window.location.pathname}${window.location.search}`
+      : '';
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !cardRef.current) {
+      return;
+    }
+
+    const sessionKey = buildPlacementImpressionSessionKey(item.campaignId, zoneKey, pagePath);
+    if (window.sessionStorage.getItem(sessionKey) === '1') {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      entries => {
+        const visible = entries.some(entry => entry.isIntersecting);
+        if (!visible) {
+          return;
+        }
+
+        window.sessionStorage.setItem(sessionKey, '1');
+        void trackPublicPlacementEvent({
+          campaignId: item.campaignId,
+          zoneKey,
+          eventType: 'impression',
+          pagePath,
+          locale: i18n.resolvedLanguage || i18n.language,
+        });
+        observer.disconnect();
+      },
+      {
+        threshold: 0.35,
+      },
+    );
+
+    observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, [i18n.language, i18n.resolvedLanguage, item.campaignId, pagePath, zoneKey]);
+
+  const handleClick = () => {
+    void trackPublicPlacementEvent({
+      campaignId: item.campaignId,
+      zoneKey,
+      eventType: 'click',
+      pagePath,
+      locale: i18n.resolvedLanguage || i18n.language,
+    });
+  };
 
   return (
-    <div className="group flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:border-gray-cyan/60 hover:shadow-neon-cyan">
-      <PlacementLink href={item.destinationUrl || '#'} className="flex h-full flex-col">
+    <div
+      ref={cardRef}
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:border-gray-cyan/60 hover:shadow-neon-cyan"
+    >
+      <PlacementLink
+        href={item.destinationUrl || '#'}
+        className="flex h-full flex-col"
+        onClick={handleClick}
+      >
         <div className="relative">
           {imageUrl ? (
             <OptimizedImage
@@ -142,7 +208,7 @@ const PublicPlacementRail: React.FC<PublicPlacementRailProps> = ({
         )}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
           {zone.items.map(item => (
-            <PlacementCard key={`${zone.zoneKey}-${item.campaignId}`} item={item} />
+            <PlacementCard key={`${zone.zoneKey}-${item.campaignId}`} item={item} zoneKey={zone.zoneKey} />
           ))}
         </div>
       </div>

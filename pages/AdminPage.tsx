@@ -42,6 +42,9 @@ import {
   DealerSubscriptionStatus,
   Listing,
   Model,
+  PlacementAnalyticsDailyBucket,
+  PlacementCampaignAnalyticsSummary,
+  PlacementAnalyticsZoneSummary,
   PlacementZoneStatus,
   PlacementZone,
   PlacementZoneFormValues,
@@ -115,6 +118,7 @@ import {
 } from '../services/adminModels';
 import {
   bootstrapAdminPlacements,
+  listAdminPlacementAnalytics,
   listAdminPlacements,
   savePlacementZone,
   savePromotionalCampaign,
@@ -330,6 +334,12 @@ const AdminPage: React.FC = () => {
   const [placementsLoading, setPlacementsLoading] = useState(false);
   const [placementsLoaded, setPlacementsLoaded] = useState(false);
   const [placementsError, setPlacementsError] = useState<string | null>(null);
+  const [placementAnalytics, setPlacementAnalytics] = useState<PlacementCampaignAnalyticsSummary[]>([]);
+  const [placementZoneAnalytics, setPlacementZoneAnalytics] = useState<PlacementAnalyticsZoneSummary[]>([]);
+  const [placementDailyAnalytics, setPlacementDailyAnalytics] = useState<PlacementAnalyticsDailyBucket[]>([]);
+  const [placementAnalyticsLoading, setPlacementAnalyticsLoading] = useState(false);
+  const [placementAnalyticsLoaded, setPlacementAnalyticsLoaded] = useState(false);
+  const [placementAnalyticsError, setPlacementAnalyticsError] = useState<string | null>(null);
   const [placementSaving, setPlacementSaving] = useState(false);
   const [placementBootstrapLoading, setPlacementBootstrapLoading] = useState(false);
   const [placementZoneFormState, setPlacementZoneFormState] = useState<FormState<PlacementZone>>(null);
@@ -471,6 +481,7 @@ const AdminPage: React.FC = () => {
     hasPermission('placements.pause') ||
     hasPermission('placements.override');
   const canOverridePlacements = hasPermission('placements.override');
+  const canReadPlacementAnalytics = hasPermission('placements.analytics_read');
   const canViewAudit = hasPermission('audit.view');
 
   // Reset selection and search on tab/filter change
@@ -790,6 +801,40 @@ const AdminPage: React.FC = () => {
     [canReadPlacements, t],
   );
 
+  const loadPlacementAnalytics = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
+      if (!canReadPlacementAnalytics) {
+        return;
+      }
+
+      if (!silent) {
+        setPlacementAnalyticsLoading(true);
+      }
+      setPlacementAnalyticsError(null);
+      try {
+        const response = await listAdminPlacementAnalytics();
+        setPlacementAnalytics(response.analytics);
+        setPlacementZoneAnalytics(response.zones);
+        setPlacementDailyAnalytics(response.daily);
+        setPlacementAnalyticsLoaded(true);
+      } catch (error) {
+        console.error('Failed to load placement analytics', error);
+        setPlacementAnalyticsError(
+          error instanceof Error
+            ? error.message
+            : t('admin.placementsAnalyticsLoadFailed', {
+                defaultValue: 'Failed to load placement analytics.',
+              }),
+        );
+      } finally {
+        if (!silent) {
+          setPlacementAnalyticsLoading(false);
+        }
+      }
+    },
+    [canReadPlacementAnalytics, t],
+  );
+
   const handlePlacementBootstrap = useCallback(async () => {
     if (!canOverridePlacements) {
       return;
@@ -799,7 +844,10 @@ const AdminPage: React.FC = () => {
     setPlacementsError(null);
     try {
       const response = await bootstrapAdminPlacements();
-      await loadPlacementsCatalog({ silent: true });
+      await Promise.all([
+        loadPlacementsCatalog({ silent: true }),
+        loadPlacementAnalytics({ silent: true }),
+      ]);
       addToast(
         t('admin.placementsBootstrapSuccess', {
           defaultValue:
@@ -824,7 +872,14 @@ const AdminPage: React.FC = () => {
     } finally {
       setPlacementBootstrapLoading(false);
     }
-  }, [addToast, canOverridePlacements, loadPlacementsCatalog, t]);
+  }, [addToast, canOverridePlacements, loadPlacementAnalytics, loadPlacementsCatalog, t]);
+
+  const handleRefreshPlacements = useCallback(async () => {
+    await Promise.all([
+      loadPlacementsCatalog(),
+      loadPlacementAnalytics(),
+    ]);
+  }, [loadPlacementAnalytics, loadPlacementsCatalog]);
 
   const getBulkModalTitle = (entity: BulkImportEntity) => {
     switch (entity) {
@@ -3102,6 +3157,25 @@ const AdminPage: React.FC = () => {
     loadPlacementsCatalog,
     placementsLoaded,
     placementsLoading,
+  ]);
+
+  useEffect(() => {
+    if (
+      activeTab !== 'placements' ||
+      placementAnalyticsLoaded ||
+      placementAnalyticsLoading ||
+      !canReadPlacementAnalytics
+    ) {
+      return;
+    }
+
+    void loadPlacementAnalytics();
+  }, [
+    activeTab,
+    canReadPlacementAnalytics,
+    loadPlacementAnalytics,
+    placementAnalyticsLoaded,
+    placementAnalyticsLoading,
   ]);
 
 
@@ -5922,6 +5996,50 @@ const AdminPage: React.FC = () => {
     const activeZones = placementZones.filter(zone => zone.status === 'active').length;
     const activeProducts = sponsorshipProducts.filter(product => product.status === 'active').length;
     const liveCampaigns = promotionalCampaigns.filter(campaign => campaign.status === 'active').length;
+    const analyticsByCampaignId = placementAnalytics.reduce<Record<string, PlacementCampaignAnalyticsSummary>>(
+      (acc, entry) => {
+        acc[entry.campaignId] = entry;
+        return acc;
+      },
+      {},
+    );
+    const totalPlacementImpressions = placementAnalytics.reduce(
+      (sum, entry) => sum + entry.impressions,
+      0,
+    );
+    const totalPlacementClicks = placementAnalytics.reduce(
+      (sum, entry) => sum + entry.clicks,
+      0,
+    );
+    const totalPlacementCtr =
+      totalPlacementImpressions > 0
+        ? ((totalPlacementClicks / totalPlacementImpressions) * 100).toFixed(2)
+        : '0.00';
+    const zoneNameByKey = placementZones.reduce<Record<string, string>>((acc, zone) => {
+      acc[zone.key] = zone.name;
+      return acc;
+    }, {});
+    const campaignById = promotionalCampaigns.reduce<Record<string, PromotionalCampaign>>(
+      (acc, campaign) => {
+        acc[campaign.id] = campaign;
+        return acc;
+      },
+      {},
+    );
+    const topPlacementZones = placementZoneAnalytics.slice(0, 5);
+    const topPlacementCampaigns = placementAnalytics.slice(0, 5);
+    const maxZoneImpressions = topPlacementZones.reduce(
+      (max, entry) => Math.max(max, entry.impressions),
+      0,
+    );
+    const maxCampaignImpressions = topPlacementCampaigns.reduce(
+      (max, entry) => Math.max(max, entry.impressions),
+      0,
+    );
+    const maxDailyImpressions = placementDailyAnalytics.reduce(
+      (max, entry) => Math.max(max, entry.impressions),
+      0,
+    );
 
     return (
       <div className="space-y-6">
@@ -5940,11 +6058,11 @@ const AdminPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => void loadPlacementsCatalog()}
-              disabled={placementsLoading}
+              onClick={() => void handleRefreshPlacements()}
+              disabled={placementsLoading || placementAnalyticsLoading}
               className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {placementsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw size={16} />}
+              {placementsLoading || placementAnalyticsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw size={16} />}
               <span>{t('admin.refreshPlacements', { defaultValue: 'Refresh' })}</span>
             </button>
             {canOverridePlacements && (
@@ -6035,6 +6153,245 @@ const AdminPage: React.FC = () => {
             </p>
           </div>
         </div>
+
+        {canReadPlacementAnalytics && (
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-4">
+              <p className="text-xs uppercase tracking-wide text-cyan-100/80">
+                {t('admin.placementImpressionsSummary', { defaultValue: 'Placement impressions' })}
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-white">{totalPlacementImpressions}</p>
+            </div>
+            <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4">
+              <p className="text-xs uppercase tracking-wide text-indigo-100/80">
+                {t('admin.placementClicksSummary', { defaultValue: 'Placement clicks' })}
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-white">{totalPlacementClicks}</p>
+            </div>
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+              <p className="text-xs uppercase tracking-wide text-emerald-100/80">
+                {t('admin.placementCtrSummary', { defaultValue: 'Average CTR' })}
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-white">{totalPlacementCtr}%</p>
+            </div>
+          </div>
+        )}
+
+        {canReadPlacementAnalytics && (
+          <div className="grid gap-4 xl:grid-cols-2">
+            <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-white">
+                  {t('admin.topPlacementZones', { defaultValue: 'Top placement zones' })}
+                </h3>
+                <p className="mt-1 text-sm text-gray-400">
+                  {t('admin.topPlacementZonesDescription', {
+                    defaultValue:
+                      'See which page slots are attracting the most sponsored visibility and engagement.',
+                  })}
+                </p>
+              </div>
+
+              {topPlacementZones.length === 0 ? (
+                <p className="text-sm text-gray-400">
+                  {t('admin.noPlacementAnalyticsYet', {
+                    defaultValue: 'No placement activity has been recorded yet.',
+                  })}
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {topPlacementZones.map(zone => {
+                    const width =
+                      maxZoneImpressions > 0
+                        ? Math.max((zone.impressions / maxZoneImpressions) * 100, 8)
+                        : 0;
+
+                    return (
+                      <article
+                        key={zone.zoneKey}
+                        className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-white">
+                              {zoneNameByKey[zone.zoneKey] ?? zone.zoneKey}
+                            </p>
+                            <p className="text-xs text-gray-500">{zone.zoneKey}</p>
+                          </div>
+                          <div className="text-right text-xs text-gray-300">
+                            <p>
+                              {t('admin.impressionsLabel', { defaultValue: 'Impressions' })}: {zone.impressions}
+                            </p>
+                            <p>
+                              {t('admin.clicksLabel', { defaultValue: 'Clicks' })}: {zone.clicks}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-3 h-2 rounded-full bg-white/10">
+                          <div
+                            className="h-full rounded-full bg-cyan-400/80"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-gray-400">
+                          <span>CTR: {zone.ctr.toFixed(2)}%</span>
+                          {zone.lastImpressionAt && (
+                            <span>
+                              {t('admin.lastImpressionLabel', { defaultValue: 'Last impression' })}:{' '}
+                              {formatDateTime(zone.lastImpressionAt)}
+                            </span>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-white">
+                  {t('admin.topPerformingPlacements', { defaultValue: 'Top-performing placements' })}
+                </h3>
+                <p className="mt-1 text-sm text-gray-400">
+                  {t('admin.topPerformingPlacementsDescription', {
+                    defaultValue:
+                      'Rank live and historical campaigns by delivery so you can quickly identify what is working.',
+                  })}
+                </p>
+              </div>
+
+              {topPlacementCampaigns.length === 0 ? (
+                <p className="text-sm text-gray-400">
+                  {t('admin.noPlacementAnalyticsYet', {
+                    defaultValue: 'No placement activity has been recorded yet.',
+                  })}
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {topPlacementCampaigns.map(entry => {
+                    const width =
+                      maxCampaignImpressions > 0
+                        ? Math.max((entry.impressions / maxCampaignImpressions) * 100, 8)
+                        : 0;
+                    const campaign = campaignById[entry.campaignId];
+
+                    return (
+                      <article
+                        key={entry.campaignId}
+                        className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-white">
+                              {campaign?.name ?? entry.campaignId}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {campaign?.promotionType ?? t('admin.unknownLabel', { defaultValue: 'Unknown' })}
+                            </p>
+                          </div>
+                          <div className="text-right text-xs text-gray-300">
+                            <p>
+                              {t('admin.impressionsLabel', { defaultValue: 'Impressions' })}: {entry.impressions}
+                            </p>
+                            <p>
+                              {t('admin.clicksLabel', { defaultValue: 'Clicks' })}: {entry.clicks}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-3 h-2 rounded-full bg-white/10">
+                          <div
+                            className="h-full rounded-full bg-indigo-400/80"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-gray-400">
+                          <span>CTR: {entry.ctr.toFixed(2)}%</span>
+                          {entry.lastClickAt && (
+                            <span>
+                              {t('admin.lastClickLabel', { defaultValue: 'Last click' })}:{' '}
+                              {formatDateTime(entry.lastClickAt)}
+                            </span>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {placementAnalyticsError && canReadPlacementAnalytics && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            {placementAnalyticsError}
+          </div>
+        )}
+
+        {canReadPlacementAnalytics && (
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-white">
+                {t('admin.placementDailyTrend', { defaultValue: 'Last 14 days' })}
+              </h3>
+              <p className="mt-1 text-sm text-gray-400">
+                {t('admin.placementDailyTrendDescription', {
+                  defaultValue:
+                    'Review daily sponsored-delivery volume to spot momentum, gaps, or campaign fatigue.',
+                })}
+              </p>
+            </div>
+
+            {placementDailyAnalytics.length === 0 ? (
+              <p className="text-sm text-gray-400">
+                {t('admin.noPlacementAnalyticsYet', {
+                  defaultValue: 'No placement activity has been recorded yet.',
+                })}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {placementDailyAnalytics.map(entry => {
+                  const width =
+                    maxDailyImpressions > 0
+                      ? Math.max((entry.impressions / maxDailyImpressions) * 100, 4)
+                      : 0;
+                  const parsedDate = new Date(`${entry.dateKey}T00:00:00`);
+                  const dateLabel = Number.isNaN(parsedDate.getTime())
+                    ? entry.dateKey
+                    : parsedDate.toLocaleDateString();
+
+                  return (
+                    <article
+                      key={entry.dateKey}
+                      className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-white">{dateLabel}</p>
+                        <div className="flex flex-wrap gap-3 text-[11px] text-gray-300">
+                          <span>
+                            {t('admin.impressionsLabel', { defaultValue: 'Impressions' })}: {entry.impressions}
+                          </span>
+                          <span>
+                            {t('admin.clicksLabel', { defaultValue: 'Clicks' })}: {entry.clicks}
+                          </span>
+                          <span>CTR: {entry.ctr.toFixed(2)}%</span>
+                        </div>
+                      </div>
+                      <div className="mt-3 h-2 rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-emerald-400/80"
+                          style={{ width: `${width}%` }}
+                        />
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
 
         <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -6295,6 +6652,19 @@ const AdminPage: React.FC = () => {
                 >
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
+                      {canReadPlacementAnalytics && (
+                        <div className="mb-1 flex flex-wrap gap-2 text-[11px] text-gray-300">
+                          <span className="inline-flex items-center rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-medium text-cyan-100">
+                            {t('admin.impressionsLabel', { defaultValue: 'Impressions' })}: {analyticsByCampaignId[campaign.id]?.impressions ?? 0}
+                          </span>
+                          <span className="inline-flex items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 font-medium text-indigo-100">
+                            {t('admin.clicksLabel', { defaultValue: 'Clicks' })}: {analyticsByCampaignId[campaign.id]?.clicks ?? 0}
+                          </span>
+                          <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-100">
+                            CTR: {(analyticsByCampaignId[campaign.id]?.ctr ?? 0).toFixed(2)}%
+                          </span>
+                        </div>
+                      )}
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-semibold text-white">{campaign.name}</p>
                         <span className="inline-flex items-center rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-gray-300">
@@ -6312,6 +6682,18 @@ const AdminPage: React.FC = () => {
                             count: campaign.zoneIds.length,
                           })}
                         </span>
+                        {canReadPlacementAnalytics && analyticsByCampaignId[campaign.id]?.lastImpressionAt && (
+                          <span>
+                            {t('admin.lastImpressionLabel', { defaultValue: 'Last impression' })}:{' '}
+                            {formatDateTime(analyticsByCampaignId[campaign.id]?.lastImpressionAt ?? null)}
+                          </span>
+                        )}
+                        {canReadPlacementAnalytics && analyticsByCampaignId[campaign.id]?.lastClickAt && (
+                          <span>
+                            {t('admin.lastClickLabel', { defaultValue: 'Last click' })}:{' '}
+                            {formatDateTime(analyticsByCampaignId[campaign.id]?.lastClickAt ?? null)}
+                          </span>
+                        )}
                         {campaign.sponsoredEntityType && (
                           <span>
                             {formatPlacementEntityTypeLabel(campaign.sponsoredEntityType)} /{' '}

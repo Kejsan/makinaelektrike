@@ -1,6 +1,9 @@
 import { auth } from './firebase';
 import { fetchFunctionJson } from './serverFunctions';
 import type {
+  PlacementAnalyticsDailyBucket,
+  PlacementCampaignAnalyticsSummary,
+  PlacementAnalyticsZoneSummary,
   PlacementZone,
   PlacementZoneFormValues,
   PromotionalCampaign,
@@ -14,6 +17,13 @@ interface PlacementCatalogResponse {
   zones: PlacementZone[];
   products: SponsorshipProduct[];
   campaigns: PromotionalCampaign[];
+}
+
+interface PlacementAnalyticsResponse {
+  ok: true;
+  analytics: PlacementCampaignAnalyticsSummary[];
+  daily: PlacementAnalyticsDailyBucket[];
+  zones: PlacementAnalyticsZoneSummary[];
 }
 
 interface PlacementSaveResponse<T> {
@@ -66,6 +76,11 @@ const withAdminAuth = async <TResponse, TBody = unknown>(
 
 export const listAdminPlacements = async () =>
   withAdminAuth<PlacementCatalogResponse>('admin-placement-list', {
+    method: 'GET',
+  });
+
+export const listAdminPlacementAnalytics = async () =>
+  withAdminAuth<PlacementAnalyticsResponse>('admin-placement-analytics', {
     method: 'GET',
   });
 

@@ -73,6 +73,7 @@ export type PromotionalCampaignStatus =
   | 'paused'
   | 'archived';
 export type PromotionalCampaignPromotionType = 'house_promotion' | 'sponsored_promotion';
+export type PlacementAnalyticsEventType = 'impression' | 'click';
 export type PermissionKey =
   | 'users.read'
   | 'users.edit'
@@ -373,6 +374,33 @@ export interface PublicPlacementResolveResponse {
   ok: true;
   zones: PublicPlacementZoneResult[];
   resolvedAt: string;
+}
+
+export interface PlacementCampaignAnalyticsSummary {
+  campaignId: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  lastImpressionAt?: string | null;
+  lastClickAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface PlacementAnalyticsZoneSummary {
+  zoneKey: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  lastImpressionAt?: string | null;
+  lastClickAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface PlacementAnalyticsDailyBucket {
+  dateKey: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
 }
 
 interface DealerCore {
