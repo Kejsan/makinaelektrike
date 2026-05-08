@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import {
@@ -28,6 +29,10 @@ const focusableSelectors = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
+let modalLockCount = 0;
+let previousBodyOverflow = '';
+let previousBodyPaddingRight = '';
+
 const ModalLayout: React.FC<ModalLayoutProps> = ({
   isOpen,
   onClose,
@@ -36,7 +41,7 @@ const ModalLayout: React.FC<ModalLayoutProps> = ({
   headerContent,
   children,
   maxWidthClass = 'max-w-3xl',
-  bodyClassName = 'mt-6 min-h-0 space-y-4 overflow-y-auto pr-1',
+  bodyClassName = 'space-y-4 overflow-y-auto overscroll-contain pr-1 pb-1',
 }) => {
   const { t } = useTranslation();
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -60,11 +65,25 @@ const ModalLayout: React.FC<ModalLayoutProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    const previousBodyOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    if (modalLockCount === 0) {
+      previousBodyOverflow = document.body.style.overflow;
+      previousBodyPaddingRight = document.body.style.paddingRight;
+
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = 'hidden';
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`;
+      }
+    }
+
+    modalLockCount += 1;
 
     return () => {
-      document.body.style.overflow = previousBodyOverflow;
+      modalLockCount = Math.max(modalLockCount - 1, 0);
+      if (modalLockCount === 0) {
+        document.body.style.overflow = previousBodyOverflow;
+        document.body.style.paddingRight = previousBodyPaddingRight;
+      }
     };
   }, [isOpen]);
 
@@ -123,8 +142,9 @@ const ModalLayout: React.FC<ModalLayoutProps> = ({
   };
 
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <div
       ref={overlayRef}
       className={modalOverlayClass}
@@ -135,7 +155,7 @@ const ModalLayout: React.FC<ModalLayoutProps> = ({
         ref={contentRef}
         role="dialog"
         aria-modal="true"
-        className={`${modalContainerClass} ${maxWidthClass} flex max-h-[calc(100dvh-2rem)] flex-col p-6 sm:max-h-[calc(100dvh-3rem)]`}
+        className={`${modalContainerClass} ${maxWidthClass} flex max-h-[calc(100dvh-2rem)] flex-col p-5 sm:max-h-[calc(100dvh-3rem)] sm:p-6`}
       >
         <div className={`${modalHeaderClass} shrink-0`}>
           {headerContent ?? (
@@ -155,11 +175,12 @@ const ModalLayout: React.FC<ModalLayoutProps> = ({
           </button>
         </div>
 
-        <div className={bodyClassName}>
+        <div className={`mt-6 flex-1 min-h-0 ${bodyClassName}`}>
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
 

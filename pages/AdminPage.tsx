@@ -1,5 +1,4 @@
 import React, { Suspense, lazy, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import {
   Shield,
   LogOut,
@@ -47,6 +46,7 @@ import {
   PlacementAnalyticsDailyBucket,
   PlacementCampaignAnalyticsSummary,
   PlacementAnalyticsZoneSummary,
+  PlacementZoneAvailabilitySummary,
   PlacementZoneStatus,
   PlacementZone,
   PlacementZoneFormValues,
@@ -56,6 +56,8 @@ import {
   ChargingStation,
   PermissionKey,
   PermissionOverrides,
+  SponsorshipOrder,
+  SponsorshipOrderFormValues,
   SponsorshipProductStatus,
   SponsorshipProduct,
   SponsorshipProductFormValues,
@@ -66,6 +68,7 @@ import BlogPostForm, { BlogPostFormValues } from '../components/admin/BlogPostFo
 import ChargingStationForm from '../components/admin/ChargingStationForm';
 import PlacementZoneForm from '../components/admin/PlacementZoneForm';
 import SponsorshipProductForm from '../components/admin/SponsorshipProductForm';
+import SponsorshipOrderForm from '../components/admin/SponsorshipOrderForm';
 import PromotionalCampaignForm from '../components/admin/PromotionalCampaignForm';
 import type { BulkImportEntity } from '../components/admin/BulkImportModal';
 import BlogTextImportModal from '../components/admin/BlogTextImportModal';
@@ -122,6 +125,7 @@ import {
   bootstrapAdminPlacements,
   listAdminPlacementAnalytics,
   listAdminPlacements,
+  saveSponsorshipOrder,
   savePlacementZone,
   savePromotionalCampaign,
   saveSponsorshipProduct,
@@ -176,11 +180,10 @@ const AdminLazyFallback: React.FC<{ label?: string }> = ({ label }) => (
 );
 
 const AdminModal: React.FC<ModalProps> = ({ title, onClose, children }) => {
-  return createPortal(
+  return (
     <ModalLayout isOpen onClose={onClose} title={title} maxWidthClass="max-w-3xl">
       {children}
-    </ModalLayout>,
-    document.body
+    </ModalLayout>
   );
 };
 
@@ -342,6 +345,8 @@ const AdminPage: React.FC = () => {
   const [stationControlNoteSaving, setStationControlNoteSaving] = useState(false);
   const [placementZones, setPlacementZones] = useState<PlacementZone[]>([]);
   const [sponsorshipProducts, setSponsorshipProducts] = useState<SponsorshipProduct[]>([]);
+  const [sponsorshipOrders, setSponsorshipOrders] = useState<SponsorshipOrder[]>([]);
+  const [placementAvailability, setPlacementAvailability] = useState<PlacementZoneAvailabilitySummary[]>([]);
   const [promotionalCampaigns, setPromotionalCampaigns] = useState<PromotionalCampaign[]>([]);
   const [placementsLoading, setPlacementsLoading] = useState(false);
   const [placementsLoaded, setPlacementsLoaded] = useState(false);
@@ -360,6 +365,8 @@ const AdminPage: React.FC = () => {
   const [placementZoneFormState, setPlacementZoneFormState] = useState<FormState<PlacementZone>>(null);
   const [sponsorshipProductFormState, setSponsorshipProductFormState] =
     useState<FormState<SponsorshipProduct>>(null);
+  const [sponsorshipOrderFormState, setSponsorshipOrderFormState] =
+    useState<FormState<SponsorshipOrder>>(null);
   const [promotionalCampaignFormState, setPromotionalCampaignFormState] =
     useState<FormState<PromotionalCampaign>>(null);
   const [activationError, setActivationError] = useState<string | null>(null);
@@ -779,6 +786,7 @@ const AdminPage: React.FC = () => {
     setStationFormState(null);
     setPlacementZoneFormState(null);
     setSponsorshipProductFormState(null);
+    setSponsorshipOrderFormState(null);
     setPromotionalCampaignFormState(null);
   };
 
@@ -796,6 +804,8 @@ const AdminPage: React.FC = () => {
         const response = await listAdminPlacements();
         setPlacementZones(response.zones);
         setSponsorshipProducts(response.products);
+        setSponsorshipOrders(response.orders);
+        setPlacementAvailability(response.availability);
         setPromotionalCampaigns(response.campaigns);
         setPlacementsLoaded(true);
       } catch (error) {
@@ -2821,6 +2831,40 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  const handleSponsorshipOrderSubmit = async (values: SponsorshipOrderFormValues) => {
+    setPlacementSaving(true);
+    setPlacementsError(null);
+    try {
+      await saveSponsorshipOrder({
+        id:
+          sponsorshipOrderFormState?.mode === 'edit' && sponsorshipOrderFormState.entity
+            ? sponsorshipOrderFormState.entity.id
+            : undefined,
+        values,
+      });
+      closeAllModals();
+      await loadPlacementsCatalog({ silent: true });
+      addToast(
+        t('admin.sponsorshipOrderSaved', {
+          defaultValue: 'Sponsorship order saved successfully.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to save sponsorship order', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.sponsorshipOrderSaveFailed', {
+              defaultValue: 'Failed to save the sponsorship order.',
+            });
+      setPlacementsError(errorMessage);
+      addToast(errorMessage, 'error');
+    } finally {
+      setPlacementSaving(false);
+    }
+  };
+
   const handlePromotionalCampaignSubmit = async (values: PromotionalCampaignFormValues) => {
     setPlacementSaving(true);
     setPlacementsError(null);
@@ -2942,6 +2986,62 @@ const AdminPage: React.FC = () => {
           ? error.message
           : t('admin.sponsorshipProductStatusUpdateFailed', {
               defaultValue: 'Failed to update the sponsorship product status.',
+            });
+      setPlacementsError(errorMessage);
+      addToast(errorMessage, 'error');
+    } finally {
+      setPlacementSaving(false);
+    }
+  };
+
+  const handleSponsorshipOrderStatusUpdate = async (
+    order: SponsorshipOrder,
+    status: SponsorshipOrder['status'],
+  ) => {
+    if (!canManagePlacements) {
+      return;
+    }
+
+    setPlacementSaving(true);
+    setPlacementsError(null);
+    try {
+      await saveSponsorshipOrder({
+        id: order.id,
+        values: {
+          name: order.name,
+          dealerId: order.dealerId,
+          sponsorshipProductId: order.sponsorshipProductId,
+          campaignId: order.campaignId ?? '',
+          zoneIds: order.zoneIds,
+          sponsoredEntityType: order.sponsoredEntityType ?? '',
+          sponsoredEntityId: order.sponsoredEntityId ?? '',
+          status,
+          paymentStatus: order.paymentStatus,
+          priceAmount: order.priceAmount ?? '',
+          currency: order.currency ?? 'EUR',
+          priceLabel: order.priceLabel ?? '',
+          invoiceReference: order.invoiceReference ?? '',
+          startAt: typeof order.startAt === 'string' ? order.startAt : '',
+          endAt: typeof order.endAt === 'string' ? order.endAt : '',
+          paidAt: typeof order.paidAt === 'string' ? order.paidAt : '',
+          notes: order.notes ?? '',
+          internalNotes: order.internalNotes ?? '',
+        },
+      });
+      await loadPlacementsCatalog({ silent: true });
+      addToast(
+        t('admin.sponsorshipOrderStatusUpdated', {
+          defaultValue: 'Sponsorship order status updated.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to update sponsorship order status', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.sponsorshipOrderStatusUpdateFailed', {
+              defaultValue: 'Failed to update the sponsorship order status.',
             });
       setPlacementsError(errorMessage);
       addToast(errorMessage, 'error');
@@ -6132,6 +6232,8 @@ const AdminPage: React.FC = () => {
 
     const activeZones = placementZones.filter(zone => zone.status === 'active').length;
     const activeProducts = sponsorshipProducts.filter(product => product.status === 'active').length;
+    const reservedOrders = sponsorshipOrders.filter(order => order.status === 'reserved').length;
+    const activeOrders = sponsorshipOrders.filter(order => order.status === 'active').length;
     const liveCampaigns = promotionalCampaigns.filter(campaign => campaign.status === 'active').length;
     const analyticsByCampaignId = placementAnalytics.reduce<Record<string, PlacementCampaignAnalyticsSummary>>(
       (acc, entry) => {
@@ -6157,6 +6259,18 @@ const AdminPage: React.FC = () => {
       : null;
     const zoneNameByKey = placementZones.reduce<Record<string, string>>((acc, zone) => {
       acc[zone.key] = zone.name;
+      return acc;
+    }, {});
+    const zoneNameById = placementZones.reduce<Record<string, string>>((acc, zone) => {
+      acc[zone.id] = zone.name;
+      return acc;
+    }, {});
+    const dealerById = dealers.reduce<Record<string, Dealer>>((acc, dealer) => {
+      acc[dealer.id] = dealer;
+      return acc;
+    }, {});
+    const productById = sponsorshipProducts.reduce<Record<string, SponsorshipProduct>>((acc, product) => {
+      acc[product.id] = product;
       return acc;
     }, {});
     const campaignById = promotionalCampaigns.reduce<Record<string, PromotionalCampaign>>(
@@ -6238,6 +6352,14 @@ const AdminPage: React.FC = () => {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setSponsorshipOrderFormState({ mode: 'create' })}
+                  className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20"
+                >
+                  <Plus size={16} />
+                  <span>{t('admin.addSponsorshipOrder', { defaultValue: 'Add order' })}</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => setPromotionalCampaignFormState({ mode: 'create' })}
                   className="inline-flex items-center gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-100 transition hover:bg-indigo-500/20"
                 >
@@ -6255,7 +6377,7 @@ const AdminPage: React.FC = () => {
           </div>
         )}
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <p className="text-xs uppercase tracking-wide text-gray-500">
               {t('admin.placementZonesSummary', { defaultValue: 'Placement zones' })}
@@ -6289,6 +6411,19 @@ const AdminPage: React.FC = () => {
               {t('admin.promotionalCampaignsLiveSummary', {
                 defaultValue: '{{count}} active',
                 count: liveCampaigns,
+              })}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="text-xs uppercase tracking-wide text-gray-500">
+              {t('admin.sponsorshipOrdersSummary', { defaultValue: 'Sponsorship orders' })}
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-white">{sponsorshipOrders.length}</p>
+            <p className="mt-1 text-sm text-gray-400">
+              {t('admin.sponsorshipOrdersActiveReservedSummary', {
+                defaultValue: '{{active}} active / {{reserved}} reserved',
+                active: activeOrders,
+                reserved: reservedOrders,
               })}
             </p>
           </div>
@@ -6565,6 +6700,255 @@ const AdminPage: React.FC = () => {
             {placementAnalyticsError}
           </div>
         )}
+
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-white">
+              {t('admin.placementInventoryOverview', { defaultValue: 'Placement inventory overview' })}
+            </h3>
+            <p className="mt-1 text-sm text-gray-400">
+              {t('admin.placementInventoryOverviewDescription', {
+                defaultValue:
+                  'See current slot availability by zone based on reserved, paid, and active sponsorship orders.',
+              })}
+            </p>
+          </div>
+
+          {placementAvailability.length === 0 ? (
+            renderEmptyState(
+              t('admin.noPlacementAvailability', {
+                defaultValue: 'Availability will appear once placement zones and sponsorship orders exist.',
+              }),
+            )
+          ) : (
+            <div className="grid gap-4 xl:grid-cols-2">
+              {placementAvailability.map(entry => (
+                <article
+                  key={entry.zoneId}
+                  className="rounded-xl border border-white/10 bg-black/20 px-4 py-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">{entry.zoneName}</p>
+                      <p className="text-xs text-gray-500">{entry.zoneKey}</p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                        entry.availableAssignments > 0
+                          ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+                          : 'border border-red-500/30 bg-red-500/10 text-red-100'
+                      }`}
+                    >
+                      {entry.availableAssignments > 0
+                        ? t('admin.inventoryAvailableLabel', { defaultValue: 'Available' })
+                        : t('admin.inventorySoldOutLabel', { defaultValue: 'Sold out' })}
+                    </span>
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                      <p className="text-[11px] uppercase tracking-wide text-gray-500">
+                        {t('admin.zoneCapacityLabel', { defaultValue: 'Capacity' })}
+                      </p>
+                      <p className="mt-1 text-lg font-semibold text-white">{entry.maxAssignments}</p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                      <p className="text-[11px] uppercase tracking-wide text-gray-500">
+                        {t('admin.zoneReservedLabel', { defaultValue: 'Reserved now' })}
+                      </p>
+                      <p className="mt-1 text-lg font-semibold text-white">{entry.reservedAssignments}</p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                      <p className="text-[11px] uppercase tracking-wide text-gray-500">
+                        {t('admin.zoneAvailableLabel', { defaultValue: 'Available now' })}
+                      </p>
+                      <p className="mt-1 text-lg font-semibold text-white">{entry.availableAssignments}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-gray-400">
+                    {entry.nextReleaseAt && (
+                      <span>
+                        {t('admin.nextReleaseLabel', { defaultValue: 'Next release' })}:{' '}
+                        {formatDateTime(entry.nextReleaseAt)}
+                      </span>
+                    )}
+                    {entry.blockingOrderIds.length > 0 && (
+                      <span>
+                        {t('admin.blockingOrdersLabel', { defaultValue: 'Blocking orders' })}:{' '}
+                        {entry.blockingOrderIds.length}
+                      </span>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-white">
+              {t('admin.sponsorshipOrdersDirectory', { defaultValue: 'Sponsorship orders' })}
+            </h3>
+            <p className="mt-1 text-sm text-gray-400">
+              {t('admin.sponsorshipOrdersDirectoryDescription', {
+                defaultValue:
+                  'Commercial deals, reservations, and paid inventory records that govern who occupies premium placement slots.',
+              })}
+            </p>
+          </div>
+
+          {sponsorshipOrders.length === 0 ? (
+            renderEmptyState(
+              t('admin.noSponsorshipOrders', {
+                defaultValue: 'No sponsorship orders have been created yet.',
+              }),
+            )
+          ) : (
+            <div className="space-y-3">
+              {sponsorshipOrders.map(order => {
+                const dealer = dealerById[order.dealerId];
+                const product = productById[order.sponsorshipProductId];
+                const linkedCampaign = order.campaignId ? campaignById[order.campaignId] : null;
+
+                return (
+                  <article
+                    key={order.id}
+                    className="rounded-xl border border-white/10 bg-black/20 px-4 py-4"
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-white">{order.name}</p>
+                          <span className="inline-flex items-center rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-gray-300">
+                            {order.status}
+                          </span>
+                          <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-100">
+                            {order.paymentStatus}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-[11px] text-gray-400">
+                          <span>
+                            {t('admin.dealerLabel', { defaultValue: 'Dealer' })}: {dealer?.name ?? order.dealerId}
+                          </span>
+                          <span>
+                            {t('admin.sponsorshipProduct', { defaultValue: 'Sponsorship product' })}:{' '}
+                            {product?.name ?? order.sponsorshipProductId}
+                          </span>
+                          {order.dealerPlanId && (
+                            <span>
+                              {t('admin.planLabel', { defaultValue: 'Plan' })}: {order.dealerPlanId.toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-[11px] text-gray-400">
+                          {order.startAt && (
+                            <span>
+                              {t('admin.startsLabel', { defaultValue: 'Starts' })}:{' '}
+                              {formatDateTime(typeof order.startAt === 'string' ? order.startAt : null)}
+                            </span>
+                          )}
+                          {order.endAt && (
+                            <span>
+                              {t('admin.endsLabel', { defaultValue: 'Ends' })}:{' '}
+                              {formatDateTime(typeof order.endAt === 'string' ? order.endAt : null)}
+                            </span>
+                          )}
+                          {order.paidAt && (
+                            <span>
+                              {t('admin.paidAtLabel', { defaultValue: 'Paid at' })}:{' '}
+                              {formatDateTime(typeof order.paidAt === 'string' ? order.paidAt : null)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-[11px] text-gray-400">
+                          {(order.priceAmount != null || order.priceLabel) && (
+                            <span>
+                              {t('admin.priceLabel', { defaultValue: 'Price label' })}:{' '}
+                              {order.priceAmount != null
+                                ? `${order.currency ?? 'EUR'} ${order.priceAmount}`
+                                : order.priceLabel}
+                            </span>
+                          )}
+                          {order.invoiceReference && (
+                            <span>
+                              {t('admin.invoiceReferenceLabel', { defaultValue: 'Invoice / reference' })}:{' '}
+                              {order.invoiceReference}
+                            </span>
+                          )}
+                          {linkedCampaign && (
+                            <span>
+                              {t('admin.linkedCampaignLabel', { defaultValue: 'Linked campaign' })}:{' '}
+                              {linkedCampaign.name}
+                            </span>
+                          )}
+                        </div>
+                        {order.internalNotes && (
+                          <p className="text-sm text-gray-300">{order.internalNotes}</p>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          {order.zoneIds.map(zoneId => (
+                            <span
+                              key={`${order.id}-${zoneId}`}
+                              className="inline-flex items-center rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-gray-300"
+                            >
+                              {zoneNameById[zoneId] ?? zoneId}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {canManagePlacements && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSponsorshipOrderFormState({ mode: 'edit', entity: order })}
+                            className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10"
+                          >
+                            <Pencil size={14} />
+                            <span>{t('admin.edit')}</span>
+                          </button>
+                          {order.status !== 'reserved' && order.status !== 'active' && order.status !== 'cancelled' && (
+                            <button
+                              type="button"
+                              onClick={() => void handleSponsorshipOrderStatusUpdate(order, 'reserved')}
+                              disabled={placementSaving}
+                              className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <CheckCircle size={14} />
+                              <span>{t('admin.reserveLabel', { defaultValue: 'Reserve' })}</span>
+                            </button>
+                          )}
+                          {order.status !== 'active' && order.status !== 'cancelled' && (
+                            <button
+                              type="button"
+                              onClick={() => void handleSponsorshipOrderStatusUpdate(order, 'active')}
+                              disabled={placementSaving}
+                              className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <Power size={14} />
+                              <span>{t('admin.activate', { defaultValue: 'Activate' })}</span>
+                            </button>
+                          )}
+                          {order.status !== 'cancelled' && order.status !== 'expired' && (
+                            <button
+                              type="button"
+                              onClick={() => void handleSponsorshipOrderStatusUpdate(order, 'cancelled')}
+                              disabled={placementSaving}
+                              className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <XCircle size={14} />
+                              <span>{t('admin.cancelOrderLabel', { defaultValue: 'Cancel order' })}</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         {canReadPlacementAnalytics && (
           <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
@@ -7289,6 +7673,28 @@ const AdminPage: React.FC = () => {
           <SponsorshipProductForm
             initialValues={sponsorshipProductFormState.entity}
             onSubmit={handleSponsorshipProductSubmit}
+            onCancel={closeAllModals}
+            isSubmitting={placementSaving}
+          />
+        </AdminModal>
+      )}
+
+      {sponsorshipOrderFormState && (
+        <AdminModal
+          title={
+            sponsorshipOrderFormState.mode === 'edit'
+              ? t('admin.editSponsorshipOrder', { defaultValue: 'Edit sponsorship order' })
+              : t('admin.addSponsorshipOrder', { defaultValue: 'Add sponsorship order' })
+          }
+          onClose={closeAllModals}
+        >
+          <SponsorshipOrderForm
+            initialValues={sponsorshipOrderFormState.entity}
+            dealers={dealers}
+            zones={placementZones}
+            products={sponsorshipProducts}
+            campaigns={promotionalCampaigns}
+            onSubmit={handleSponsorshipOrderSubmit}
             onCancel={closeAllModals}
             isSubmitting={placementSaving}
           />

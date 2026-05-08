@@ -43,6 +43,7 @@ export type AuditAction =
   | 'charging_station.updated'
   | 'placement_zone.updated'
   | 'sponsorship_product.updated'
+  | 'sponsorship_order.updated'
   | 'promotional_campaign.updated'
   | 'blog_post.updated';
 export type AuditEntityType =
@@ -54,6 +55,7 @@ export type AuditEntityType =
   | 'charging_station'
   | 'placement_zone'
   | 'sponsorship_product'
+  | 'sponsorship_order'
   | 'promotional_campaign'
   | 'blog_post';
 export type PlacementEntityType =
@@ -66,6 +68,21 @@ export type PlacementEntityType =
   | 'custom';
 export type PlacementZoneStatus = 'active' | 'inactive' | 'archived';
 export type SponsorshipProductStatus = 'active' | 'inactive' | 'archived';
+export type SponsorshipOrderStatus =
+  | 'draft'
+  | 'quoted'
+  | 'reserved'
+  | 'paid'
+  | 'active'
+  | 'expired'
+  | 'cancelled';
+export type SponsorshipPaymentStatus =
+  | 'unpaid'
+  | 'pending'
+  | 'paid'
+  | 'partial'
+  | 'refunded'
+  | 'waived';
 export type PromotionalCampaignStatus =
   | 'draft'
   | 'scheduled'
@@ -287,6 +304,52 @@ export interface SponsorshipProductFormValues {
   status: SponsorshipProductStatus;
 }
 
+export interface SponsorshipOrder extends FirestoreTimestamps {
+  id: string;
+  name: string;
+  dealerId: string;
+  sponsorshipProductId: string;
+  campaignId?: string | null;
+  zoneIds: string[];
+  sponsoredEntityType?: PlacementEntityType | null;
+  sponsoredEntityId?: string | null;
+  status: SponsorshipOrderStatus;
+  paymentStatus: SponsorshipPaymentStatus;
+  priceAmount?: number | null;
+  currency?: string | null;
+  priceLabel?: string | null;
+  invoiceReference?: string | null;
+  startAt?: Timestamp | string | null;
+  endAt?: Timestamp | string | null;
+  paidAt?: Timestamp | string | null;
+  dealerPlanId?: DealerPlanId | null;
+  notes?: string | null;
+  internalNotes?: string | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+}
+
+export interface SponsorshipOrderFormValues {
+  name: string;
+  dealerId: string;
+  sponsorshipProductId: string;
+  campaignId: string;
+  zoneIds: string[];
+  sponsoredEntityType: PlacementEntityType | '';
+  sponsoredEntityId: string;
+  status: SponsorshipOrderStatus;
+  paymentStatus: SponsorshipPaymentStatus;
+  priceAmount: number | '';
+  currency: string;
+  priceLabel: string;
+  invoiceReference: string;
+  startAt: string;
+  endAt: string;
+  paidAt: string;
+  notes: string;
+  internalNotes: string;
+}
+
 export interface PromotionalCampaign extends FirestoreTimestamps {
   id: string;
   name: string;
@@ -406,6 +469,17 @@ export interface PlacementAnalyticsDailyBucket {
 export interface PlacementAnalyticsFilters {
   days: number;
   zoneKey?: string | null;
+}
+
+export interface PlacementZoneAvailabilitySummary {
+  zoneId: string;
+  zoneKey: string;
+  zoneName: string;
+  maxAssignments: number;
+  reservedAssignments: number;
+  availableAssignments: number;
+  blockingOrderIds: string[];
+  nextReleaseAt?: string | null;
 }
 
 interface DealerCore {

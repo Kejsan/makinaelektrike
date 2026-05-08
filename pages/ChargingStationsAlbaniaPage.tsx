@@ -823,7 +823,7 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
             {/* Map Detail Panel */}
             {selectedStation && (
               <div
-                className={`absolute inset-0 z-[1000] overflow-hidden pointer-events-none rounded-2xl`}
+                className={`absolute inset-0 z-[1300] overflow-hidden pointer-events-none rounded-2xl`}
               >
                 {/* Backdrop for mobile - only shows when panel is open */}
                 <div

@@ -5,10 +5,13 @@ import type {
   PlacementAnalyticsFilters,
   PlacementCampaignAnalyticsSummary,
   PlacementAnalyticsZoneSummary,
+  PlacementZoneAvailabilitySummary,
   PlacementZone,
   PlacementZoneFormValues,
   PromotionalCampaign,
   PromotionalCampaignFormValues,
+  SponsorshipOrder,
+  SponsorshipOrderFormValues,
   SponsorshipProduct,
   SponsorshipProductFormValues,
 } from '../types';
@@ -18,6 +21,8 @@ interface PlacementCatalogResponse {
   zones: PlacementZone[];
   products: SponsorshipProduct[];
   campaigns: PromotionalCampaign[];
+  orders: SponsorshipOrder[];
+  availability: PlacementZoneAvailabilitySummary[];
 }
 
 interface PlacementAnalyticsResponse {
@@ -30,7 +35,7 @@ interface PlacementAnalyticsResponse {
 
 interface PlacementSaveResponse<T> {
   ok: true;
-  kind: 'zone' | 'product' | 'campaign';
+  kind?: 'zone' | 'product' | 'campaign';
   entity: T;
 }
 
@@ -140,6 +145,21 @@ export const savePromotionalCampaign = async (payload: {
       values: payload.values,
     },
   });
+
+export const saveSponsorshipOrder = async (payload: {
+  id?: string;
+  values: SponsorshipOrderFormValues;
+}) =>
+  withAdminAuth<PlacementSaveResponse<SponsorshipOrder>, { id?: string; values: SponsorshipOrderFormValues }>(
+    'admin-placement-order-save',
+    {
+      method: 'POST',
+      body: {
+        id: payload.id,
+        values: payload.values,
+      },
+    },
+  );
 
 export const bootstrapAdminPlacements = async () =>
   withAdminAuth<PlacementBootstrapResponse>('admin-placement-bootstrap', {

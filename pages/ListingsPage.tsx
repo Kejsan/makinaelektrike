@@ -111,7 +111,7 @@ const ListingsPage: React.FC = () => {
                     {/* Filters Sidebar */}
                     <aside
                         id="listings-filter-panel"
-                        className={`lg:block ${showMobileFilters ? 'fixed inset-0 z-50 flex flex-col bg-[#020817]/95 p-4 backdrop-blur-xl lg:static lg:z-auto lg:flex-none lg:bg-transparent lg:p-0 lg:backdrop-blur-none' : 'hidden'}`}
+                        className={`lg:block ${showMobileFilters ? 'fixed inset-0 z-[1300] flex flex-col bg-[#020817]/95 p-4 backdrop-blur-xl lg:static lg:z-auto lg:flex-none lg:bg-transparent lg:p-0 lg:backdrop-blur-none' : 'hidden'}`}
                     >
                         <div className="mb-4 flex items-center justify-between lg:hidden">
                             <h2 className="text-xl font-bold">{t('common.filters')}</h2>

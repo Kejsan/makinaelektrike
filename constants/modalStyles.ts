@@ -1,8 +1,8 @@
 export const modalOverlayClass =
-  'fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/70 px-4 py-4 backdrop-blur-sm sm:items-center sm:py-6';
+  'fixed inset-0 z-[2000] flex items-start justify-center overflow-y-auto overscroll-contain bg-black/70 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:px-6 sm:py-6';
 
 export const modalContainerClass =
-  'relative w-full rounded-2xl border border-white/10 bg-slate-900/95 text-white shadow-2xl';
+  'relative w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-900/95 text-white shadow-2xl';
 
 export const modalHeaderClass = 'flex items-start justify-between gap-4';
 

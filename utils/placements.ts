@@ -2,6 +2,8 @@ import type {
   DealerPlanId,
   PlacementEntityType,
   PlacementZoneStatus,
+  SponsorshipOrderStatus,
+  SponsorshipPaymentStatus,
   PromotionalCampaignPromotionType,
   PromotionalCampaignStatus,
   SponsorshipProductStatus,
@@ -28,6 +30,25 @@ export const SPONSORSHIP_PRODUCT_STATUSES = [
   'inactive',
   'archived',
 ] as const satisfies readonly SponsorshipProductStatus[];
+
+export const SPONSORSHIP_ORDER_STATUSES = [
+  'draft',
+  'quoted',
+  'reserved',
+  'paid',
+  'active',
+  'expired',
+  'cancelled',
+] as const satisfies readonly SponsorshipOrderStatus[];
+
+export const SPONSORSHIP_PAYMENT_STATUSES = [
+  'unpaid',
+  'pending',
+  'paid',
+  'partial',
+  'refunded',
+  'waived',
+] as const satisfies readonly SponsorshipPaymentStatus[];
 
 export const PROMOTIONAL_CAMPAIGN_STATUSES = [
   'draft',

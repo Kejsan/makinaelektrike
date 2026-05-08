@@ -10,9 +10,11 @@ import {
 } from './_lib/http';
 import { requireAdminPermission } from './_lib/adminAccess';
 import { getAdminFirestore } from './_lib/firebaseAdmin';
+import { buildPlacementZoneAvailability } from './_lib/placementOrders';
 import {
   serializePlacementZone,
   serializePromotionalCampaign,
+  serializeSponsorshipOrder,
   serializeSponsorshipProduct,
 } from './_lib/placements';
 
@@ -31,10 +33,11 @@ export const handler = async (event: FunctionEvent) => {
   try {
     await requireAdminPermission(event, 'placements.read');
     const firestore = getAdminFirestore();
-    const [zoneSnapshot, productSnapshot, campaignSnapshot] = await Promise.all([
+    const [zoneSnapshot, productSnapshot, campaignSnapshot, orderSnapshot] = await Promise.all([
       firestore.collection('placementZones').get(),
       firestore.collection('sponsorshipProducts').get(),
       firestore.collection('promotionalCampaigns').get(),
+      firestore.collection('sponsorshipOrders').get(),
     ]);
 
     const zones = sortByUpdatedAt(
@@ -46,12 +49,21 @@ export const handler = async (event: FunctionEvent) => {
     const campaigns = sortByUpdatedAt(
       campaignSnapshot.docs.map(doc => serializePromotionalCampaign(doc.id, doc.data() as DocumentData)),
     );
+    const orders = sortByUpdatedAt(
+      orderSnapshot.docs.map(doc => serializeSponsorshipOrder(doc.id, doc.data() as DocumentData)),
+    );
+    const availability = buildPlacementZoneAvailability({
+      zones,
+      orders,
+    });
 
     return json(200, {
       ok: true,
       zones,
       products,
       campaigns,
+      orders,
+      availability,
     });
   } catch (error) {
     const message = (error as Error).message;

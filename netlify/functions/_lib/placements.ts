@@ -7,6 +7,9 @@ import type {
   PromotionalCampaign,
   PromotionalCampaignPromotionType,
   PromotionalCampaignStatus,
+  SponsorshipOrder,
+  SponsorshipOrderStatus,
+  SponsorshipPaymentStatus,
   SponsorshipProduct,
   SponsorshipProductStatus,
 } from '../../../types';
@@ -15,6 +18,8 @@ import {
   PLACEMENT_ZONE_STATUSES,
   PROMOTIONAL_CAMPAIGN_PROMOTION_TYPES,
   PROMOTIONAL_CAMPAIGN_STATUSES,
+  SPONSORSHIP_ORDER_STATUSES,
+  SPONSORSHIP_PAYMENT_STATUSES,
   SPONSORSHIP_PRODUCT_STATUSES,
 } from '../../../utils/placements';
 
@@ -79,6 +84,16 @@ export const parseSponsorshipProductStatus = (value: unknown): SponsorshipProduc
     ? (value as SponsorshipProductStatus)
     : 'inactive';
 
+export const parseSponsorshipOrderStatus = (value: unknown): SponsorshipOrderStatus =>
+  (SPONSORSHIP_ORDER_STATUSES as readonly string[]).includes(String(value))
+    ? (value as SponsorshipOrderStatus)
+    : 'draft';
+
+export const parseSponsorshipPaymentStatus = (value: unknown): SponsorshipPaymentStatus =>
+  (SPONSORSHIP_PAYMENT_STATUSES as readonly string[]).includes(String(value))
+    ? (value as SponsorshipPaymentStatus)
+    : 'unpaid';
+
 export const parsePromotionalCampaignStatus = (value: unknown): PromotionalCampaignStatus =>
   (PROMOTIONAL_CAMPAIGN_STATUSES as readonly string[]).includes(String(value))
     ? (value as PromotionalCampaignStatus)
@@ -128,6 +143,38 @@ export const serializeSponsorshipProduct = (
   updatedBy: typeof data.updatedBy === 'string' ? data.updatedBy : null,
   createdAt: serializeTimestamp(data.createdAt) as unknown as SponsorshipProduct['createdAt'],
   updatedAt: serializeTimestamp(data.updatedAt) as unknown as SponsorshipProduct['updatedAt'],
+});
+
+export const serializeSponsorshipOrder = (
+  id: string,
+  data: DocumentData,
+): SponsorshipOrder => ({
+  id,
+  name: typeof data.name === 'string' ? data.name : '',
+  dealerId: typeof data.dealerId === 'string' ? data.dealerId : '',
+  sponsorshipProductId:
+    typeof data.sponsorshipProductId === 'string' ? data.sponsorshipProductId : '',
+  campaignId: typeof data.campaignId === 'string' ? data.campaignId : null,
+  zoneIds: parseStringList(data.zoneIds, 128),
+  sponsoredEntityType: parsePlacementEntityTypes([data.sponsoredEntityType])[0] ?? null,
+  sponsoredEntityId:
+    typeof data.sponsoredEntityId === 'string' ? data.sponsoredEntityId : null,
+  status: parseSponsorshipOrderStatus(data.status),
+  paymentStatus: parseSponsorshipPaymentStatus(data.paymentStatus),
+  priceAmount: typeof data.priceAmount === 'number' ? data.priceAmount : null,
+  currency: typeof data.currency === 'string' ? data.currency : null,
+  priceLabel: typeof data.priceLabel === 'string' ? data.priceLabel : null,
+  invoiceReference: typeof data.invoiceReference === 'string' ? data.invoiceReference : null,
+  startAt: serializeTimestamp(data.startAt),
+  endAt: serializeTimestamp(data.endAt),
+  paidAt: serializeTimestamp(data.paidAt),
+  dealerPlanId: parseDealerPlanIds([data.dealerPlanId])[0] ?? null,
+  notes: typeof data.notes === 'string' ? data.notes : null,
+  internalNotes: typeof data.internalNotes === 'string' ? data.internalNotes : null,
+  createdBy: typeof data.createdBy === 'string' ? data.createdBy : null,
+  updatedBy: typeof data.updatedBy === 'string' ? data.updatedBy : null,
+  createdAt: serializeTimestamp(data.createdAt) as unknown as SponsorshipOrder['createdAt'],
+  updatedAt: serializeTimestamp(data.updatedAt) as unknown as SponsorshipOrder['updatedAt'],
 });
 
 export const serializePromotionalCampaign = (
