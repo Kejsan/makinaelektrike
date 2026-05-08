@@ -7,15 +7,23 @@ import OptimizedImage from '../components/OptimizedImage';
 import DealerCard from '../components/DealerCard';
 import ModelCard from '../components/ModelCard';
 import BlogCard from '../components/BlogCard';
+import PublicPlacementRail from '../components/placements/PublicPlacementRail';
 import { DataContext } from '../contexts/DataContext';
+import { usePublicPlacements } from '../hooks/usePublicPlacements';
 import heroDashboard from '../assets/BYD SEAL.webp';
 import heroDashboardCompact from '../assets/BYD SEAL-960.webp';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import { PUBLIC_PLACEMENT_ZONE_KEYS } from '../utils/placements';
 
 const HomePage: React.FC = () => {
   const { t } = useTranslation();
   const { dealers, models, blogPosts, loading: dataLoading } = useContext(DataContext);
+  const { zonesByKey: placementZones } = usePublicPlacements([
+    PUBLIC_PLACEMENT_ZONE_KEYS.homeDealerSpotlight,
+    PUBLIC_PLACEMENT_ZONE_KEYS.homeModelSpotlight,
+    PUBLIC_PLACEMENT_ZONE_KEYS.homeBlogSpotlight,
+  ]);
 
   const [featuredDealers, setFeaturedDealers] = useState(dealers.filter(d => d.isFeatured));
   const [featuredModels, setFeaturedModels] = useState(models.filter(m => m.isFeatured));
@@ -163,6 +171,13 @@ const HomePage: React.FC = () => {
       brand: searchBrand || t('common.anyBrand'),
     });
   }, [filteredDealersForSearch.length, searchBrand, searchCity, t]);
+
+  const homeDealerPlacementZone =
+    placementZones.get(PUBLIC_PLACEMENT_ZONE_KEYS.homeDealerSpotlight) ?? null;
+  const homeModelPlacementZone =
+    placementZones.get(PUBLIC_PLACEMENT_ZONE_KEYS.homeModelSpotlight) ?? null;
+  const homeBlogPlacementZone =
+    placementZones.get(PUBLIC_PLACEMENT_ZONE_KEYS.homeBlogSpotlight) ?? null;
 
   
   return (
@@ -344,6 +359,11 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
+      <PublicPlacementRail
+        zone={homeDealerPlacementZone}
+        eyebrow={t('placements.eyebrow', { defaultValue: 'Platform spotlight' })}
+      />
+
       {/* Featured Dealers */}
       <section className="py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -389,6 +409,11 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
+      <PublicPlacementRail
+        zone={homeModelPlacementZone}
+        eyebrow={t('placements.eyebrow', { defaultValue: 'Platform spotlight' })}
+      />
+
       {/* Featured Models */}
       <section className="py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -403,6 +428,11 @@ const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      <PublicPlacementRail
+        zone={homeBlogPlacementZone}
+        eyebrow={t('placements.eyebrow', { defaultValue: 'Platform spotlight' })}
+      />
 
       {/* From Our Blog */}
       <section className="py-16">

@@ -2,21 +2,29 @@ import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Model } from '../types';
 import ModelCard from '../components/ModelCard';
+import PublicPlacementRail from '../components/placements/PublicPlacementRail';
 import CustomSelect from '../components/CustomSelect';
 import { Car, Tag, Gauge, ListFilter, Scale } from 'lucide-react';
 import ComparisonModal from '../components/ComparisonModal';
 import { DataContext } from '../contexts/DataContext';
+import { usePublicPlacements } from '../hooks/usePublicPlacements';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import { PUBLIC_PLACEMENT_ZONE_KEYS } from '../utils/placements';
 
 const ModelsListPage: React.FC = () => {
     const { t } = useTranslation();
     const { models, loading } = useContext(DataContext);
+    const { zonesByKey: placementZones } = usePublicPlacements([
+        PUBLIC_PLACEMENT_ZONE_KEYS.modelsIndexSpotlight,
+    ]);
     const [allModels, setAllModels] = useState<Model[]>(models);
     const [filteredModels, setFilteredModels] = useState<Model[]>([]);
     const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
     const insights = t('modelsPage.insights', { returnObjects: true }) as Array<{ title: string; description: string }>;
     const faqItems = t('modelsPage.faqItems', { returnObjects: true }) as Array<{ question: string; answer: string }>;
+    const modelsPlacementZone =
+        placementZones.get(PUBLIC_PLACEMENT_ZONE_KEYS.modelsIndexSpotlight) ?? null;
 
     const structuredData = {
         '@context': 'https://schema.org',
@@ -140,6 +148,12 @@ const ModelsListPage: React.FC = () => {
                         <h2 className="text-2xl font-bold text-white text-center">{t('modelsPage.introTitle')}</h2>
                         <p className="mt-4 text-gray-300 leading-relaxed text-center max-w-4xl mx-auto">{t('modelsPage.introSubtitle')}</p>
                     </div>
+
+                    <PublicPlacementRail
+                        zone={modelsPlacementZone}
+                        eyebrow={t('placements.eyebrow', { defaultValue: 'Platform spotlight' })}
+                        className="pb-8"
+                    />
 
                     <div className="relative z-30 mb-12 rounded-xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl">
                         <div className="flex items-center justify-between mb-4">

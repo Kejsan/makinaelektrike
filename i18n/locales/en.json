@@ -1688,5 +1688,20 @@
       "imported": "Imported",
       "failed": "Failed"
     }
+  },
+  "placements": {
+    "eyebrow": "Platform spotlight",
+    "sponsoredBadge": "Sponsored",
+    "featuredBadge": "Featured",
+    "viewPromotion": "View promotion",
+    "entityType": {
+      "dealer": "Dealer",
+      "listing": "Listing",
+      "model": "Model",
+      "charging_station": "Charging station",
+      "blog_post": "Blog post",
+      "service": "Service",
+      "custom": "Promotion"
+    }
   }
 }

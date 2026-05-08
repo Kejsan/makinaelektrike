@@ -1661,5 +1661,20 @@
       "imported": "Importuar",
       "failed": "Dështuan"
     }
+  },
+  "placements": {
+    "eyebrow": "Hapësirë promovuese",
+    "sponsoredBadge": "E sponsorizuar",
+    "featuredBadge": "E veçuar",
+    "viewPromotion": "Shiko promovimin",
+    "entityType": {
+      "dealer": "Dealer",
+      "listing": "Shpallje",
+      "model": "Model",
+      "charging_station": "Stacion karikimi",
+      "blog_post": "Artikull blogu",
+      "service": "Shërbim",
+      "custom": "Promovim"
+    }
   }
 }

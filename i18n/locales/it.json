@@ -1618,5 +1618,20 @@
       "imported": "Importati",
       "failed": "Falliti"
     }
+  },
+  "placements": {
+    "eyebrow": "Spazio in evidenza",
+    "sponsoredBadge": "Sponsorizzato",
+    "featuredBadge": "In evidenza",
+    "viewPromotion": "Vedi promozione",
+    "entityType": {
+      "dealer": "Concessionario",
+      "listing": "Annuncio",
+      "model": "Modello",
+      "charging_station": "Stazione di ricarica",
+      "blog_post": "Articolo del blog",
+      "service": "Servizio",
+      "custom": "Promozione"
+    }
   }
 }

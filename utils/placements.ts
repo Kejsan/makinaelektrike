@@ -41,6 +41,17 @@ export const PROMOTIONAL_CAMPAIGN_PROMOTION_TYPES = [
   'sponsored_promotion',
 ] as const satisfies readonly PromotionalCampaignPromotionType[];
 
+export const PUBLIC_PLACEMENT_ZONE_KEYS = {
+  homeDealerSpotlight: 'home.dealer_spotlight',
+  homeModelSpotlight: 'home.model_spotlight',
+  homeBlogSpotlight: 'home.blog_spotlight',
+  dealersIndexSpotlight: 'dealers.index_spotlight',
+  modelsIndexSpotlight: 'models.index_spotlight',
+  listingsIndexSpotlight: 'listings.index_spotlight',
+  blogIndexSpotlight: 'blog.index_spotlight',
+  chargingStationsIndexSpotlight: 'charging_stations.index_spotlight',
+} as const;
+
 export const formatPlacementEntityTypeLabel = (value: PlacementEntityType) =>
   value
     .split('_')

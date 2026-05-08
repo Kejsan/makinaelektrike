@@ -329,6 +329,52 @@ export interface PromotionalCampaignFormValues {
   priority: number | '';
 }
 
+export interface PublicPlacementResolvedEntity {
+  entityType: PlacementEntityType;
+  entityId: string;
+  title: string;
+  subtitle?: string | null;
+  description?: string | null;
+  imageUrl?: string | null;
+  destinationUrl?: string | null;
+  meta?: string[];
+}
+
+export interface PublicPlacementResolvedItem {
+  campaignId: string;
+  campaignName: string;
+  zoneId: string;
+  zoneKey: string;
+  zoneName: string;
+  promotionType: PromotionalCampaignPromotionType;
+  entityType: PlacementEntityType;
+  entityId?: string | null;
+  headline: string;
+  supportingText?: string | null;
+  imageUrl?: string | null;
+  destinationUrl?: string | null;
+  ctaLabel?: string | null;
+  priority: number;
+  sponsorshipProductName?: string | null;
+  sponsorshipProductCode?: string | null;
+  entity?: PublicPlacementResolvedEntity | null;
+}
+
+export interface PublicPlacementZoneResult {
+  zoneId: string;
+  zoneKey: string;
+  zoneName: string;
+  pageKey: string;
+  slotKey: string;
+  items: PublicPlacementResolvedItem[];
+}
+
+export interface PublicPlacementResolveResponse {
+  ok: true;
+  zones: PublicPlacementZoneResult[];
+  resolvedAt: string;
+}
+
 interface DealerCore {
   name: string;
   description?: string;

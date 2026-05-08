@@ -2,14 +2,20 @@ import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataContext } from '../contexts/DataContext';
 import DealerCard from '../components/DealerCard';
+import PublicPlacementRail from '../components/placements/PublicPlacementRail';
 import CustomSelect from '../components/CustomSelect';
 import { Building, Car, Globe, ListFilter } from 'lucide-react';
+import { usePublicPlacements } from '../hooks/usePublicPlacements';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import { PUBLIC_PLACEMENT_ZONE_KEYS } from '../utils/placements';
 
 const DealersListPage: React.FC = () => {
     const { t } = useTranslation();
     const { dealers: allDealers, loading } = useContext(DataContext);
+    const { zonesByKey: placementZones } = usePublicPlacements([
+        PUBLIC_PLACEMENT_ZONE_KEYS.dealersIndexSpotlight,
+    ]);
     const visibleDealers = useMemo(
         () =>
             allDealers.filter(dealer => {
@@ -30,6 +36,8 @@ const DealersListPage: React.FC = () => {
     const [filteredDealers, setFilteredDealers] = useState(visibleDealers);
     const insights = t('dealersPage.insights', { returnObjects: true }) as Array<{ title: string; description: string }>;
     const faqItems = t('dealersPage.faqItems', { returnObjects: true }) as Array<{ question: string; answer: string }>;
+    const dealersPlacementZone =
+        placementZones.get(PUBLIC_PLACEMENT_ZONE_KEYS.dealersIndexSpotlight) ?? null;
 
     const structuredData = {
         '@context': 'https://schema.org',
@@ -138,6 +146,12 @@ const DealersListPage: React.FC = () => {
                     <h2 className="text-2xl font-bold text-white text-center">{t('dealersPage.introTitle')}</h2>
                     <p className="mt-4 text-gray-300 leading-relaxed text-center max-w-4xl mx-auto">{t('dealersPage.introSubtitle')}</p>
                 </div>
+
+                <PublicPlacementRail
+                    zone={dealersPlacementZone}
+                    eyebrow={t('placements.eyebrow', { defaultValue: 'Platform spotlight' })}
+                    className="pb-8"
+                />
 
                 <div className="relative z-30 mb-12 rounded-xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl">
                     <div className="flex items-center justify-between mb-4">

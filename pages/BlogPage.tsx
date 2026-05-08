@@ -2,14 +2,20 @@
 import React, { useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import BlogCard from '../components/BlogCard';
+import PublicPlacementRail from '../components/placements/PublicPlacementRail';
 import { DataContext } from '../contexts/DataContext';
+import { usePublicPlacements } from '../hooks/usePublicPlacements';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import { PUBLIC_PLACEMENT_ZONE_KEYS } from '../utils/placements';
 import { getLocalizedBlogPost } from '../utils/localizedBlogPost';
 
 const BlogPage: React.FC = () => {
   const { i18n, t } = useTranslation();
   const { blogPosts, loading } = useContext(DataContext);
+  const { zonesByKey: placementZones } = usePublicPlacements([
+    PUBLIC_PLACEMENT_ZONE_KEYS.blogIndexSpotlight,
+  ]);
   const activeLanguage = i18n.resolvedLanguage || i18n.language;
   const localizedBlogPosts = useMemo(
     () => blogPosts.map(post => getLocalizedBlogPost(post, activeLanguage)),
@@ -17,6 +23,8 @@ const BlogPage: React.FC = () => {
   );
   const insights = t('blogPage.insights', { returnObjects: true }) as Array<{ title: string; description: string }>;
   const faqItems = t('blogPage.faqItems', { returnObjects: true }) as Array<{ question: string; answer: string }>;
+  const blogPlacementZone =
+    placementZones.get(PUBLIC_PLACEMENT_ZONE_KEYS.blogIndexSpotlight) ?? null;
 
   const structuredData = [
     {
@@ -86,6 +94,11 @@ const BlogPage: React.FC = () => {
           <h2 className="text-2xl font-bold text-white">{t('blogPage.introTitle')}</h2>
           <p className="mt-4 text-gray-300 max-w-3xl mx-auto leading-relaxed">{t('blogPage.introSubtitle')}</p>
         </div>
+        <PublicPlacementRail
+          zone={blogPlacementZone}
+          eyebrow={t('placements.eyebrow', { defaultValue: 'Platform spotlight' })}
+          className="pt-8"
+        />
         <div className="mt-12 max-w-lg mx-auto grid gap-8 lg:grid-cols-3 lg:max-w-none">
           {localizedBlogPosts.map(post => (
             <BlogCard key={post.id} post={post} />

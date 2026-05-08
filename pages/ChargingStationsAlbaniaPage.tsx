@@ -26,6 +26,7 @@ import {
   Share2,
   X,
 } from 'lucide-react';
+import PublicPlacementRail from '../components/placements/PublicPlacementRail';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import {
@@ -36,8 +37,10 @@ import { fetchStations } from '../services/ocm';
 import type { StationFeatureCollection } from '../services/ocm';
 import { fetchChargingStations, mergeStationsWithOCM } from '../services/chargingStations';
 import { useToast } from '../contexts/ToastContext';
+import { usePublicPlacements } from '../hooks/usePublicPlacements';
 import Link from '../components/LocalizedLink';
 import { normalizeAppLocale } from '../utils/localizedRouting';
+import { PUBLIC_PLACEMENT_ZONE_KEYS } from '../utils/placements';
 
 L.Icon.Default.mergeOptions({
   imagePath: '',
@@ -149,7 +152,12 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
   const { addToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const locale = normalizeAppLocale(i18n.language);
+  const { zonesByKey: placementZones } = usePublicPlacements([
+    PUBLIC_PLACEMENT_ZONE_KEYS.chargingStationsIndexSpotlight,
+  ]);
   const content = useMemo(() => getChargingStationsPageContent(locale), [locale]);
+  const chargingStationsPlacementZone =
+    placementZones.get(PUBLIC_PLACEMENT_ZONE_KEYS.chargingStationsIndexSpotlight) ?? null;
 
   const latParam = Number.parseFloat(searchParams.get('lat') ?? '');
   const lngParam = Number.parseFloat(searchParams.get('lng') ?? '');
@@ -715,6 +723,11 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
             {content.description}
           </p>
         </header>
+
+        <PublicPlacementRail
+          zone={chargingStationsPlacementZone}
+          eyebrow={t('placements.eyebrow', { defaultValue: 'Platform spotlight' })}
+        />
 
         <section className="space-y-6">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl space-y-5">

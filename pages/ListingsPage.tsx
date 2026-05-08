@@ -1,13 +1,19 @@
 import React, { useContext, useState, useMemo } from 'react';
 import { DataContext } from '../contexts/DataContext';
 import ListingCard from '../components/listings/ListingCard';
+import PublicPlacementRail from '../components/placements/PublicPlacementRail';
 import SEO from '../components/SEO';
 import { useTranslation } from 'react-i18next';
 import { Search, Filter, X } from 'lucide-react';
+import { usePublicPlacements } from '../hooks/usePublicPlacements';
+import { PUBLIC_PLACEMENT_ZONE_KEYS } from '../utils/placements';
 
 const ListingsPage: React.FC = () => {
     const { t } = useTranslation();
     const { listings, loading } = useContext(DataContext);
+    const { zonesByKey: placementZones } = usePublicPlacements([
+        PUBLIC_PLACEMENT_ZONE_KEYS.listingsIndexSpotlight,
+    ]);
 
     // Filter states
     const [selectedMake, setSelectedMake] = useState<string>('');
@@ -42,6 +48,8 @@ const ListingsPage: React.FC = () => {
             return 0;
         });
     }, [listings, selectedMake, priceRange, yearRange, sortBy]);
+    const listingsPlacementZone =
+        placementZones.get(PUBLIC_PLACEMENT_ZONE_KEYS.listingsIndexSpotlight) ?? null;
 
     const resetFilters = () => {
         setSelectedMake('');
@@ -92,6 +100,12 @@ const ListingsPage: React.FC = () => {
                         </select>
                     </div>
                 </div>
+
+                <PublicPlacementRail
+                    zone={listingsPlacementZone}
+                    eyebrow={t('placements.eyebrow', { defaultValue: 'Platform spotlight' })}
+                    className="pb-8"
+                />
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Filters Sidebar */}
