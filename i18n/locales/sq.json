@@ -1667,6 +1667,12 @@
     "sponsoredBadge": "E sponsorizuar",
     "featuredBadge": "E veçuar",
     "viewPromotion": "Shiko promovimin",
+    "zones": {
+      "dealerDetailTitle": "Të veçuara rreth këtij dealeri",
+      "modelDetailTitle": "Të veçuara rreth këtij modeli",
+      "listingDetailTitle": "Të veçuara rreth këtij automjeti",
+      "blogPostTitle": "Të veçuara rreth këtij artikulli"
+    },
     "entityType": {
       "dealer": "Dealer",
       "listing": "Shpallje",

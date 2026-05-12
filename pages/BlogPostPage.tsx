@@ -8,12 +8,15 @@ import OptimizedImage from '../components/OptimizedImage';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import Link from '../components/LocalizedLink';
+import PublicPlacementRail from '../components/placements/PublicPlacementRail';
 import {
   getBlogAlternateLocales,
   getBlogContentLocale,
   getLocalizedBlogPost,
 } from '../utils/localizedBlogPost';
 import { DEFAULT_LOCALE, normalizeAppLocale } from '../utils/localizedRouting';
+import { usePublicPlacements } from '../hooks/usePublicPlacements';
+import { PUBLIC_PLACEMENT_ZONE_KEYS } from '../utils/placements';
 
 const formatDate = (value: string, language: string) => {
   try {
@@ -66,6 +69,9 @@ const BlogPostPage: React.FC = () => {
     () => (post ? getLocalizedBlogPost(post, activeLanguage) : null),
     [post, activeLanguage],
   );
+  const { zonesByKey: placementZones } = usePublicPlacements([
+    PUBLIC_PLACEMENT_ZONE_KEYS.blogPostSpotlight,
+  ]);
   const blogContentLocale = post ? getBlogContentLocale(post, activeLanguage) : DEFAULT_LOCALE;
   const isLocalizedFallback = Boolean(post) && activeLocale !== blogContentLocale;
   const alternateLocales = post ? getBlogAlternateLocales(post) : undefined;
@@ -149,6 +155,8 @@ const BlogPostPage: React.FC = () => {
       mainEntity: faqEntities,
     });
   }
+  const blogPostPlacementZone =
+    placementZones.get(PUBLIC_PLACEMENT_ZONE_KEYS.blogPostSpotlight) ?? null;
 
   return (
     <article className="py-12">
@@ -209,6 +217,12 @@ const BlogPostPage: React.FC = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 space-y-12">
+        <PublicPlacementRail
+          zone={blogPostPlacementZone}
+          eyebrow={t('placements.eyebrow', { defaultValue: 'Platform spotlight' })}
+          title={t('placements.zones.blogPostTitle', { defaultValue: 'Featured around this article' })}
+        />
+
         {localizedPost.sections.map(section => (
           <section key={section.id} className="bg-white/5 border border-white/10 rounded-2xl p-8 shadow-lg">
             <h2 className="text-2xl font-bold text-white mb-4">{section.heading}</h2>

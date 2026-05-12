@@ -1,3 +1,4 @@
+import type { DocumentData } from 'firebase-admin/firestore';
 import type { FunctionEvent } from './_lib/http';
 import {
   badRequest,
@@ -11,6 +12,7 @@ import {
 } from './_lib/http';
 import { requireAuthenticatedProfile } from './_lib/adminAccess';
 import { requireDealerAccess } from './_lib/dealerAccess';
+import { getAdminFirestore } from './_lib/firebaseAdmin';
 import {
   decodeBase64Image,
   getRequiredUploadString,
@@ -20,9 +22,11 @@ import {
   sanitizePathSegment,
 } from './_lib/mediaUpload';
 import { uploadBufferToR2 } from './_lib/r2';
+import { hasPermission } from '../../utils/accessControl';
 
-interface DealerMediaUploadBody {
+interface ListingMediaUploadBody {
   dealerId?: unknown;
+  listingId?: unknown;
   variant?: unknown;
   fileName?: unknown;
   contentType?: unknown;
@@ -30,6 +34,33 @@ interface DealerMediaUploadBody {
 }
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+const ensureListingUploadAccess = async (
+  profile: Awaited<ReturnType<typeof requireAuthenticatedProfile>>['profile'],
+  dealerId: string,
+  listingId: string,
+) => {
+  if (hasPermission(profile, 'listings.moderate') || hasPermission(profile, 'listings.reassign')) {
+    return;
+  }
+
+  await requireDealerAccess(profile, dealerId);
+
+  if (listingId.startsWith('temp_')) {
+    return;
+  }
+
+  const snapshot = await getAdminFirestore().collection('listings').doc(listingId).get();
+  if (!snapshot.exists) {
+    return;
+  }
+
+  const listingData = (snapshot.data() ?? {}) as DocumentData;
+  if (typeof listingData.dealerId === 'string' && listingData.dealerId !== dealerId) {
+    throw new Error('The selected listing does not belong to this dealer account.');
+  }
+};
+
 export const handler = async (event: FunctionEvent) => {
   if (event.httpMethod !== 'POST') {
     return methodNotAllowed(['POST']);
@@ -37,16 +68,17 @@ export const handler = async (event: FunctionEvent) => {
 
   try {
     const { profile } = await requireAuthenticatedProfile(event);
-    const body = parseJsonBody<DealerMediaUploadBody>(event);
+    const body = parseJsonBody<ListingMediaUploadBody>(event);
     const dealerId = getRequiredUploadString(body.dealerId, 'dealerId', 128);
+    const listingId = getRequiredUploadString(body.listingId, 'listingId', 128);
     const variant = parseMediaVariant(body.variant);
     const contentType = parseImageContentType(body.contentType);
-    const fileName = parseMediaFileName(body.fileName, contentType, 'dealer-image');
+    const fileName = parseMediaFileName(body.fileName, contentType, 'listing-image');
     const imageBody = decodeBase64Image(body.dataBase64, MAX_IMAGE_BYTES);
 
-    await requireDealerAccess(profile, dealerId);
+    await ensureListingUploadAccess(profile, dealerId, listingId);
 
-    const key = `dealers/${sanitizePathSegment(dealerId)}/${variant}/${fileName}`;
+    const key = `listings/${sanitizePathSegment(dealerId)}/${sanitizePathSegment(listingId)}/${variant}/${fileName}`;
     const url = await uploadBufferToR2({
       key,
       contentType,
@@ -65,12 +97,13 @@ export const handler = async (event: FunctionEvent) => {
     }
     if (
       message === 'Authenticated admin profile was not found.' ||
-      message === 'You do not have dealer access for this record.'
+      message === 'You do not have dealer access for this record.' ||
+      message === 'The selected listing does not belong to this dealer account.'
     ) {
       return forbidden(message);
     }
     if (message.startsWith('Missing R2 upload credentials')) {
-      return serviceUnavailable('Dealer media uploads are not configured.');
+      return serviceUnavailable('Listing media uploads are not configured.');
     }
     if (
       message.includes('required') ||
@@ -78,8 +111,7 @@ export const handler = async (event: FunctionEvent) => {
       message.includes('Unsupported image format') ||
       message.includes('too large') ||
       message.includes('empty') ||
-      message.includes('variant must') ||
-      message.includes('Dealer record was not found')
+      message.includes('variant must')
     ) {
       return badRequest(message);
     }

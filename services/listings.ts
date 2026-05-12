@@ -135,14 +135,12 @@ export const subscribeToListingsByDealer = (
     return subscribeToCollection(q, mapListings, options);
 };
 
-import { buildFileName, uploadFile } from './storage';
+import { uploadListingGalleryImage as uploadListingGalleryImageToR2, uploadListingHeroImage } from './storage';
 
 export const uploadListingImage = async (dealerId: string, listingId: string, file: File): Promise<string> => {
-    const path = `listings/${dealerId}/${listingId}/${buildFileName(file, 'listing-main')}`;
-    return uploadFile(path, file);
+    return uploadListingHeroImage(dealerId, listingId, file);
 };
 
 export const uploadListingGalleryImage = async (dealerId: string, listingId: string, file: File): Promise<string> => {
-    const path = `listings/${dealerId}/${listingId}/${buildFileName(file, 'listing-gallery')}`;
-    return uploadFile(path, file);
+    return uploadListingGalleryImageToR2(dealerId, listingId, file);
 };

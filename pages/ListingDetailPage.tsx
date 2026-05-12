@@ -9,11 +9,17 @@ import EnquiryModal from '../components/listings/EnquiryModal';
 import { DEALERSHIP_PLACEHOLDER_IMAGE, MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
 import Link from '../components/LocalizedLink';
 import type { Listing } from '../types';
+import PublicPlacementRail from '../components/placements/PublicPlacementRail';
+import { usePublicPlacements } from '../hooks/usePublicPlacements';
+import { PUBLIC_PLACEMENT_ZONE_KEYS } from '../utils/placements';
 
 const ListingDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const { listings, dealers, loading } = useContext(DataContext);
     const { t } = useTranslation();
+    const { zonesByKey: placementZones } = usePublicPlacements([
+        PUBLIC_PLACEMENT_ZONE_KEYS.listingDetailSpotlight,
+    ]);
 
     // Find listing
     const listing = useMemo(() => listings.find(l => l.id === id), [listings, id]);
@@ -80,6 +86,8 @@ const ListingDetailPage: React.FC = () => {
 
     const nextImage = () => setActiveImageIndex((prev) => (prev + 1) % galleryImages.length);
     const prevImage = () => setActiveImageIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
+    const listingDetailPlacementZone =
+        placementZones.get(PUBLIC_PLACEMENT_ZONE_KEYS.listingDetailSpotlight) ?? null;
 
     return (
         <div className="min-h-screen bg-[#020817] text-white py-12">
@@ -242,6 +250,13 @@ const ListingDetailPage: React.FC = () => {
                                 </div>
                             </div>
                         )}
+
+                        <PublicPlacementRail
+                            zone={listingDetailPlacementZone}
+                            eyebrow={t('placements.eyebrow', { defaultValue: 'Platform spotlight' })}
+                            title={t('placements.zones.listingDetailTitle', { defaultValue: 'Featured around this vehicle' })}
+                            className="mt-10"
+                        />
 
                     </div>
                 </div>

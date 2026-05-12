@@ -32,3 +32,6 @@ assets/Makina Elektrike - icon.png
 
 # Local scratch screenshots and trace artifacts
 jules-scratch/
+
+# Netlify local deployment artifacts
+.netlify/functions/

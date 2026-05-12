@@ -11,6 +11,9 @@ import { MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
 import GallerySection from '../components/GallerySection';
 import OptimizedImage from '../components/OptimizedImage';
 import Link from '../components/LocalizedLink';
+import PublicPlacementRail from '../components/placements/PublicPlacementRail';
+import { usePublicPlacements } from '../hooks/usePublicPlacements';
+import { PUBLIC_PLACEMENT_ZONE_KEYS } from '../utils/placements';
 
 const SpecItem: React.FC<{ icon: React.ReactNode, label: string, value?: string | number | null }> = ({ icon, label, value }) => (
     <div className="flex flex-col items-center justify-center p-4 bg-white/5 backdrop-blur-md rounded-xl border border-white/10 text-center transition-all duration-300 hover:bg-white/10 hover:border-gray-cyan/50">
@@ -28,6 +31,9 @@ const ModelDetailPage: React.FC = () => {
     const dealers = useMemo<Dealer[]>(() => (model ? getDealersForModel(model.id) : []), [getDealersForModel, model]);
     const [scrollY, setScrollY] = useState(0);
     const { isFavorite, toggleFavorite } = useFavorites();
+    const { zonesByKey: placementZones } = usePublicPlacements([
+        PUBLIC_PLACEMENT_ZONE_KEYS.modelDetailSpotlight,
+    ]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -139,6 +145,8 @@ const ModelDetailPage: React.FC = () => {
             })),
         },
     ];
+    const modelDetailPlacementZone =
+        placementZones.get(PUBLIC_PLACEMENT_ZONE_KEYS.modelDetailSpotlight) ?? null;
 
     return (
         <div className="">
@@ -235,6 +243,13 @@ const ModelDetailPage: React.FC = () => {
                          <p className="text-center text-gray-400">{t('modelDetails.availabilityComingSoon')}</p>
                     )}
                 </div>
+
+                <PublicPlacementRail
+                    zone={modelDetailPlacementZone}
+                    eyebrow={t('placements.eyebrow', { defaultValue: 'Platform spotlight' })}
+                    title={t('placements.zones.modelDetailTitle', { defaultValue: 'Featured around this model' })}
+                    className="mt-12"
+                />
 
                 <GallerySection
                     title={t('modelDetails.galleryTitle')}

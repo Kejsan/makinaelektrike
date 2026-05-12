@@ -192,6 +192,7 @@ const AdminModal: React.FC<ModalProps> = ({ title, onClose, children }) => {
 type FormState<T> = { mode: 'create' | 'edit'; entity?: T } | null;
 
 type TabKey =
+  | 'overview'
   | 'dealers'
   | 'users'
   | 'models'
@@ -199,6 +200,7 @@ type TabKey =
   | 'blog'
   | 'stations'
   | 'placements'
+  | 'reports'
   | 'access'
   | 'audit'
   | 'migration';
@@ -250,6 +252,41 @@ const formatDateTime = (value: string | null | undefined) => {
 
   return parsed.toLocaleString();
 };
+
+const coerceDate = (value: unknown): Date | null => {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  if (typeof value === 'object' && value !== null) {
+    if ('toDate' in value && typeof (value as { toDate?: () => Date }).toDate === 'function') {
+      try {
+        const parsed = (value as { toDate: () => Date }).toDate();
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+      } catch (error) {
+        console.error('Failed to coerce timestamp via toDate()', error);
+      }
+    }
+
+    if ('seconds' in value && typeof (value as { seconds?: number }).seconds === 'number') {
+      const parsed = new Date((value as { seconds: number }).seconds * 1000);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+  }
+
+  return null;
+};
+
+const toDayKey = (value: Date) => value.toISOString().slice(0, 10);
 
 const formatJsonBlock = (value: Record<string, unknown> | null | undefined) => {
   if (!value || Object.keys(value).length === 0) {
@@ -384,7 +421,7 @@ const AdminPage: React.FC = () => {
     blogPostMutations,
   } = useContext(DataContext);
 
-  const [activeTab, setActiveTab] = useState<TabKey>('dealers');
+  const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [dealerFormState, setDealerFormState] = useState<FormState<Dealer>>(null);
   const [modelFormState, setModelFormState] = useState<FormState<Model>>(null);
   const [blogFormState, setBlogFormState] = useState<FormState<BlogPost>>(null);
@@ -507,6 +544,8 @@ const AdminPage: React.FC = () => {
   const canOverridePlacements = hasPermission('placements.override');
   const canReadPlacementAnalytics = hasPermission('placements.analytics_read');
   const canViewAudit = hasPermission('audit.view');
+  const canViewReports = hasPermission('reports.export') || canReadPlacementAnalytics || canViewAudit;
+  const canExportReports = hasPermission('reports.export');
 
   // Reset selection and search on tab/filter change
   useEffect(() => {
@@ -735,6 +774,7 @@ const AdminPage: React.FC = () => {
 
   const tabs = useMemo(
     () => [
+      { id: 'overview' as TabKey, label: t('admin.overviewTab', { defaultValue: 'Overview' }) },
       { id: 'dealers' as TabKey, label: t('admin.manageDealers') },
       ...(canReadUsers
         ? [{ id: 'users' as TabKey, label: t('admin.manageUsers', { defaultValue: 'Users' }) }]
@@ -748,6 +788,14 @@ const AdminPage: React.FC = () => {
             {
               id: 'placements' as TabKey,
               label: t('admin.placementsTab', { defaultValue: 'Placements' }),
+            },
+          ]
+        : []),
+      ...(canViewReports
+        ? [
+            {
+              id: 'reports' as TabKey,
+              label: t('admin.reportsTab', { defaultValue: 'Reports' }),
             },
           ]
         : []),
@@ -769,7 +817,7 @@ const AdminPage: React.FC = () => {
         : []),
       { id: 'migration' as TabKey, label: t('admin.migrationTab', { defaultValue: 'Data migration' }) },
     ],
-    [canManageAdminAccess, canReadPlacements, canReadUsers, canViewAudit, t]
+    [canManageAdminAccess, canReadPlacements, canReadUsers, canViewAudit, canViewReports, t]
   );
 
   const handleLogout = async () => {
@@ -1177,6 +1225,291 @@ const AdminPage: React.FC = () => {
       .sort((a, b) => String(a.address || '').localeCompare(String(b.address || '')));
   }, [stations, searchQuery, stationFilter]);
 
+  const listingCounts = useMemo(() => {
+    const counts = {
+      total: listings.length,
+      pending: 0,
+      approved: 0,
+      active: 0,
+      inactive: 0,
+      rejected: 0,
+      deleted: 0,
+      featured: 0,
+      withGallery: 0,
+    };
+
+    for (const listing of listings) {
+      counts[listing.status] += 1;
+      if (listing.isFeatured) {
+        counts.featured += 1;
+      }
+      if ((listing.imageGallery ?? []).filter(Boolean).length > 0) {
+        counts.withGallery += 1;
+      }
+    }
+
+    return counts;
+  }, [listings]);
+
+  const modelCounts = useMemo(() => {
+    const counts = {
+      total: models.length,
+      active: 0,
+      hidden: 0,
+      featured: 0,
+      missingHero: 0,
+      missingGallery: 0,
+    };
+
+    for (const model of models) {
+      if (model.isActive === false) {
+        counts.hidden += 1;
+      } else {
+        counts.active += 1;
+      }
+      if (model.isFeatured) {
+        counts.featured += 1;
+      }
+      if (!String(model.image_url ?? '').trim()) {
+        counts.missingHero += 1;
+      }
+      if ((model.imageGallery ?? []).filter(Boolean).length === 0) {
+        counts.missingGallery += 1;
+      }
+    }
+
+    return counts;
+  }, [models]);
+
+  const blogCounts = useMemo(() => {
+    const counts = {
+      total: blogPosts.length,
+      published: 0,
+      draft: 0,
+      missingImage: 0,
+      missingMetaDescription: 0,
+    };
+
+    for (const post of blogPosts) {
+      if (post.status === 'published') {
+        counts.published += 1;
+      } else {
+        counts.draft += 1;
+      }
+      if (!String(post.imageUrl ?? '').trim()) {
+        counts.missingImage += 1;
+      }
+      if (!String(post.metaDescription ?? '').trim()) {
+        counts.missingMetaDescription += 1;
+      }
+    }
+
+    return counts;
+  }, [blogPosts]);
+
+  const stationCounts = useMemo(() => {
+    const counts = {
+      total: stations.length,
+      active: 0,
+      inactive: 0,
+      missingCoordinates: 0,
+      missingMapLinks: 0,
+    };
+
+    for (const station of stations) {
+      if (station.isActive === false) {
+        counts.inactive += 1;
+      } else {
+        counts.active += 1;
+      }
+      if (station.latitude == null || station.longitude == null) {
+        counts.missingCoordinates += 1;
+      }
+      if (!String(station.googleMapsLink ?? '').trim()) {
+        counts.missingMapLinks += 1;
+      }
+    }
+
+    return counts;
+  }, [stations]);
+
+  const dealerPlanCounts = useMemo(() => {
+    const counts = {
+      free: 0,
+      paid: 0,
+      paused: 0,
+      expired: 0,
+      cancelled: 0,
+      featured: 0,
+      missingMedia: 0,
+    };
+
+    for (const dealer of dealers) {
+      if ((dealer.planId ?? 'free') === 'paid') {
+        counts.paid += 1;
+      } else {
+        counts.free += 1;
+      }
+
+      if (dealer.subscriptionStatus === 'paused') {
+        counts.paused += 1;
+      } else if (dealer.subscriptionStatus === 'expired') {
+        counts.expired += 1;
+      } else if (dealer.subscriptionStatus === 'cancelled') {
+        counts.cancelled += 1;
+      }
+
+      if (dealer.isFeatured) {
+        counts.featured += 1;
+      }
+      if (!String(dealer.logo_url ?? dealer.image_url ?? '').trim()) {
+        counts.missingMedia += 1;
+      }
+    }
+
+    return counts;
+  }, [dealers]);
+
+  const placementCounts = useMemo(
+    () => ({
+      zones: placementZones.length,
+      activeZones: placementZones.filter(zone => zone.status === 'active').length,
+      products: sponsorshipProducts.length,
+      activeProducts: sponsorshipProducts.filter(product => product.status === 'active').length,
+      orders: sponsorshipOrders.length,
+      reservedOrders: sponsorshipOrders.filter(order => order.status === 'reserved').length,
+      activeOrders: sponsorshipOrders.filter(order => order.status === 'active').length,
+      campaigns: promotionalCampaigns.length,
+      liveCampaigns: promotionalCampaigns.filter(campaign => campaign.status === 'active').length,
+      blockedZones: placementAvailability.filter(
+        summary => summary.blockingCampaignIds.length > 0 || summary.blockingOrderIds.length > 0,
+      ).length,
+    }),
+    [placementAvailability, placementZones, promotionalCampaigns, sponsorshipOrders, sponsorshipProducts],
+  );
+
+  const topDealerCities = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const dealer of dealers) {
+      const city = String(dealer.city ?? '').trim();
+      if (!city) {
+        continue;
+      }
+      counts.set(city, (counts.get(city) ?? 0) + 1);
+    }
+
+    return [...counts.entries()]
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .slice(0, 5)
+      .map(([label, value]) => ({ label, value }));
+  }, [dealers]);
+
+  const topStationOperators = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const station of stations) {
+      const operator = String(station.operator ?? '').trim() || 'Unassigned';
+      counts.set(operator, (counts.get(operator) ?? 0) + 1);
+    }
+
+    return [...counts.entries()]
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .slice(0, 5)
+      .map(([label, value]) => ({ label, value }));
+  }, [stations]);
+
+  const reportTrendDays = 14;
+  const reportTrendBuckets = useMemo(() => {
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    startDate.setDate(startDate.getDate() - (reportTrendDays - 1));
+
+    const buckets = Array.from({ length: reportTrendDays }, (_, index) => {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + index);
+      return {
+        dateKey: toDayKey(date),
+        label: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        dealers: 0,
+        listings: 0,
+        blogPosts: 0,
+        audit: 0,
+      };
+    });
+
+    const bucketByKey = new Map(buckets.map(bucket => [bucket.dateKey, bucket]));
+    const bump = (value: unknown, field: 'dealers' | 'listings' | 'blogPosts' | 'audit') => {
+      const date = coerceDate(value);
+      if (!date) {
+        return;
+      }
+      const bucket = bucketByKey.get(toDayKey(date));
+      if (!bucket) {
+        return;
+      }
+      bucket[field] += 1;
+    };
+
+    dealers.forEach(item => bump(item.createdAt, 'dealers'));
+    listings.forEach(item => bump(item.createdAt, 'listings'));
+    blogPosts.forEach(item => bump(item.createdAt, 'blogPosts'));
+    auditLogs.forEach(item => bump(item.createdAt, 'audit'));
+
+    return buckets;
+  }, [auditLogs, blogPosts, dealers, listings]);
+
+  const reportQualityHighlights = useMemo(
+    () => [
+      {
+        key: 'dealerMedia',
+        label: t('admin.reportQualityDealerMedia', { defaultValue: 'Dealers missing profile media' }),
+        value: dealerPlanCounts.missingMedia,
+        supporting: t('admin.reportQualityDealerMediaHint', {
+          defaultValue: '{{count}} dealer profiles still need a hero or logo image.',
+          count: dealerPlanCounts.missingMedia,
+        }),
+      },
+      {
+        key: 'modelHero',
+        label: t('admin.reportQualityModelHero', { defaultValue: 'Models missing hero image' }),
+        value: modelCounts.missingHero,
+        supporting: t('admin.reportQualityModelHeroHint', {
+          defaultValue: '{{count}} model records still need a primary image.',
+          count: modelCounts.missingHero,
+        }),
+      },
+      {
+        key: 'listingGallery',
+        label: t('admin.reportQualityListingGallery', { defaultValue: 'Listings without gallery images' }),
+        value: Math.max(0, listingCounts.total - listingCounts.withGallery),
+        supporting: t('admin.reportQualityListingGalleryHint', {
+          defaultValue: '{{count}} live or draft listings still have no gallery media.',
+          count: Math.max(0, listingCounts.total - listingCounts.withGallery),
+        }),
+      },
+      {
+        key: 'blogMeta',
+        label: t('admin.reportQualityBlogMeta', { defaultValue: 'Blog posts missing metadata' }),
+        value: blogCounts.missingMetaDescription,
+        supporting: t('admin.reportQualityBlogMetaHint', {
+          defaultValue: '{{count}} blog entries are missing a meta description.',
+          count: blogCounts.missingMetaDescription,
+        }),
+      },
+      {
+        key: 'stationCoords',
+        label: t('admin.reportQualityStationCoords', { defaultValue: 'Stations missing coordinates' }),
+        value: stationCounts.missingCoordinates,
+        supporting: t('admin.reportQualityStationCoordsHint', {
+          defaultValue: '{{count}} charging stations still need latitude/longitude.',
+          count: stationCounts.missingCoordinates,
+        }),
+      },
+    ],
+    [blogCounts.missingMetaDescription, dealerPlanCounts.missingMedia, listingCounts.total, listingCounts.withGallery, modelCounts.missingHero, stationCounts.missingCoordinates, t],
+  );
+
+  const recentAuditHighlights = useMemo(() => auditLogs.slice(0, 8), [auditLogs]);
+
   const isAdmin = role === 'admin';
   const canAssignDealerPlans =
     hasPermission('dealer_plans.assign') || hasPermission('dealer_plans.override');
@@ -1208,27 +1541,33 @@ const AdminPage: React.FC = () => {
 
   useEffect(() => {
     if (!canReadUsers && activeTab === 'users') {
-      setActiveTab('dealers');
+      setActiveTab('overview');
     }
   }, [activeTab, canReadUsers]);
 
   useEffect(() => {
     if (!canReadListings && activeTab === 'listings') {
-      setActiveTab('dealers');
+      setActiveTab('overview');
     }
   }, [activeTab, canReadListings]);
 
   useEffect(() => {
     if (!canManageAdminAccess && activeTab === 'access') {
-      setActiveTab('dealers');
+      setActiveTab('overview');
     }
   }, [activeTab, canManageAdminAccess]);
 
   useEffect(() => {
     if (!canViewAudit && activeTab === 'audit') {
-      setActiveTab('dealers');
+      setActiveTab('overview');
     }
   }, [activeTab, canViewAudit]);
+
+  useEffect(() => {
+    if (!canViewReports && activeTab === 'reports') {
+      setActiveTab('overview');
+    }
+  }, [activeTab, canViewReports]);
 
   const getDealerPlanDraft = useCallback(
     (dealer: Dealer): DealerPlanDraft => ({
@@ -1500,7 +1839,7 @@ const AdminPage: React.FC = () => {
   );
 
   useEffect(() => {
-    if (activeTab === 'audit' && canViewAudit) {
+    if ((activeTab === 'audit' || activeTab === 'overview' || activeTab === 'reports') && canViewAudit) {
       void loadAuditLogs();
     }
   }, [activeTab, canViewAudit, loadAuditLogs]);
@@ -3391,7 +3730,12 @@ const AdminPage: React.FC = () => {
   }, [refreshStationsData]);
 
   useEffect(() => {
-    if (activeTab !== 'placements' || placementsLoaded || placementsLoading || !canReadPlacements) {
+    if (
+      (activeTab !== 'placements' && activeTab !== 'overview' && activeTab !== 'reports') ||
+      placementsLoaded ||
+      placementsLoading ||
+      !canReadPlacements
+    ) {
       return;
     }
 
@@ -3406,7 +3750,7 @@ const AdminPage: React.FC = () => {
 
   useEffect(() => {
     if (
-      activeTab !== 'placements' ||
+      (activeTab !== 'placements' && activeTab !== 'overview' && activeTab !== 'reports') ||
       placementAnalyticsLoaded ||
       placementAnalyticsLoading ||
       !canReadPlacementAnalytics
@@ -3460,6 +3804,554 @@ const AdminPage: React.FC = () => {
       </button>
     </div>
   );
+
+  const handleExportOperationalReport = useCallback(() => {
+    if (!canExportReports || typeof window === 'undefined') {
+      return;
+    }
+
+    const rows: Array<[string, string, string | number]> = [
+      ['Overview', 'Pending dealer approvals', dealerCounts.pending],
+      ['Overview', 'Inactive dealers', dealerCounts.inactive],
+      ['Overview', 'Paid dealers', dealerPlanCounts.paid],
+      ['Overview', 'Pending listings', listingCounts.pending],
+      ['Overview', 'Active listings', listingCounts.active + listingCounts.approved],
+      ['Overview', 'Draft blog posts', blogCounts.draft],
+      ['Overview', 'Inactive charging stations', stationCounts.inactive],
+      ['Placements', 'Live campaigns', placementCounts.liveCampaigns],
+      ['Placements', 'Reserved orders', placementCounts.reservedOrders],
+      ['Placements', 'Blocked zones', placementCounts.blockedZones],
+    ];
+
+    reportQualityHighlights.forEach(item => {
+      rows.push(['Quality', item.label, item.value]);
+    });
+
+    const csv = [
+      ['section', 'metric', 'value'],
+      ...rows.map(([section, metric, value]) => [
+        escapeCsvValue(section),
+        escapeCsvValue(metric),
+        escapeCsvValue(value),
+      ]),
+    ]
+      .map(columns => columns.join(','))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `admin-operations-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [
+    blogCounts.draft,
+    canExportReports,
+    dealerCounts.inactive,
+    dealerCounts.pending,
+    dealerPlanCounts.paid,
+    listingCounts.active,
+    listingCounts.approved,
+    listingCounts.pending,
+    placementCounts.blockedZones,
+    placementCounts.liveCampaigns,
+    placementCounts.reservedOrders,
+    reportQualityHighlights,
+    stationCounts.inactive,
+  ]);
+
+  const renderOverviewPanel = () => {
+    const overviewCards = [
+      {
+        label: t('admin.overviewPendingDealers', { defaultValue: 'Pending dealer approvals' }),
+        value: dealerCounts.pending,
+        hint: t('admin.overviewPendingDealersHint', {
+          defaultValue: '{{active}} active / {{inactive}} inactive dealers already in circulation.',
+          active: dealerCounts.active,
+          inactive: dealerCounts.inactive,
+        }),
+      },
+      {
+        label: t('admin.overviewListingQueue', { defaultValue: 'Listings moderation queue' }),
+        value: listingCounts.pending,
+        hint: t('admin.overviewListingQueueHint', {
+          defaultValue: '{{live}} live / {{hidden}} inactive / {{rejected}} rejected listings.',
+          live: listingCounts.active + listingCounts.approved,
+          hidden: listingCounts.inactive,
+          rejected: listingCounts.rejected,
+        }),
+      },
+      {
+        label: t('admin.overviewPaidDealers', { defaultValue: 'Paid dealers' }),
+        value: dealerPlanCounts.paid,
+        hint: t('admin.overviewPaidDealersHint', {
+          defaultValue: '{{free}} free dealers, {{paused}} paused subscriptions.',
+          free: dealerPlanCounts.free,
+          paused: dealerPlanCounts.paused,
+        }),
+      },
+      {
+        label: t('admin.overviewContentBacklog', { defaultValue: 'Content backlog' }),
+        value: blogCounts.draft,
+        hint: t('admin.overviewContentBacklogHint', {
+          defaultValue: '{{published}} published posts and {{missing}} entries missing metadata.',
+          published: blogCounts.published,
+          missing: blogCounts.missingMetaDescription,
+        }),
+      },
+      {
+        label: t('admin.overviewStations', { defaultValue: 'Charging stations needing attention' }),
+        value: stationCounts.inactive + stationCounts.missingCoordinates,
+        hint: t('admin.overviewStationsHint', {
+          defaultValue: '{{active}} active stations, {{missing}} without coordinates.',
+          active: stationCounts.active,
+          missing: stationCounts.missingCoordinates,
+        }),
+      },
+      {
+        label: t('admin.overviewOfflineQueue', { defaultValue: 'Offline queue items' }),
+        value: offlineQueueCount,
+        hint: t('admin.overviewOfflineQueueHint', {
+          defaultValue: 'Local operational submissions still waiting to be replayed.',
+        }),
+      },
+    ];
+
+    const queueItems = [
+      {
+        label: t('admin.overviewQueueDealers', { defaultValue: 'Pending dealer approvals' }),
+        value: dealerCounts.pending,
+      },
+      {
+        label: t('admin.overviewQueueListings', { defaultValue: 'Pending listings' }),
+        value: listingCounts.pending,
+      },
+      {
+        label: t('admin.overviewQueueDrafts', { defaultValue: 'Draft blog posts' }),
+        value: blogCounts.draft,
+      },
+      {
+        label: t('admin.overviewQueueStations', { defaultValue: 'Inactive stations' }),
+        value: stationCounts.inactive,
+      },
+      {
+        label: t('admin.overviewQueueModelMedia', { defaultValue: 'Models missing hero image' }),
+        value: modelCounts.missingHero,
+      },
+    ];
+
+    return (
+      <div className="space-y-8">
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-gray-cyan/80">
+                {t('admin.overviewEyebrow', { defaultValue: 'Control center' })}
+              </p>
+              <h2 className="mt-3 text-3xl font-semibold text-white">
+                {t('admin.overviewHeading', { defaultValue: 'Platform operations overview' })}
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm text-gray-300">
+                {t('admin.overviewDescription', {
+                  defaultValue:
+                    'Track queue pressure, paid-dealer health, content backlog, and recent admin activity from one place before diving into individual entity tabs.',
+                })}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+              <p className="font-semibold">
+                {t('admin.overviewSnapshotHeading', { defaultValue: 'Current live snapshot' })}
+              </p>
+              <p className="mt-1 text-emerald-50/80">
+                {t('admin.overviewSnapshotHint', {
+                  defaultValue: '{{dealers}} dealers, {{models}} EV models, {{listings}} listings, {{stations}} charging stations.',
+                  dealers: dealers.length,
+                  models: models.length,
+                  listings: listings.length,
+                  stations: stations.length,
+                })}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {overviewCards.map(card => (
+            <article key={card.label} className="rounded-2xl border border-white/10 bg-[#081120] p-5 shadow-lg">
+              <p className="text-sm font-medium text-gray-300">{card.label}</p>
+              <p className="mt-3 text-4xl font-semibold text-white">{card.value}</p>
+              <p className="mt-3 text-sm text-gray-400">{card.hint}</p>
+            </article>
+          ))}
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  {t('admin.overviewQueuesHeading', { defaultValue: 'Operational queues' })}
+                </h3>
+                <p className="mt-2 text-sm text-gray-400">
+                  {t('admin.overviewQueuesDescription', {
+                    defaultValue: 'These are the highest-friction areas that still need operator attention.',
+                  })}
+                </p>
+              </div>
+              <ClipboardList className="h-5 w-5 text-gray-cyan" />
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {queueItems.map(item => (
+                <div
+                  key={item.label}
+                  className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/10 px-4 py-3"
+                >
+                  <span className="text-sm text-gray-200">{item.label}</span>
+                  <span className="rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white">
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  {t('admin.overviewActivityHeading', { defaultValue: 'Recent admin activity' })}
+                </h3>
+                <p className="mt-2 text-sm text-gray-400">
+                  {t('admin.overviewActivityDescription', {
+                    defaultValue: 'Latest trusted backend actions recorded in the audit trail.',
+                  })}
+                </p>
+              </div>
+              <MessageSquare className="h-5 w-5 text-gray-cyan" />
+            </div>
+
+            {canViewAudit ? (
+              recentAuditHighlights.length > 0 ? (
+                <div className="mt-6 space-y-3">
+                  {recentAuditHighlights.map(log => (
+                    <div key={log.id} className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold text-white">{log.summary}</p>
+                        <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-gray-300">
+                          {formatAuditActionLabel(log.action)}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-gray-400">
+                        {log.actorEmail ?? log.actorUid} • {formatDateTime(typeof log.createdAt === 'string' ? log.createdAt : null) ?? t('admin.unknownDate', { defaultValue: 'Unknown date' })}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                renderEmptyState(
+                  t('admin.overviewNoAuditData', {
+                    defaultValue: 'No admin activity has been loaded yet.',
+                  }),
+                )
+              )
+            ) : (
+              renderEmptyState(
+                t('admin.overviewAuditUnavailable', {
+                  defaultValue: 'Audit visibility is not enabled for this admin account.',
+                }),
+              )
+            )}
+          </div>
+        </section>
+
+        {(canReadPlacements || canReadPlacementAnalytics) && (
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  {t('admin.overviewPlacementsHeading', { defaultValue: 'Placement and revenue pulse' })}
+                </h3>
+                <p className="mt-2 text-sm text-gray-400">
+                  {t('admin.overviewPlacementsDescription', {
+                    defaultValue: 'Track the current health of live campaigns, reserved inventory, and blocked promo zones.',
+                  })}
+                </p>
+              </div>
+              <CreditCard className="h-5 w-5 text-gray-cyan" />
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <p className="text-sm text-gray-300">{t('admin.overviewLiveCampaigns', { defaultValue: 'Live campaigns' })}</p>
+                <p className="mt-2 text-3xl font-semibold text-white">{placementCounts.liveCampaigns}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <p className="text-sm text-gray-300">{t('admin.overviewReservedOrders', { defaultValue: 'Reserved sponsorship orders' })}</p>
+                <p className="mt-2 text-3xl font-semibold text-white">{placementCounts.reservedOrders}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <p className="text-sm text-gray-300">{t('admin.overviewBlockedZones', { defaultValue: 'Blocked placement zones' })}</p>
+                <p className="mt-2 text-3xl font-semibold text-white">{placementCounts.blockedZones}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                <p className="text-sm text-gray-300">{t('admin.overviewTopCtr', { defaultValue: 'Best current CTR' })}</p>
+                <p className="mt-2 text-3xl font-semibold text-white">
+                  {placementAnalytics[0] ? `${placementAnalytics[0].ctr.toFixed(1)}%` : '0.0%'}
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+      </div>
+    );
+  };
+
+  const renderReportsPanel = () => {
+    const trendMax = Math.max(
+      1,
+      ...reportTrendBuckets.map(bucket => bucket.dealers + bucket.listings + bucket.blogPosts + bucket.audit),
+    );
+
+    return (
+      <div className="space-y-8">
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-gray-cyan/80">
+                {t('admin.reportsEyebrow', { defaultValue: 'Analytics and reporting' })}
+              </p>
+              <h2 className="mt-3 text-3xl font-semibold text-white">
+                {t('admin.reportsHeading', { defaultValue: 'Operational reports' })}
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm text-gray-300">
+                {t('admin.reportsDescription', {
+                  defaultValue:
+                    'Use these summaries to monitor growth, spot data-quality debt, and understand where admin effort is currently going.',
+                })}
+              </p>
+            </div>
+            {canExportReports && (
+              <button
+                type="button"
+                onClick={handleExportOperationalReport}
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:border-gray-cyan/60 hover:text-gray-cyan"
+              >
+                <Download className="h-4 w-4" />
+                {t('admin.reportsExportButton', { defaultValue: 'Export snapshot CSV' })}
+              </button>
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-semibold text-white">
+                {t('admin.reportsTrendHeading', { defaultValue: '14-day activity trend' })}
+              </h3>
+              <p className="mt-2 text-sm text-gray-400">
+                {t('admin.reportsTrendDescription', {
+                  defaultValue: 'Daily stacked activity across newly created dealers, listings, blog entries, and admin audit events.',
+                })}
+              </p>
+            </div>
+            <Receipt className="h-5 w-5 text-gray-cyan" />
+          </div>
+
+          <div className="mt-6 overflow-x-auto">
+            <div className="flex min-w-[760px] items-end gap-3">
+              {reportTrendBuckets.map(bucket => {
+                const total = bucket.dealers + bucket.listings + bucket.blogPosts + bucket.audit;
+                return (
+                  <div key={bucket.dateKey} className="flex w-12 flex-col items-center gap-2">
+                    <span className="text-xs text-gray-500">{total}</span>
+                    <div className="flex h-36 w-full items-end rounded-2xl border border-white/10 bg-black/10 p-1">
+                      <div className="flex h-full w-full flex-col justify-end overflow-hidden rounded-xl">
+                        <div
+                          className="bg-cyan-400/80"
+                          style={{ height: `${(bucket.audit / trendMax) * 100}%` }}
+                        />
+                        <div
+                          className="bg-amber-400/80"
+                          style={{ height: `${(bucket.blogPosts / trendMax) * 100}%` }}
+                        />
+                        <div
+                          className="bg-emerald-400/80"
+                          style={{ height: `${(bucket.listings / trendMax) * 100}%` }}
+                        />
+                        <div className="bg-indigo-400/80" style={{ height: `${(bucket.dealers / trendMax) * 100}%` }} />
+                      </div>
+                    </div>
+                    <span className="text-[11px] text-gray-400">{bucket.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-3 text-xs text-gray-300 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3">Indigo = new dealers</div>
+            <div className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3">Emerald = new listings</div>
+            <div className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3">Amber = new blog posts</div>
+            <div className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3">Cyan = admin audit events</div>
+          </div>
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  {t('admin.reportsQualityHeading', { defaultValue: 'Quality reports' })}
+                </h3>
+                <p className="mt-2 text-sm text-gray-400">
+                  {t('admin.reportsQualityDescription', {
+                    defaultValue: 'Surface records that still need media, metadata, or location cleanup.',
+                  })}
+                </p>
+              </div>
+              <ImageIcon className="h-5 w-5 text-gray-cyan" />
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {reportQualityHighlights.map(item => (
+                <div key={item.key} className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-white">{item.label}</p>
+                    <span className="rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white">
+                      {item.value}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-400">{item.supporting}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  {t('admin.reportsGeoHeading', { defaultValue: 'Geographic and operator distribution' })}
+                </h3>
+                <p className="mt-2 text-sm text-gray-400">
+                  {t('admin.reportsGeoDescription', {
+                    defaultValue: 'A quick view of where dealer density and charging operations are currently concentrated.',
+                  })}
+                </p>
+              </div>
+              <MapPin className="h-5 w-5 text-gray-cyan" />
+            </div>
+
+            <div className="mt-6 grid gap-6 md:grid-cols-2">
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  {t('admin.reportsDealerCities', { defaultValue: 'Top dealer cities' })}
+                </p>
+                <div className="mt-4 space-y-3">
+                  {topDealerCities.length > 0 ? topDealerCities.map(item => (
+                    <div key={item.label} className="flex items-center justify-between rounded-xl border border-white/10 bg-black/10 px-4 py-3">
+                      <span className="text-sm text-gray-200">{item.label}</span>
+                      <span className="text-sm font-semibold text-white">{item.value}</span>
+                    </div>
+                  )) : renderEmptyState(t('admin.reportsNoDealerCities', { defaultValue: 'No dealer city data is available yet.' }))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  {t('admin.reportsStationOperators', { defaultValue: 'Top charging operators' })}
+                </p>
+                <div className="mt-4 space-y-3">
+                  {topStationOperators.length > 0 ? topStationOperators.map(item => (
+                    <div key={item.label} className="flex items-center justify-between rounded-xl border border-white/10 bg-black/10 px-4 py-3">
+                      <span className="text-sm text-gray-200">{item.label}</span>
+                      <span className="text-sm font-semibold text-white">{item.value}</span>
+                    </div>
+                  )) : renderEmptyState(t('admin.reportsNoOperators', { defaultValue: 'No charging operator data is available yet.' }))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {canReadPlacementAnalytics && (
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  {t('admin.reportsPlacementHeading', { defaultValue: 'Placement performance snapshot' })}
+                </h3>
+                <p className="mt-2 text-sm text-gray-400">
+                  {t('admin.reportsPlacementDescription', {
+                    defaultValue: 'Top public placement zones and campaigns from the current analytics window.',
+                  })}
+                </p>
+              </div>
+              <Home className="h-5 w-5 text-gray-cyan" />
+            </div>
+
+            <div className="mt-6 grid gap-6 lg:grid-cols-2">
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  {t('admin.reportsTopZones', { defaultValue: 'Top zones' })}
+                </p>
+                <div className="mt-4 space-y-3">
+                  {placementZoneAnalytics.slice(0, 5).map(item => (
+                    <div key={item.zoneKey} className="rounded-xl border border-white/10 bg-black/10 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm text-gray-200">{item.zoneKey}</span>
+                        <span className="text-sm font-semibold text-white">{item.ctr.toFixed(1)}% CTR</span>
+                      </div>
+                      <p className="mt-2 text-xs text-gray-400">
+                        {item.impressions} impressions • {item.clicks} clicks
+                      </p>
+                    </div>
+                  ))}
+                  {placementZoneAnalytics.length === 0 &&
+                    renderEmptyState(
+                      t('admin.reportsNoPlacementZones', {
+                        defaultValue: 'No placement analytics have been collected yet.',
+                      }),
+                    )}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  {t('admin.reportsTopCampaigns', { defaultValue: 'Top campaigns' })}
+                </p>
+                <div className="mt-4 space-y-3">
+                  {placementAnalytics.slice(0, 5).map(item => {
+                    const campaign = promotionalCampaigns.find(entry => entry.id === item.campaignId);
+                    return (
+                      <div key={item.campaignId} className="rounded-xl border border-white/10 bg-black/10 px-4 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-sm text-gray-200">{campaign?.name ?? item.campaignId}</span>
+                          <span className="text-sm font-semibold text-white">{item.ctr.toFixed(1)}% CTR</span>
+                        </div>
+                        <p className="mt-2 text-xs text-gray-400">
+                          {item.impressions} impressions • {item.clicks} clicks
+                        </p>
+                      </div>
+                    );
+                  })}
+                  {placementAnalytics.length === 0 &&
+                    renderEmptyState(
+                      t('admin.reportsNoPlacementCampaigns', {
+                        defaultValue: 'No campaign analytics have been collected yet.',
+                      }),
+                    )}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+      </div>
+    );
+  };
 
   const renderDealersPanel = () => {
     const dealerUpdateLoading = dealerMutations.update.loading || dealerAction !== null;
@@ -7667,6 +8559,7 @@ const AdminPage: React.FC = () => {
 
         {/* Content Panel */}
         <div className="flex-1 p-4 md:p-8 overflow-auto">
+          {activeTab === 'overview' && renderOverviewPanel()}
           {activeTab === 'dealers' && renderDealersPanel()}
           {activeTab === 'users' && renderUsersPanel()}
           {activeTab === 'models' && renderModelsPanel()}
@@ -7674,6 +8567,7 @@ const AdminPage: React.FC = () => {
           {activeTab === 'blog' && renderBlogPanel()}
           {activeTab === 'stations' && renderStationsPanel()}
           {activeTab === 'placements' && renderPlacementsPanel()}
+          {activeTab === 'reports' && renderReportsPanel()}
           {activeTab === 'access' && renderAccessPanel()}
           {activeTab === 'audit' && renderAuditPanel()}
           {activeTab === 'migration' && (

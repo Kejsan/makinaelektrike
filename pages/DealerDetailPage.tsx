@@ -13,6 +13,9 @@ import { DEALERSHIP_PLACEHOLDER_IMAGE } from '../constants/media';
 import GallerySection from '../components/GallerySection';
 import OptimizedImage from '../components/OptimizedImage';
 import Link from '../components/LocalizedLink';
+import PublicPlacementRail from '../components/placements/PublicPlacementRail';
+import { usePublicPlacements } from '../hooks/usePublicPlacements';
+import { PUBLIC_PLACEMENT_ZONE_KEYS } from '../utils/placements';
 
 const DealerDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -22,6 +25,9 @@ const DealerDetailPage: React.FC = () => {
     const dealerModels = useMemo<Model[]>(() => (dealer ? getModelsForDealer(dealer.id) : []), [dealer, getModelsForDealer]);
     const faqItems = t('dealerDetails.faqItems', { returnObjects: true }) as Array<{ question: string; answer: string }>;
     const { isFavorite, toggleFavorite } = useFavorites();
+    const { zonesByKey: placementZones } = usePublicPlacements([
+        PUBLIC_PLACEMENT_ZONE_KEYS.dealerDetailSpotlight,
+    ]);
 
     if (loading) return <div className="text-center py-10 text-white">{t('common.loading')}</div>;
     if (!dealer) {
@@ -153,6 +159,8 @@ const DealerDetailPage: React.FC = () => {
             })),
         },
     ];
+    const dealerDetailPlacementZone =
+        placementZones.get(PUBLIC_PLACEMENT_ZONE_KEYS.dealerDetailSpotlight) ?? null;
 
     return (
         <div className="py-12">
@@ -289,6 +297,13 @@ const DealerDetailPage: React.FC = () => {
                         })}
                     </p>
                 </div>
+
+                <PublicPlacementRail
+                    zone={dealerDetailPlacementZone}
+                    eyebrow={t('placements.eyebrow', { defaultValue: 'Platform spotlight' })}
+                    title={t('placements.zones.dealerDetailTitle', { defaultValue: 'Featured around this dealer' })}
+                    className="mt-12"
+                />
 
                 <div className="mt-16">
                     <h2 className="text-3xl font-bold text-center mb-8 text-white">{t('dealerDetails.modelsAvailable')}</h2>

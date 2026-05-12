@@ -1624,6 +1624,12 @@
     "sponsoredBadge": "Sponsorizzato",
     "featuredBadge": "In evidenza",
     "viewPromotion": "Vedi promozione",
+    "zones": {
+      "dealerDetailTitle": "In evidenza intorno a questo concessionario",
+      "modelDetailTitle": "In evidenza intorno a questo modello",
+      "listingDetailTitle": "In evidenza intorno a questo veicolo",
+      "blogPostTitle": "In evidenza intorno a questo articolo"
+    },
     "entityType": {
       "dealer": "Concessionario",
       "listing": "Annuncio",

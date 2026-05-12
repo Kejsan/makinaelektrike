@@ -1694,6 +1694,12 @@
     "sponsoredBadge": "Sponsored",
     "featuredBadge": "Featured",
     "viewPromotion": "View promotion",
+    "zones": {
+      "dealerDetailTitle": "Featured around this dealer",
+      "modelDetailTitle": "Featured around this model",
+      "listingDetailTitle": "Featured around this vehicle",
+      "blogPostTitle": "Featured around this article"
+    },
     "entityType": {
       "dealer": "Dealer",
       "listing": "Listing",

@@ -1,3 +1,4 @@
+import type { DocumentData } from 'firebase-admin/firestore';
 import type { FunctionEvent } from './_lib/http';
 import {
   badRequest,
@@ -11,6 +12,7 @@ import {
 } from './_lib/http';
 import { requireAuthenticatedProfile } from './_lib/adminAccess';
 import { requireDealerAccess } from './_lib/dealerAccess';
+import { getAdminFirestore } from './_lib/firebaseAdmin';
 import {
   decodeBase64Image,
   getRequiredUploadString,
@@ -20,9 +22,10 @@ import {
   sanitizePathSegment,
 } from './_lib/mediaUpload';
 import { uploadBufferToR2 } from './_lib/r2';
+import { hasPermission } from '../../utils/accessControl';
 
-interface DealerMediaUploadBody {
-  dealerId?: unknown;
+interface ModelMediaUploadBody {
+  modelId?: unknown;
   variant?: unknown;
   fileName?: unknown;
   contentType?: unknown;
@@ -30,6 +33,31 @@ interface DealerMediaUploadBody {
 }
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+const ensureModelUploadAccess = async (profile: Awaited<ReturnType<typeof requireAuthenticatedProfile>>['profile'], modelId: string) => {
+  const firestore = getAdminFirestore();
+  const snapshot = await firestore.collection('models').doc(modelId).get();
+  if (!snapshot.exists) {
+    throw new Error('Model record was not found.');
+  }
+
+  const modelData = (snapshot.data() ?? {}) as DocumentData;
+  if (hasPermission(profile, 'models.publish') || hasPermission(profile, 'models.merge')) {
+    return;
+  }
+
+  if (typeof modelData.ownerUid === 'string' && modelData.ownerUid === profile.uid) {
+    return;
+  }
+
+  if (typeof modelData.ownerDealerId === 'string' && modelData.ownerDealerId.trim()) {
+    await requireDealerAccess(profile, modelData.ownerDealerId);
+    return;
+  }
+
+  throw new Error('You do not have model access for this record.');
+};
+
 export const handler = async (event: FunctionEvent) => {
   if (event.httpMethod !== 'POST') {
     return methodNotAllowed(['POST']);
@@ -37,16 +65,16 @@ export const handler = async (event: FunctionEvent) => {
 
   try {
     const { profile } = await requireAuthenticatedProfile(event);
-    const body = parseJsonBody<DealerMediaUploadBody>(event);
-    const dealerId = getRequiredUploadString(body.dealerId, 'dealerId', 128);
+    const body = parseJsonBody<ModelMediaUploadBody>(event);
+    const modelId = getRequiredUploadString(body.modelId, 'modelId', 128);
     const variant = parseMediaVariant(body.variant);
     const contentType = parseImageContentType(body.contentType);
-    const fileName = parseMediaFileName(body.fileName, contentType, 'dealer-image');
+    const fileName = parseMediaFileName(body.fileName, contentType, 'model-image');
     const imageBody = decodeBase64Image(body.dataBase64, MAX_IMAGE_BYTES);
 
-    await requireDealerAccess(profile, dealerId);
+    await ensureModelUploadAccess(profile, modelId);
 
-    const key = `dealers/${sanitizePathSegment(dealerId)}/${variant}/${fileName}`;
+    const key = `models/${sanitizePathSegment(modelId)}/${variant}/${fileName}`;
     const url = await uploadBufferToR2({
       key,
       contentType,
@@ -65,12 +93,13 @@ export const handler = async (event: FunctionEvent) => {
     }
     if (
       message === 'Authenticated admin profile was not found.' ||
-      message === 'You do not have dealer access for this record.'
+      message === 'You do not have dealer access for this record.' ||
+      message === 'You do not have model access for this record.'
     ) {
       return forbidden(message);
     }
     if (message.startsWith('Missing R2 upload credentials')) {
-      return serviceUnavailable('Dealer media uploads are not configured.');
+      return serviceUnavailable('Model media uploads are not configured.');
     }
     if (
       message.includes('required') ||
@@ -79,7 +108,7 @@ export const handler = async (event: FunctionEvent) => {
       message.includes('too large') ||
       message.includes('empty') ||
       message.includes('variant must') ||
-      message.includes('Dealer record was not found')
+      message.includes('Model record was not found')
     ) {
       return badRequest(message);
     }
