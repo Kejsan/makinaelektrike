@@ -179,9 +179,9 @@ const Header: React.FC = () => {
   };
 
   const navLinkClasses = (path: string) =>
-    `relative px-3 py-2 text-sm font-medium transition-colors ${isActivePath(path)
-      ? 'text-blue-400'
-      : 'text-slate-100 hover:text-blue-400'
+    `relative rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/10 hover:text-blue-300 hover:shadow-lg hover:shadow-blue-500/10 ${isActivePath(path)
+      ? 'bg-white/5 text-blue-300'
+      : 'text-slate-100'
     }`;
 
   const mobileNavLinkClasses = (path: string) =>
@@ -191,7 +191,7 @@ const Header: React.FC = () => {
     }`;
 
   const primaryNav = [
-    { to: '/dealers', label: t('header.dealers'), featured: true },
+    { to: '/dealers', label: t('header.dealers') },
     { to: '/listings', label: t('header.listings') },
     { to: '/models', label: t('header.models') },
     { to: '/albania-charging-stations', label: t('header.chargingStations') },
@@ -245,11 +245,7 @@ const Header: React.FC = () => {
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={
-                    item.featured
-                      ? `relative rounded-full border border-gray-cyan/35 bg-gray-cyan/15 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-gray-cyan/10 transition hover:border-gray-cyan/70 hover:bg-gray-cyan/25 ${isActivePath(item.to) ? 'ring-1 ring-gray-cyan/60' : ''}`
-                      : navLinkClasses(item.to)
-                  }
+                  className={navLinkClasses(item.to)}
                   aria-current={isActivePath(item.to) ? 'page' : undefined}
                 >
                   {item.label}
@@ -263,7 +259,9 @@ const Header: React.FC = () => {
               <div className="relative" ref={discoverDropdownRef}>
                 <button
                   type="button"
-                  className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-slate-100 transition-colors hover:text-blue-400"
+                  className={`flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-slate-100 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/10 hover:text-blue-300 hover:shadow-lg hover:shadow-blue-500/10 ${
+                    activeDropdown === 'discover' ? 'bg-white/5 text-blue-300' : ''
+                  }`}
                   onClick={() =>
                     setActiveDropdown((current) => (current === 'discover' ? null : 'discover'))
                   }
