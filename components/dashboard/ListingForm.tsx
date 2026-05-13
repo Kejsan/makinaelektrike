@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Listing, Model } from '../../types';
+import type {
+    Listing,
+    ListingModelProfileChangeReason,
+    ListingModelProfileSnapshot,
+    Model,
+} from '../../types';
 
 export interface ListingFormValues extends Omit<Listing, 'id' | 'createdAt' | 'updatedAt' | 'dealerId'> {
     id?: string;
@@ -32,6 +37,10 @@ const defaultState: ListingFormValues = {
     bodyType: 'SUV',
     batteryCapacity: undefined,
     range: undefined,
+    modelProfileChangeReason: null,
+    modelProfileChangeNotes: '',
+    modelProfileChangeFields: [],
+    modelProfileSnapshot: null,
     location: {
         city: '',
         address: '',
@@ -55,6 +64,53 @@ const sanitizeOptionalNumber = (value?: number) =>
 
 const getModelProfileLabel = (model: Model) =>
     [model.brand, model.model_name].filter(Boolean).join(' ').trim();
+
+const modelProfileChangeReasonOptions: Array<{
+    value: ListingModelProfileChangeReason;
+    labelKey: string;
+    defaultLabel: string;
+}> = [
+    {
+        value: 'submodel_or_trim',
+        labelKey: 'dealerListingsPage.form.modelChangeReasons.submodelOrTrim',
+        defaultLabel: 'Different submodel, trim, or variant',
+    },
+    {
+        value: 'catalog_error',
+        labelKey: 'dealerListingsPage.form.modelChangeReasons.catalogError',
+        defaultLabel: 'Error in the existing model card',
+    },
+    {
+        value: 'market_variant',
+        labelKey: 'dealerListingsPage.form.modelChangeReasons.marketVariant',
+        defaultLabel: 'Market/import version differs',
+    },
+    {
+        value: 'dealer_specific_configuration',
+        labelKey: 'dealerListingsPage.form.modelChangeReasons.dealerSpecificConfiguration',
+        defaultLabel: 'Dealer-specific configuration',
+    },
+    {
+        value: 'other',
+        labelKey: 'dealerListingsPage.form.modelChangeReasons.other',
+        defaultLabel: 'Other reason',
+    },
+];
+
+const normalizeComparableString = (value?: string | null) => (value ?? '').trim().toLocaleLowerCase();
+
+const normalizeComparableNumber = (value?: number | null) =>
+    typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
+
+const getModelProfileSnapshot = (model: Model): ListingModelProfileSnapshot => ({
+    modelId: model.id,
+    brand: model.brand ?? null,
+    modelName: model.model_name ?? null,
+    bodyType: model.body_type ?? null,
+    batteryCapacity: model.battery_capacity ?? null,
+    rangeWltp: model.range_wltp ?? null,
+    capturedAt: new Date().toISOString(),
+});
 
 const ListingForm: React.FC<ListingFormProps> = ({
     initialValues,
@@ -99,6 +155,26 @@ const ListingForm: React.FC<ListingFormProps> = ({
     const selectedModelProfile = availableModels.find(model => model.id === selectedModelId);
     const selectedModelLabel = selectedModelProfile ? getModelProfileLabel(selectedModelProfile) : '';
     const totalGalleryCount = existingGallery.length + galleryDrafts.length;
+    const modifiedModelProfileFields = selectedModelProfile
+        ? [
+            normalizeComparableString(formState.make) !== normalizeComparableString(selectedModelProfile.brand)
+                ? t('admin.make', { defaultValue: 'Make' })
+                : null,
+            normalizeComparableString(formState.model) !== normalizeComparableString(selectedModelProfile.model_name)
+                ? t('admin.model', { defaultValue: 'Model' })
+                : null,
+            normalizeComparableString(formState.bodyType) !== normalizeComparableString(selectedModelProfile.body_type)
+                ? t('listings.fields.bodyType', { defaultValue: 'Body type' })
+                : null,
+            normalizeComparableNumber(formState.batteryCapacity) !== normalizeComparableNumber(selectedModelProfile.battery_capacity)
+                ? t('dealerListingsPage.form.batteryCapacity', { defaultValue: 'Battery capacity' })
+                : null,
+            normalizeComparableNumber(formState.range) !== normalizeComparableNumber(selectedModelProfile.range_wltp)
+                ? t('dealerListingsPage.form.range', { defaultValue: 'Range' })
+                : null,
+        ].filter((field): field is string => Boolean(field))
+        : [];
+    const requiresModelProfileChangeReason = Boolean(selectedModelProfile && modifiedModelProfileFields.length > 0);
 
     useEffect(() => {
         galleryDraftsRef.current = galleryDrafts;
@@ -193,6 +269,10 @@ const ListingForm: React.FC<ListingFormProps> = ({
             setFormState(prev => ({
                 ...prev,
                 modelId: undefined,
+                modelProfileChangeReason: null,
+                modelProfileChangeNotes: '',
+                modelProfileChangeFields: [],
+                modelProfileSnapshot: null,
             }));
             return;
         }
@@ -221,6 +301,10 @@ const ListingForm: React.FC<ListingFormProps> = ({
                 range: profile.range_wltp ?? prev.range,
                 images: shouldUseProfileImage ? [primaryImage] : prev.images,
                 imageGallery: shouldUseProfileGallery ? profileGallery : prev.imageGallery,
+                modelProfileChangeReason: null,
+                modelProfileChangeNotes: '',
+                modelProfileChangeFields: [],
+                modelProfileSnapshot: getModelProfileSnapshot(profile),
             };
         });
 
@@ -368,6 +452,20 @@ const ListingForm: React.FC<ListingFormProps> = ({
         if (!formState.model.trim()) newErrors.model = requiredMessage;
         if (!formState.year || formState.year < 1900 || formState.year > yearMax) newErrors.year = requiredMessage;
         if (!formState.price || formState.price <= 0) newErrors.price = requiredMessage;
+        if (requiresModelProfileChangeReason && !formState.modelProfileChangeReason) {
+            newErrors.modelProfileChangeReason = t('dealerListingsPage.form.modelChangeReasonRequired', {
+                defaultValue: 'Choose why the listing differs from the selected model card.',
+            });
+        }
+        if (
+            requiresModelProfileChangeReason &&
+            formState.modelProfileChangeReason === 'other' &&
+            !formState.modelProfileChangeNotes?.trim()
+        ) {
+            newErrors.modelProfileChangeNotes = t('dealerListingsPage.form.modelChangeNotesRequired', {
+                defaultValue: 'Add notes when choosing Other.',
+            });
+        }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -414,6 +512,14 @@ const ListingForm: React.FC<ListingFormProps> = ({
             modelId: formState.modelId || undefined,
             batteryCapacity: sanitizeOptionalNumber(formState.batteryCapacity),
             range: sanitizeOptionalNumber(formState.range),
+            modelProfileChangeReason: requiresModelProfileChangeReason
+                ? formState.modelProfileChangeReason
+                : null,
+            modelProfileChangeNotes: requiresModelProfileChangeReason
+                ? formState.modelProfileChangeNotes?.trim() || undefined
+                : undefined,
+            modelProfileChangeFields: requiresModelProfileChangeReason ? modifiedModelProfileFields : [],
+            modelProfileSnapshot: selectedModelProfile ? getModelProfileSnapshot(selectedModelProfile) : null,
             location,
             financialOptions,
             imageFile,
@@ -466,6 +572,104 @@ const ListingForm: React.FC<ListingFormProps> = ({
                             <p className="mt-2 text-xs font-medium text-gray-cyan">
                                 {t('dealerListingsPage.form.modelProfileApplied', { model: selectedModelLabel })}
                             </p>
+                        )}
+                        {selectedModelProfile && (
+                            <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <p className="text-sm font-semibold text-white">
+                                            {t('dealerListingsPage.form.modelGovernanceTitle', {
+                                                defaultValue: 'Model-card governance',
+                                            })}
+                                        </p>
+                                        <p className="mt-1 text-xs leading-5 text-gray-400">
+                                            {t('dealerListingsPage.form.modelGovernanceHelp', {
+                                                defaultValue:
+                                                    'If you change technical fields copied from the selected model card, explain why. This keeps the canonical catalog separate from dealer-specific listing data.',
+                                            })}
+                                        </p>
+                                    </div>
+                                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                                        requiresModelProfileChangeReason
+                                            ? 'bg-amber-500/15 text-amber-200'
+                                            : 'bg-emerald-500/15 text-emerald-200'
+                                    }`}>
+                                        {requiresModelProfileChangeReason
+                                            ? t('dealerListingsPage.form.modelChangesDetected', {
+                                                defaultValue: 'Changes detected',
+                                            })
+                                            : t('dealerListingsPage.form.modelChangesNone', {
+                                                defaultValue: 'No catalog changes',
+                                            })}
+                                    </span>
+                                </div>
+
+                                {modifiedModelProfileFields.length > 0 && (
+                                    <p className="mt-3 text-xs text-gray-300">
+                                        {t('dealerListingsPage.form.modifiedModelFields', {
+                                            defaultValue: 'Changed fields: {{fields}}',
+                                            fields: modifiedModelProfileFields.join(', '),
+                                        })}
+                                    </p>
+                                )}
+
+                                {requiresModelProfileChangeReason && (
+                                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                        <div>
+                                            <label htmlFor="listing-model-change-reason" className="mb-1 block text-sm font-medium text-gray-300">
+                                                {t('dealerListingsPage.form.modelChangeReason', {
+                                                    defaultValue: 'Why is listing data different?',
+                                                })}
+                                            </label>
+                                            <select
+                                                id="listing-model-change-reason"
+                                                name="modelProfileChangeReason"
+                                                value={formState.modelProfileChangeReason ?? ''}
+                                                onChange={handleChange}
+                                                aria-invalid={Boolean(errors.modelProfileChangeReason)}
+                                                className={selectClass}
+                                            >
+                                                <option value="">
+                                                    {t('dealerListingsPage.form.modelChangeReasonPlaceholder', {
+                                                        defaultValue: 'Choose a reason',
+                                                    })}
+                                                </option>
+                                                {modelProfileChangeReasonOptions.map(option => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {t(option.labelKey, { defaultValue: option.defaultLabel })}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {errors.modelProfileChangeReason && (
+                                                <p className="mt-1 text-xs text-red-400">{errors.modelProfileChangeReason}</p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label htmlFor="listing-model-change-notes" className="mb-1 block text-sm font-medium text-gray-300">
+                                                {t('dealerListingsPage.form.modelChangeNotes', {
+                                                    defaultValue: 'Notes for admin review',
+                                                })}
+                                            </label>
+                                            <textarea
+                                                id="listing-model-change-notes"
+                                                name="modelProfileChangeNotes"
+                                                value={formState.modelProfileChangeNotes ?? ''}
+                                                onChange={handleChange}
+                                                rows={3}
+                                                aria-invalid={Boolean(errors.modelProfileChangeNotes)}
+                                                placeholder={t('dealerListingsPage.form.modelChangeNotesPlaceholder', {
+                                                    defaultValue:
+                                                        'Required for Other. Recommended when the selected catalog card appears wrong.',
+                                                })}
+                                                className={inputClass}
+                                            />
+                                            {errors.modelProfileChangeNotes && (
+                                                <p className="mt-1 text-xs text-red-400">{errors.modelProfileChangeNotes}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
 

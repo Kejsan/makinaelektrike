@@ -28,6 +28,7 @@ import {
   Megaphone,
   Receipt,
   CreditCard,
+  BookOpen,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -8739,6 +8740,28 @@ const AdminPage: React.FC = () => {
           </button>
 
           <button
+            onClick={() => navigate('/admin/guide')}
+            className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
+          >
+            <div className="flex items-center gap-2">
+              <BookOpen size={18} className="text-gray-cyan" />
+              <span>{t('admin.privateAdminGuide', { defaultValue: 'Admin how-to guide' })}</span>
+            </div>
+            <ExternalLink size={14} className="text-gray-400" />
+          </button>
+
+          <button
+            onClick={() => navigate('/admin/dealer-guide')}
+            className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
+          >
+            <div className="flex items-center gap-2">
+              <BookOpen size={18} className="text-gray-cyan" />
+              <span>{t('admin.privateDealerGuide', { defaultValue: 'Dealer how-to guide' })}</span>
+            </div>
+            <ExternalLink size={14} className="text-gray-400" />
+          </button>
+
+          <button
             onClick={() => navigate('/')}
             className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
           >
@@ -8769,6 +8792,13 @@ const AdminPage: React.FC = () => {
               <h1 className="text-lg font-bold text-white">{t('admin.dashboard')}</h1>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/admin/guide')}
+                className="p-2 text-gray-300 hover:text-white transition rounded-lg hover:bg-white/10"
+                aria-label={t('admin.privateAdminGuide', { defaultValue: 'Admin how-to guide' })}
+              >
+                <BookOpen size={20} />
+              </button>
               <button
                 onClick={() => setOfflineQueueOpen(true)}
                 className="relative p-2 text-gray-300 hover:text-white transition rounded-lg hover:bg-white/10"
@@ -9823,6 +9853,43 @@ const AdminPage: React.FC = () => {
                                 })}
                           </p>
                         </div>
+
+                        {listingControlDetail.listing.modelProfileChangeReason && (
+                          <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3">
+                            <p className="text-[10px] uppercase tracking-wide text-amber-200/80">
+                              {t('admin.listingModelOverrideReview', {
+                                defaultValue: 'Dealer model-card override',
+                              })}
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-amber-50">
+                              {listingControlDetail.listing.modelProfileChangeReason.replace(/_/g, ' ')}
+                            </p>
+                            {listingControlDetail.listing.modelProfileChangeFields.length > 0 && (
+                              <p className="mt-2 text-xs text-amber-100/80">
+                                {t('admin.listingModelOverrideFields', {
+                                  defaultValue: 'Changed fields: {{fields}}',
+                                  fields: listingControlDetail.listing.modelProfileChangeFields.join(', '),
+                                })}
+                              </p>
+                            )}
+                            {listingControlDetail.listing.modelProfileChangeNotes && (
+                              <p className="mt-2 text-sm leading-6 text-amber-50/90">
+                                {listingControlDetail.listing.modelProfileChangeNotes}
+                              </p>
+                            )}
+                            {listingControlDetail.listing.modelProfileSnapshot && (
+                              <p className="mt-2 text-xs text-amber-100/70">
+                                {t('admin.listingModelOverrideSnapshot', {
+                                  defaultValue: 'Original card: {{model}}',
+                                  model: [
+                                    listingControlDetail.listing.modelProfileSnapshot.brand,
+                                    listingControlDetail.listing.modelProfileSnapshot.modelName,
+                                  ].filter(Boolean).join(' ') || listingControlDetail.listing.modelProfileSnapshot.modelId,
+                                })}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </section>
 

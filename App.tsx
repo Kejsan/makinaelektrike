@@ -34,6 +34,8 @@ const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
 const AwaitingApprovalPage = lazy(() => import('./pages/AwaitingApprovalPage'));
 const DealerDashboardPage = lazy(() => import('./pages/DealerDashboardPage'));
 const DealerListingsPage = lazy(() => import('./pages/DealerListingsPage'));
+const DealerGuidePage = lazy(() => import('./pages/DealerGuidePage'));
+const MasterAdminGuidePage = lazy(() => import('./pages/MasterAdminGuidePage'));
 const AcceptInvitePage = lazy(() => import('./pages/AcceptInvitePage'));
 const ListingsPage = lazy(() => import('./pages/ListingsPage'));
 const ListingDetailPage = lazy(() => import('./pages/ListingDetailPage'));
@@ -210,6 +212,18 @@ const AppRoutes = () => (
       }
     />
     <Route
+      path="/dealer/guide"
+      element={(
+        <RouteContent>
+          <DealerRoute>
+            <DealerWorkspaceShell>
+              <DealerGuidePage />
+            </DealerWorkspaceShell>
+          </DealerRoute>
+        </RouteContent>
+      )}
+    />
+    <Route
       path="/dealer/dashboard"
       element={(
         <RouteContent>
@@ -218,6 +232,26 @@ const AppRoutes = () => (
               <DealerDashboardPage />
             </DealerWorkspaceShell>
           </DealerRoute>
+        </RouteContent>
+      )}
+    />
+    <Route
+      path="/admin/guide"
+      element={(
+        <RouteContent>
+          <AdminRoute>
+            <MasterAdminGuidePage />
+          </AdminRoute>
+        </RouteContent>
+      )}
+    />
+    <Route
+      path="/admin/dealer-guide"
+      element={(
+        <RouteContent>
+          <AdminRoute>
+            <DealerGuidePage adminView />
+          </AdminRoute>
         </RouteContent>
       )}
     />

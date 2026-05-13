@@ -10,6 +10,7 @@ import { DataContext } from '../contexts/DataContext';
 import SEO from '../components/SEO';
 import { BASE_URL } from '../constants/seo';
 import { DEALERSHIP_PLACEHOLDER_IMAGE } from '../constants/media';
+import { DEALER_SERVICE_CAPABILITY_OPTIONS } from '../constants/dealerCapabilities';
 import GallerySection from '../components/GallerySection';
 import OptimizedImage from '../components/OptimizedImage';
 import Link from '../components/LocalizedLink';
@@ -105,6 +106,9 @@ const DealerDetailPage: React.FC = () => {
         description: dealer.description ?? '',
     });
     const formattedBrands = dealer.brands?.length ? dealer.brands : [];
+    const serviceCapabilities = DEALER_SERVICE_CAPABILITY_OPTIONS.filter(option =>
+        (dealer.serviceCapabilities ?? []).includes(option.value),
+    );
     const keywords = [
         dealer.name,
         dealer.city,
@@ -262,6 +266,40 @@ const DealerDetailPage: React.FC = () => {
                                     {(dealer.brands || []).map(brand => <span key={brand} className="text-sm bg-gray-700/50 rounded-full px-3 py-1">{brand}</span>)}
                                 </div>
                             </div>
+
+                            {(serviceCapabilities.length > 0 || dealer.certificationDetails || dealer.serviceNotes) && (
+                                <div>
+                                    <h3 className="font-semibold text-white">
+                                        {t('dealerDetails.serviceCapabilities', { defaultValue: 'EV service and support' })}
+                                    </h3>
+                                    {serviceCapabilities.length > 0 && (
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {serviceCapabilities.map(option => (
+                                                <span
+                                                    key={option.value}
+                                                    className="rounded-full border border-gray-cyan/25 bg-gray-cyan/10 px-3 py-1 text-sm text-gray-cyan"
+                                                >
+                                                    {t(option.labelKey, { defaultValue: option.defaultLabel })}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {dealer.certificationDetails && (
+                                        <p className="mt-3 text-sm leading-6 text-gray-300">
+                                            <span className="font-semibold text-white">
+                                                {t('dealerDetails.certificationDetails', {
+                                                    defaultValue: 'Certification details',
+                                                })}
+                                                :{' '}
+                                            </span>
+                                            {dealer.certificationDetails}
+                                        </p>
+                                    )}
+                                    {dealer.serviceNotes && (
+                                        <p className="mt-2 text-sm leading-6 text-gray-300">{dealer.serviceNotes}</p>
+                                    )}
+                                </div>
+                            )}
 
                             <div>
                                 <h3 className="font-semibold text-white">{t('dealerDetails.languagesSpoken')}</h3>

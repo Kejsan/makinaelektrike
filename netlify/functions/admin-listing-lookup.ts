@@ -58,6 +58,28 @@ const getListingTitle = (data: DocumentData, fallbackId: string) => {
 const getStringArray = (value: unknown) =>
   Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0) : [];
 
+const getListingModelProfileSnapshot = (value: unknown) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const modelId = typeof record.modelId === 'string' ? record.modelId : null;
+  if (!modelId) {
+    return null;
+  }
+
+  return {
+    modelId,
+    brand: typeof record.brand === 'string' ? record.brand : null,
+    modelName: typeof record.modelName === 'string' ? record.modelName : null,
+    bodyType: typeof record.bodyType === 'string' ? record.bodyType : null,
+    batteryCapacity: typeof record.batteryCapacity === 'number' ? record.batteryCapacity : null,
+    rangeWltp: typeof record.rangeWltp === 'number' ? record.rangeWltp : null,
+    capturedAt: typeof record.capturedAt === 'string' ? record.capturedAt : '',
+  };
+};
+
 const getLocationField = (location: unknown, field: 'address' | 'city') => {
   if (!location || typeof location !== 'object' || Array.isArray(location)) {
     return null;
@@ -163,6 +185,16 @@ export const handler = async (event: FunctionEvent) => {
           batteryCapacity:
             typeof listingData.batteryCapacity === 'number' ? listingData.batteryCapacity : null,
           range: typeof listingData.range === 'number' ? listingData.range : null,
+          modelProfileChangeReason:
+            typeof listingData.modelProfileChangeReason === 'string'
+              ? listingData.modelProfileChangeReason
+              : null,
+          modelProfileChangeNotes:
+            typeof listingData.modelProfileChangeNotes === 'string'
+              ? listingData.modelProfileChangeNotes
+              : null,
+          modelProfileChangeFields: getStringArray(listingData.modelProfileChangeFields),
+          modelProfileSnapshot: getListingModelProfileSnapshot(listingData.modelProfileSnapshot),
           price: typeof listingData.price === 'number' ? listingData.price : null,
           priceCurrency:
             typeof listingData.priceCurrency === 'string' ? listingData.priceCurrency : null,

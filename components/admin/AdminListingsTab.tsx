@@ -235,6 +235,13 @@ const AdminListingsTab: React.FC<AdminListingsTabProps> = ({
                             {listing.make} {listing.model}
                           </div>
                           <div className="text-xs text-gray-500">{listing.year} • {listing.mileage.toLocaleString()} km</div>
+                          {listing.modelProfileChangeReason && (
+                            <div className="mt-1 inline-flex rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-200">
+                              {t('admin.listings.modelOverrideFlag', {
+                                defaultValue: 'Model-card override',
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>

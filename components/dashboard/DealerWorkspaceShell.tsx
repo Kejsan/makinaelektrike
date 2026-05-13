@@ -6,6 +6,7 @@ import {
   FilePlus2,
   LayoutDashboard,
   ListChecks,
+  BookOpen,
   LogOut,
   ShieldCheck,
 } from 'lucide-react';
@@ -32,6 +33,11 @@ const DealerWorkspaceShell: React.FC<DealerWorkspaceShellProps> = ({ children })
       to: '/dealer/listings',
       label: t('dealerWorkspace.listings'),
       icon: <ListChecks className="h-4 w-4" />,
+    },
+    {
+      to: '/dealer/guide',
+      label: t('dealerWorkspace.guide', { defaultValue: 'How-to guide' }),
+      icon: <BookOpen className="h-4 w-4" />,
     },
   ];
 

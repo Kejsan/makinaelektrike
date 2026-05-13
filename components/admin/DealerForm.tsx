@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState, useContext } from 'react';
 import { Autocomplete } from '@react-google-maps/api';
 import { useTranslation } from 'react-i18next';
-import { Dealer, Model } from '../../types';
+import type { Dealer, DealerServiceCapability, Model } from '../../types';
 import { DEALERSHIP_PLACEHOLDER_IMAGE } from '../../constants/media';
+import { DEALER_SERVICE_CAPABILITY_OPTIONS } from '../../constants/dealerCapabilities';
 import { useGoogleMapsApi } from '../../hooks/useGoogleMapsApi';
 import { DataContext } from '../../contexts/DataContext';
 import ModalLayout from '../ModalLayout';
@@ -34,6 +35,9 @@ interface DealerFormState {
   website: string;
   brands: string;
   languages: string;
+  serviceCapabilities: DealerServiceCapability[];
+  serviceNotes: string;
+  certificationDetails: string;
   notes: string;
   typeOfCars: string;
   priceRange: string;
@@ -61,6 +65,9 @@ const defaultState: DealerFormState = {
   website: '',
   brands: '',
   languages: '',
+  serviceCapabilities: [],
+  serviceNotes: '',
+  certificationDetails: '',
   notes: '',
   typeOfCars: '',
   priceRange: '',
@@ -142,6 +149,9 @@ const DealerForm: React.FC<DealerFormProps> = ({
       website: initialValues.website ?? '',
       brands: initialValues.brands?.join(', ') ?? '',
       languages: initialValues.languages?.join(', ') ?? '',
+      serviceCapabilities: initialValues.serviceCapabilities ?? [],
+      serviceNotes: initialValues.serviceNotes ?? '',
+      certificationDetails: initialValues.certificationDetails ?? '',
       notes: initialValues.notes ?? '',
       typeOfCars: initialValues.typeOfCars ?? '',
       priceRange: initialValues.priceRange ?? '',
@@ -275,11 +285,28 @@ const DealerForm: React.FC<DealerFormProps> = ({
   };
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type, checked } = event.target;
+    const { name, value, type } = event.target;
+    const checked = event.target instanceof HTMLInputElement ? event.target.checked : false;
     setFormState(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
+  };
+
+  const handleServiceCapabilityChange = (capability: DealerServiceCapability, checked: boolean) => {
+    setFormState(prev => {
+      const current = new Set(prev.serviceCapabilities);
+      if (checked) {
+        current.add(capability);
+      } else {
+        current.delete(capability);
+      }
+
+      return {
+        ...prev,
+        serviceCapabilities: Array.from(current),
+      };
+    });
   };
 
   const handleImageFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -419,6 +446,9 @@ const DealerForm: React.FC<DealerFormProps> = ({
         .split(',')
         .map(item => item.trim())
         .filter(Boolean),
+      serviceCapabilities: formState.serviceCapabilities,
+      serviceNotes: formState.serviceNotes.trim() || undefined,
+      certificationDetails: formState.certificationDetails.trim() || undefined,
       typeOfCars: formState.typeOfCars.trim() || 'Unknown',
       modelsAvailable: selectedModels.map(model => `${model.brand ?? ''} ${model.model_name ?? ''}`.trim()).filter(Boolean),
       isFeatured: formState.isFeatured,
@@ -505,9 +535,11 @@ const DealerForm: React.FC<DealerFormProps> = ({
     options?: { isTextArea?: boolean; rows?: number }
   ) => {
     const error = errors[name as string];
+    const rawValue = formState[name];
+    const value = typeof rawValue === 'string' ? rawValue : '';
     const commonProps = {
       name,
-      value: formState[name],
+      value,
       onChange: handleChange,
       placeholder,
       className:
@@ -675,6 +707,62 @@ const DealerForm: React.FC<DealerFormProps> = ({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {renderInput(t('admin.brands'), 'brands', 'text', 'BYD, Tesla')}
         {renderInput(t('dealerDetails.languagesSpoken', { defaultValue: 'Languages' }), 'languages', 'text', 'Albanian, English')}
+        <div className="space-y-3 md:col-span-3">
+          <fieldset className="rounded-xl border border-white/10 bg-white/5 p-4">
+            <legend className="px-1 text-sm font-semibold text-gray-200">
+              {t('admin.dealerServiceCapabilities', {
+                defaultValue: 'Service and customer support capabilities',
+              })}
+            </legend>
+            <p className="mt-1 text-xs text-gray-400">
+              {t('admin.dealerServiceCapabilitiesHelp', {
+                defaultValue:
+                  'These values are dealer-editable, but admins can force-correct them here when a public profile needs review or cleanup.',
+              })}
+            </p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {DEALER_SERVICE_CAPABILITY_OPTIONS.map(option => (
+                <label
+                  key={option.value}
+                  className="flex items-start gap-3 rounded-lg border border-white/10 bg-black/20 p-3 text-sm text-gray-200 transition hover:border-gray-cyan/30 hover:bg-white/10"
+                >
+                  <input
+                    type="checkbox"
+                    checked={formState.serviceCapabilities.includes(option.value)}
+                    onChange={event => handleServiceCapabilityChange(option.value, event.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-white/20 bg-gray-900 text-gray-cyan focus:ring-gray-cyan"
+                  />
+                  <span>
+                    <span className="block font-semibold text-white">
+                      {t(option.labelKey, { defaultValue: option.defaultLabel })}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-gray-400">
+                      {t(option.descriptionKey, { defaultValue: option.defaultDescription })}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </div>
+        {renderInput(
+          t('admin.certificationDetails', { defaultValue: 'Certification or service details' }),
+          'certificationDetails',
+          'text',
+          t('admin.certificationDetailsPlaceholder', {
+            defaultValue: 'Certified service partner, trained EV technicians, warranty process notes...',
+          }),
+          { isTextArea: true, rows: 3 },
+        )}
+        {renderInput(
+          t('admin.serviceNotes', { defaultValue: 'Additional service notes' }),
+          'serviceNotes',
+          'text',
+          t('admin.serviceNotesPlaceholder', {
+            defaultValue: 'Parts coverage, appointment limits, partner workshops, roadside assistance details...',
+          }),
+          { isTextArea: true, rows: 3 },
+        )}
         <div className="md:col-span-2 space-y-2">
           <div className="flex items-center justify-between">
             <div>

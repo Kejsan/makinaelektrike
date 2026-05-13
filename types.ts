@@ -25,6 +25,23 @@ export type DealerPlanId = 'free' | 'paid';
 export type DealerSubscriptionStatus = 'active' | 'paused' | 'expired' | 'cancelled';
 export type ModelReviewStatus = 'approved' | 'pending_review' | 'rejected';
 export type ModelSubmissionSource = 'admin' | 'dealer' | 'import' | 'migration';
+export type DealerServiceCapability =
+  | 'ev_service'
+  | 'certified_service'
+  | 'parts_supply'
+  | 'battery_diagnostics'
+  | 'charging_installation'
+  | 'warranty_support'
+  | 'trade_in'
+  | 'financing'
+  | 'roadside_assistance'
+  | 'other';
+export type ListingModelProfileChangeReason =
+  | 'submodel_or_trim'
+  | 'catalog_error'
+  | 'market_variant'
+  | 'dealer_specific_configuration'
+  | 'other';
 export type AccessInviteType = 'platform_admin' | 'dealer_staff';
 export type AccessInviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
 export type AuditAction =
@@ -513,6 +530,9 @@ interface DealerCore {
   social_links?: { facebook?: string; instagram?: string; twitter?: string; youtube?: string; };
   brands: string[];
   languages: string[];
+  serviceCapabilities?: DealerServiceCapability[];
+  serviceNotes?: string;
+  certificationDetails?: string;
   notes?: string;
   typeOfCars: string;
   priceRange?: string;
@@ -733,6 +753,16 @@ export interface ListingLocation {
   city?: string;
 }
 
+export interface ListingModelProfileSnapshot {
+  modelId: string;
+  brand?: string | null;
+  modelName?: string | null;
+  bodyType?: string | null;
+  batteryCapacity?: number | null;
+  rangeWltp?: number | null;
+  capturedAt: string;
+}
+
 export interface BlogPostRevision extends FirestoreTimestamps {
   id: string;
   postId: string;
@@ -763,6 +793,10 @@ export interface Listing extends FirestoreTimestamps {
   // EV Specifics
   batteryCapacity?: number; // kWh
   range?: number; // km (WLTP usually)
+  modelProfileChangeReason?: ListingModelProfileChangeReason | null;
+  modelProfileChangeNotes?: string;
+  modelProfileChangeFields?: string[];
+  modelProfileSnapshot?: ListingModelProfileSnapshot | null;
 
   // Pricing
   price: number;

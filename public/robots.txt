@@ -19,7 +19,7 @@ Disallow: /api/
 Disallow: /private/
 Disallow: /_internal/
 Disallow: /studio/
-Disallow: /dealer/
+Disallow: /dealer
 Disallow: /login
 Disallow: /register
 Disallow: /register-dealer
@@ -52,37 +52,51 @@ Disallow: /*?*q=
 Disallow: /*?*lang=
 Allow: /*$
 
-# Major search engines (explicit allow)
+# Major search engines (public content allowed, private workspaces blocked)
 User-agent: Googlebot
-Disallow:
+Disallow: /admin
+Disallow: /dealer
 User-agent: Googlebot-Image
-Disallow:
+Disallow: /admin
+Disallow: /dealer
 User-agent: Googlebot-News
-Disallow:
+Disallow: /admin
+Disallow: /dealer
 User-agent: Bingbot
-Disallow:
+Disallow: /admin
+Disallow: /dealer
 User-agent: DuckDuckBot
-Disallow:
+Disallow: /admin
+Disallow: /dealer
 User-agent: Applebot
-Disallow:
+Disallow: /admin
+Disallow: /dealer
 
-# AI / research crawlers (allowed)
+# AI / research crawlers (public content allowed, private workspaces blocked)
 User-agent: OAI-SearchBot
-Disallow:
+Disallow: /admin
+Disallow: /dealer
 User-agent: ChatGPT-User
-Disallow:
+Disallow: /admin
+Disallow: /dealer
 User-agent: GPTBot
-Disallow:
+Disallow: /admin
+Disallow: /dealer
 User-agent: CCBot
-Disallow:
+Disallow: /admin
+Disallow: /dealer
 User-agent: ClaudeBot
-Disallow:
+Disallow: /admin
+Disallow: /dealer
 User-agent: Claude-User
-Disallow:
+Disallow: /admin
+Disallow: /dealer
 User-agent: Google-Extended
-Disallow:
+Disallow: /admin
+Disallow: /dealer
 User-agent: PerplexityBot
-Disallow:
+Disallow: /admin
+Disallow: /dealer
 
 # Aggressive/SEO scrapers (blocked)
 User-agent: AhrefsBot

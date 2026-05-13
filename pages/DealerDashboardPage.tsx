@@ -47,6 +47,7 @@ import {
 import type {
   AccessInvite,
   Dealer,
+  DealerServiceCapability,
   DealerPlacementRequestFormValues,
   DealerStaffRole,
   Model,
@@ -58,6 +59,7 @@ import type {
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import { DEALERSHIP_PLACEHOLDER_IMAGE, MODEL_PLACEHOLDER_IMAGE } from '../constants/media';
+import { DEALER_SERVICE_CAPABILITY_OPTIONS } from '../constants/dealerCapabilities';
 import Link from '../components/LocalizedLink';
 import DealerPlacementRequestForm, {
   type DealerPlacementEntityOption,
@@ -76,6 +78,9 @@ interface ProfileFormState {
   description: string;
   brands: string;
   languages: string;
+  serviceCapabilities: DealerServiceCapability[];
+  serviceNotes: string;
+  certificationDetails: string;
   typeOfCars: string;
   priceRange: string;
   facebook: string;
@@ -112,6 +117,9 @@ const defaultProfileState: ProfileFormState = {
   description: '',
   brands: '',
   languages: '',
+  serviceCapabilities: [],
+  serviceNotes: '',
+  certificationDetails: '',
   typeOfCars: '',
   priceRange: '',
   facebook: '',
@@ -145,6 +153,7 @@ const parseNumericField = (value: string) => {
   const parsed = Number(trimmed);
   return Number.isNaN(parsed) ? undefined : parsed;
 };
+
 
 const DealerDashboardPage: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -263,6 +272,7 @@ const DealerDashboardPage: React.FC = () => {
       profileState.description,
       profileState.brands,
       profileState.languages,
+      profileState.serviceCapabilities.length > 0 ? 'services' : '',
       profileState.typeOfCars,
       profileState.imageUrl,
     ];
@@ -298,6 +308,9 @@ const DealerDashboardPage: React.FC = () => {
       description: dealer.description ?? '',
       brands: formatList(dealer.brands),
       languages: formatList(dealer.languages),
+      serviceCapabilities: dealer.serviceCapabilities ?? [],
+      serviceNotes: dealer.serviceNotes ?? '',
+      certificationDetails: dealer.certificationDetails ?? '',
       typeOfCars: dealer.typeOfCars ?? '',
       priceRange: dealer.priceRange ?? '',
       facebook: dealer.social_links?.facebook ?? '',
@@ -363,6 +376,22 @@ const DealerDashboardPage: React.FC = () => {
     setProfileState(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleServiceCapabilityChange = (capability: DealerServiceCapability, checked: boolean) => {
+    setProfileState(prev => {
+      const current = new Set(prev.serviceCapabilities);
+      if (checked) {
+        current.add(capability);
+      } else {
+        current.delete(capability);
+      }
+
+      return {
+        ...prev,
+        serviceCapabilities: Array.from(current),
+      };
+    });
+  };
+
   const handleProfileSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!dealer) {
@@ -419,6 +448,9 @@ const DealerDashboardPage: React.FC = () => {
         description: profileState.description.trim() || undefined,
         brands: parseList(profileState.brands),
         languages: parseList(profileState.languages),
+        serviceCapabilities: profileState.serviceCapabilities,
+        serviceNotes: profileState.serviceNotes.trim() || undefined,
+        certificationDetails: profileState.certificationDetails.trim() || undefined,
         typeOfCars:
           profileState.typeOfCars.trim() ||
           dealer.typeOfCars ||
@@ -2129,6 +2161,80 @@ const DealerDashboardPage: React.FC = () => {
                     <p className="mt-1 text-xs text-gray-400">
                       {t('dealerDashboardPage.fields.separateEntries', { defaultValue: 'Separate entries with commas.' })}
                     </p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <fieldset className="rounded-2xl border border-white/10 bg-gray-950/40 p-4">
+                      <legend className="px-1 text-sm font-semibold text-gray-100">
+                        {t('dealerDashboardPage.fields.serviceCapabilities', {
+                          defaultValue: 'Service and customer support capabilities',
+                        })}
+                      </legend>
+                      <p className="mt-1 text-xs leading-5 text-gray-400">
+                        {t('dealerDashboardPage.fields.serviceCapabilitiesHelp', {
+                          defaultValue:
+                            'Select every capability your dealership can genuinely provide. These badges can appear on your public dealer profile and help admins review profile completeness.',
+                        })}
+                      </p>
+                      <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        {DEALER_SERVICE_CAPABILITY_OPTIONS.map(option => (
+                          <label
+                            key={option.value}
+                            className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-gray-200 transition hover:border-gray-cyan/30 hover:bg-white/10"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={profileState.serviceCapabilities.includes(option.value)}
+                              onChange={event => handleServiceCapabilityChange(option.value, event.target.checked)}
+                              className="mt-1 h-4 w-4 rounded border-white/20 bg-gray-900 text-gray-cyan focus:ring-gray-cyan"
+                            />
+                            <span>
+                              <span className="block font-semibold text-white">
+                                {t(option.labelKey, { defaultValue: option.defaultLabel })}
+                              </span>
+                              <span className="mt-1 block text-xs leading-5 text-gray-400">
+                                {t(option.descriptionKey, { defaultValue: option.defaultDescription })}
+                              </span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="certificationDetails">
+                      {t('dealerDashboardPage.fields.certificationDetails', {
+                        defaultValue: 'Certification or service details',
+                      })}
+                    </label>
+                    <textarea
+                      id="certificationDetails"
+                      name="certificationDetails"
+                      value={profileState.certificationDetails}
+                      onChange={handleProfileChange}
+                      rows={3}
+                      className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
+                      placeholder={t('dealerDashboardPage.fields.certificationDetailsPlaceholder', {
+                        defaultValue: 'Example: certified BYD service partner, trained high-voltage technicians, warranty process notes...',
+                      })}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="serviceNotes">
+                      {t('dealerDashboardPage.fields.serviceNotes', {
+                        defaultValue: 'Additional service notes',
+                      })}
+                    </label>
+                    <textarea
+                      id="serviceNotes"
+                      name="serviceNotes"
+                      value={profileState.serviceNotes}
+                      onChange={handleProfileChange}
+                      rows={3}
+                      className="w-full rounded-lg border border-white/10 bg-gray-900/60 px-4 py-2 text-white focus:border-gray-cyan focus:outline-none focus:ring-2 focus:ring-gray-cyan"
+                      placeholder={t('dealerDashboardPage.fields.serviceNotesPlaceholder', {
+                        defaultValue: 'Add service coverage, parts availability, appointment requirements, partner workshops, or limitations.',
+                      })}
+                    />
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-200" htmlFor="typeOfCars">

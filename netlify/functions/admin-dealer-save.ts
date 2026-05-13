@@ -25,6 +25,7 @@ import {
 import type {
   DealerDocument,
   DealerPlanId,
+  DealerServiceCapability,
   DealerStatus,
   DealerSubscriptionStatus,
 } from '../../types';
@@ -37,6 +38,18 @@ interface DealerSaveBody {
 const DEALER_STATUSES = ['pending', 'approved', 'rejected', 'deleted'] as const;
 const DEALER_PLAN_IDS = ['free', 'paid'] as const;
 const DEALER_SUBSCRIPTION_STATUSES = ['active', 'paused', 'expired', 'cancelled'] as const;
+const DEALER_SERVICE_CAPABILITIES = [
+  'ev_service',
+  'certified_service',
+  'parts_supply',
+  'battery_diagnostics',
+  'charging_installation',
+  'warranty_support',
+  'trade_in',
+  'financing',
+  'roadside_assistance',
+  'other',
+] as const;
 
 const buildDealerModelDocId = (dealerId: string, modelId: string) => `${dealerId}_${modelId}`;
 
@@ -91,6 +104,24 @@ const parseDealerValues = (value: unknown) => {
 
   const languages = parseStringArrayField(record, 'languages', 50, 80);
   if (languages !== undefined) updates.languages = languages;
+
+  const serviceCapabilities = parseStringArrayField(record, 'serviceCapabilities', 50, 80);
+  if (serviceCapabilities !== undefined) {
+    updates.serviceCapabilities = serviceCapabilities.map(
+      capability =>
+        getEnumValue(
+          capability,
+          DEALER_SERVICE_CAPABILITIES,
+          'serviceCapabilities',
+        ) as DealerServiceCapability,
+    );
+  }
+
+  const serviceNotes = parseOptionalStringField(record, 'serviceNotes', 5000);
+  if (serviceNotes !== undefined) updates.serviceNotes = serviceNotes;
+
+  const certificationDetails = parseOptionalStringField(record, 'certificationDetails', 5000);
+  if (certificationDetails !== undefined) updates.certificationDetails = certificationDetails;
 
   const notes = parseOptionalStringField(record, 'notes', 5000);
   if (notes !== undefined) updates.notes = notes;
@@ -239,6 +270,13 @@ export const handler = async (event: FunctionEvent) => {
         lng,
         brands: (updates.brands as string[] | undefined) ?? [],
         languages: (updates.languages as string[] | undefined) ?? [],
+        ...(updates.serviceCapabilities !== undefined
+          ? { serviceCapabilities: updates.serviceCapabilities as DealerServiceCapability[] }
+          : {}),
+        ...(updates.serviceNotes !== undefined ? { serviceNotes: updates.serviceNotes as string } : {}),
+        ...(updates.certificationDetails !== undefined
+          ? { certificationDetails: updates.certificationDetails as string }
+          : {}),
         typeOfCars: (updates.typeOfCars as string | undefined) ?? 'Unknown',
         modelsAvailable: (updates.modelsAvailable as string[] | undefined) ?? [],
         ownerUid: profile.uid,
@@ -374,6 +412,8 @@ export const handler = async (event: FunctionEvent) => {
             subscriptionStatus: previousData.subscriptionStatus ?? null,
             image_url: previousData.image_url ?? null,
             imageGallery: previousData.imageGallery ?? [],
+            serviceCapabilities: previousData.serviceCapabilities ?? [],
+            certificationDetails: previousData.certificationDetails ?? null,
           },
       after: {
         name: savedData.name ?? null,
@@ -385,6 +425,8 @@ export const handler = async (event: FunctionEvent) => {
         subscriptionStatus: savedData.subscriptionStatus ?? null,
         image_url: savedData.image_url ?? null,
         imageGallery: savedData.imageGallery ?? [],
+        serviceCapabilities: savedData.serviceCapabilities ?? [],
+        certificationDetails: savedData.certificationDetails ?? null,
       },
       metadata: {
         operation: isCreate ? 'create' : 'update',

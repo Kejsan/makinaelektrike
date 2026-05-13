@@ -8,6 +8,8 @@ import type {
   AdminRoleId,
   DealerPlanId,
   DealerSubscriptionStatus,
+  ListingModelProfileChangeReason,
+  ListingModelProfileSnapshot,
   UserRole,
 } from '../types';
 
@@ -55,6 +57,10 @@ export interface AdminListingLookupResult {
     fuelType: string | null;
     batteryCapacity: number | null;
     range: number | null;
+    modelProfileChangeReason: ListingModelProfileChangeReason | null;
+    modelProfileChangeNotes: string | null;
+    modelProfileChangeFields: string[];
+    modelProfileSnapshot: ListingModelProfileSnapshot | null;
     price: number | null;
     priceCurrency: string | null;
     locationAddress: string | null;
