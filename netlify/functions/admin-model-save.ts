@@ -182,6 +182,11 @@ export const handler = async (event: FunctionEvent) => {
       await modelRef.set({
         ...updates,
         ownerUid: profile.uid,
+        reviewStatus: 'approved',
+        submissionSource: 'admin',
+        reviewedAt: FieldValue.serverTimestamp(),
+        reviewedBy: profile.uid,
+        reviewNotes: null,
         createdBy: profile.uid,
         updatedBy: profile.uid,
         createdAt: FieldValue.serverTimestamp(),

@@ -1,6 +1,7 @@
 functionsDirectory = "C:\\Users\\Admin\\Downloads\\Vibe Coding\\Makina Elektrike\\makinaelektrike\\netlify\\functions"
 functionsDirectoryOrigin = "config"
 redirectsOrigin = "config"
+plugins = []
 
 [build]
 publish = "C:\\Users\\Admin\\Downloads\\Vibe Coding\\Makina Elektrike\\makinaelektrike\\dist"
@@ -27,13 +28,6 @@ functions = "C:\\Users\\Admin\\Downloads\\Vibe Coding\\Makina Elektrike\\makinae
 
 [functions."*"]
 node_bundler = "esbuild"
-
-[[plugins]]
-origin = "ui"
-package = "@netlify/plugin-nextjs"
-pinned_version = "5"
-
-[plugins.inputs]
 
 [[headers]]
 for = "/*"

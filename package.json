@@ -11,9 +11,15 @@
     "preview": "vite preview",
     "seo:validate": "tsx scripts/validate-seo-output.ts",
     "test": "vitest run",
+    "test:rules": "node scripts/run-hardening-suite.mjs rules",
+    "test:backend": "node scripts/run-hardening-suite.mjs backend",
+    "test:hardening": "node scripts/run-hardening-suite.mjs hardening",
     "seed:stations": "tsx scripts/seedChargingStations.ts",
     "backfill:dealer-ids": "tsx scripts/backfillDealerListingIds.ts",
-    "backfill:dealer-public-visibility": "node scripts/backfillDealerPublicVisibility.js"
+    "backfill:dealer-public-visibility": "node scripts/backfillDealerPublicVisibility.js",
+    "backfill:access-control": "tsx scripts/backfillAccessControl.ts",
+    "backfill:model-governance": "tsx scripts/backfillModelGovernance.ts",
+    "backfill:blog-revisions": "tsx scripts/backfillBlogRevisions.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.966.0",
@@ -36,10 +42,12 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
     "@types/leaflet.markercluster": "^1.5.6",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.17",
+    "firebase-tools": "^15.17.0",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.21.0",

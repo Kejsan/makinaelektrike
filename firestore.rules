@@ -25,14 +25,23 @@ service cloud.firestore {
       );
     }
 
+    function getUserDataOrNull() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data
+          : null;
+    }
+
     function hasActiveUserRecord() {
-      return hasUserRecord() && !isBlockedAccountData(getUserData());
+      let userData = getUserDataOrNull();
+      return userData != null && !isBlockedAccountData(userData);
     }
 
     function isSignedInAndNotBlocked() {
+      let userData = getUserDataOrNull();
       return isAuthenticated() && (
-        !hasUserRecord() ||
-        hasActiveUserRecord()
+        userData == null ||
+        !isBlockedAccountData(userData)
       );
     }
 
@@ -41,39 +50,53 @@ service cloud.firestore {
     }
 
     function hasUserRecord() {
-      return isAuthenticated() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      return getUserDataOrNull() != null;
     }
 
     function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return getUserDataOrNull();
     }
 
     function hasAdminRole(roleId) {
-      return hasActiveUserRecord() &&
-        ('adminRoleIds' in getUserData()) &&
-        getUserData().adminRoleIds.hasAny([roleId]);
+      let userData = getUserDataOrNull();
+      return userData != null &&
+        !isBlockedAccountData(userData) &&
+        ('adminRoleIds' in userData) &&
+        userData.adminRoleIds.hasAny([roleId]);
     }
 
     function hasAnyScopedAdminRole() {
-      return hasActiveUserRecord() &&
-        ('adminRoleIds' in getUserData()) &&
-        getUserData().adminRoleIds.size() > 0;
+      let userData = getUserDataOrNull();
+      return userData != null &&
+        !isBlockedAccountData(userData) &&
+        ('adminRoleIds' in userData) &&
+        userData.adminRoleIds.size() > 0;
     }
 
     function hasDirectPermission(permission) {
-      return hasActiveUserRecord() &&
-        ('directPermissions' in getUserData()) &&
-        getUserData().directPermissions[permission] == true;
+      let userData = getUserDataOrNull();
+      return userData != null &&
+        !isBlockedAccountData(userData) &&
+        ('directPermissions' in userData) &&
+        userData.directPermissions[permission] == true;
     }
 
     function hasFullAdminAccess() {
-      return hasActiveUserRecord() && (
-        getUserData().role == 'admin' ||
-        getUserData().accountType == 'admin' ||
-        getUserData().isMasterAdmin == true ||
-        hasAdminRole('master_admin')
-      );
+      let userData = getUserDataOrNull();
+      return userData != null &&
+        !isBlockedAccountData(userData) &&
+        (
+          userData.role == 'admin' ||
+          userData.accountType == 'admin' ||
+          (
+            ('isMasterAdmin' in userData) &&
+            userData.isMasterAdmin == true
+          ) ||
+          (
+            ('adminRoleIds' in userData) &&
+            userData.adminRoleIds.hasAny(['master_admin'])
+          )
+        );
     }
 
     function canManageUsers() {
@@ -150,13 +173,15 @@ service cloud.firestore {
     }
 
     function isDealerStaffForId(dealerId) {
-      return hasActiveUserRecord() &&
-        getUserData().accountType == 'dealer_staff' &&
-        getUserData().dealerId == dealerId &&
+      let userData = getUserDataOrNull();
+      return userData != null &&
+        !isBlockedAccountData(userData) &&
+        userData.accountType == 'dealer_staff' &&
+        userData.dealerId == dealerId &&
         (
-          !('accountStatus' in getUserData()) ||
-          getUserData().accountStatus == 'active' ||
-          getUserData().accountStatus == 'approved'
+          !('accountStatus' in userData) ||
+          userData.accountStatus == 'active' ||
+          userData.accountStatus == 'approved'
         );
     }
 
@@ -175,24 +200,32 @@ service cloud.firestore {
     }
 
     function isDealerOwner(dealerData) {
-      return isSignedInAndNotBlocked() && dealerData.ownerUid == request.auth.uid;
+      return dealerData != null &&
+        isSignedInAndNotBlocked() &&
+        dealerData.ownerUid == request.auth.uid;
     }
 
     function isPublicDealer(dealerData) {
-      return dealerData.approved == true &&
+      return dealerData != null &&
+        dealerData.approved == true &&
         dealerData.isActive == true &&
         dealerData.isDeleted != true;
     }
 
     function isPublicListing(listingData) {
-      return listingData.status == 'approved' || listingData.status == 'active';
+      return listingData != null &&
+        (
+          listingData.status == 'approved' ||
+          listingData.status == 'active'
+        );
     }
 
     function isListingOwner(listingData) {
-      return isSignedInAndNotBlocked() && (
-        listingData.ownerUid == request.auth.uid ||
-        isDealerMemberById(listingData.dealerId)
-      );
+      return listingData != null &&
+        isSignedInAndNotBlocked() && (
+          listingData.ownerUid == request.auth.uid ||
+          isDealerMemberById(listingData.dealerId)
+        );
     }
 
     match /users/{userId} {
@@ -345,11 +378,29 @@ service cloud.firestore {
           !('ownerDealerId' in request.resource.data) ||
           request.resource.data.ownerDealerId == null ||
           isDealerMemberById(request.resource.data.ownerDealerId)
+        ) &&
+        request.resource.data.reviewStatus == 'pending_review' &&
+        request.resource.data.isActive != true &&
+        (
+          !('submissionSource' in request.resource.data) ||
+          request.resource.data.submissionSource == 'dealer'
+        ) &&
+        (
+          !('reviewedAt' in request.resource.data) ||
+          request.resource.data.reviewedAt == null
+        ) &&
+        (
+          !('reviewedBy' in request.resource.data) ||
+          request.resource.data.reviewedBy == null
         )
       );
 
       allow update: if canManageModels() || (
         isAuthenticated() &&
+        (
+          resource.data.reviewStatus == 'pending_review' ||
+          resource.data.reviewStatus == 'rejected'
+        ) &&
         (
           (
             resource.data.ownerUid == request.auth.uid &&
@@ -361,11 +412,23 @@ service cloud.firestore {
             isDealerMemberById(resource.data.ownerDealerId) &&
             request.resource.data.ownerDealerId == resource.data.ownerDealerId
           )
-        )
+        ) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'reviewStatus',
+          'reviewRequestedAt',
+          'reviewedAt',
+          'reviewedBy',
+          'reviewNotes',
+          'submissionSource',
+        ])
       );
 
       allow delete: if canManageModels() || (
         isAuthenticated() &&
+        (
+          resource.data.reviewStatus == 'pending_review' ||
+          resource.data.reviewStatus == 'rejected'
+        ) &&
         (
           resource.data.ownerUid == request.auth.uid ||
           (

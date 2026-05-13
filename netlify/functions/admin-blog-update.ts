@@ -13,6 +13,7 @@ import { getEnumValue, getOptionalBoolean, getRequiredString } from './_lib/vali
 import { requireAdminPermission } from './_lib/adminAccess';
 import { getAdminFirestore } from './_lib/firebaseAdmin';
 import { buildAuditActor, writeAdminAuditLog } from './_lib/auditLog';
+import { writeBlogPostRevision } from './_lib/blogRevisions';
 
 interface BlogAdminUpdateBody {
   postId?: string;
@@ -50,6 +51,14 @@ export const handler = async (event: FunctionEvent) => {
     const previousData = (snapshot.data() ?? {}) as Record<string, unknown>;
 
     if (shouldDelete) {
+      await writeBlogPostRevision(firestore, {
+        postId,
+        snapshot: previousData,
+        action: 'delete',
+        actorUid: profile.uid,
+        actorEmail: profile.email ?? null,
+        summary: `Captured final revision before deleting blog post ${postId}.`,
+      });
       await postRef.delete();
       await writeAdminAuditLog({
         actor: buildAuditActor(profile),
@@ -90,6 +99,17 @@ export const handler = async (event: FunctionEvent) => {
     }
 
     await postRef.update(updateData);
+    const updatedSnapshot = await postRef.get();
+    const updatedData = (updatedSnapshot.data() ?? {}) as Record<string, unknown>;
+
+    await writeBlogPostRevision(firestore, {
+      postId,
+      snapshot: updatedData,
+      action: nextStatus === 'published' ? 'publish' : 'unpublish',
+      actorUid: profile.uid,
+      actorEmail: profile.email ?? null,
+      summary: `Captured ${nextStatus} revision for blog post ${postId}.`,
+    });
 
     await writeAdminAuditLog({
       actor: buildAuditActor(profile),

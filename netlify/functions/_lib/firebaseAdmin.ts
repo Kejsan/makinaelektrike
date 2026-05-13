@@ -12,11 +12,22 @@ interface ServiceAccountShape {
 
 const normalizePrivateKey = (value: string) => value.replace(/\\n/g, '\n');
 
+const getProjectIdFromEnv = () =>
+  process.env.FIREBASE_ADMIN_PROJECT_ID ??
+  process.env.FIREBASE_PROJECT_ID ??
+  process.env.GCLOUD_PROJECT ??
+  process.env.VITE_FIREBASE_PROJECT_ID ??
+  null;
+
+const isEmulatorMode = () =>
+  Boolean(
+    process.env.FIRESTORE_EMULATOR_HOST ||
+      process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+      process.env.FIREBASE_STORAGE_EMULATOR_HOST,
+  );
+
 const readServiceAccountFromEnv = (): ServiceAccountShape | null => {
-  const projectId =
-    process.env.FIREBASE_ADMIN_PROJECT_ID ??
-    process.env.FIREBASE_PROJECT_ID ??
-    process.env.VITE_FIREBASE_PROJECT_ID;
+  const projectId = getProjectIdFromEnv();
   const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 
@@ -60,6 +71,17 @@ const readServiceAccountFromFile = (): ServiceAccountShape | null => {
 const getAdminApp = () => {
   if (getApps().length > 0) {
     return getApps()[0]!;
+  }
+
+  if (isEmulatorMode()) {
+    const projectId = getProjectIdFromEnv();
+    if (!projectId) {
+      throw new Error(
+        'Missing Firebase project id for emulator mode. Configure GCLOUD_PROJECT, FIREBASE_PROJECT_ID, or VITE_FIREBASE_PROJECT_ID.',
+      );
+    }
+
+    return initializeApp({ projectId });
   }
 
   const serviceAccount = readServiceAccountFromEnv() ?? readServiceAccountFromFile();

@@ -1,6 +1,6 @@
 import { auth } from './firebase';
 import { fetchFunctionJson } from './serverFunctions';
-import type { ChargingStationFormValues, ListingStatus } from '../types';
+import type { ChargingStationFormValues, ListingStatus, ModelReviewStatus } from '../types';
 
 const getRequiredIdToken = async () => {
   const currentUser = auth.currentUser;
@@ -67,12 +67,15 @@ export const updateAdminModel = async (payload: {
   isActive?: boolean;
   isFeatured?: boolean;
   delete?: boolean;
+  reviewStatus?: ModelReviewStatus;
+  reviewNotes?: string | null;
 }) =>
   withAdminAuth<{
     ok: true;
     modelId: string;
     isActive?: boolean | null;
     isFeatured?: boolean | null;
+    reviewStatus?: ModelReviewStatus | null;
     deleted?: boolean;
   }, typeof payload>('admin-model-update', {
     method: 'POST',

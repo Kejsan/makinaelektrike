@@ -436,7 +436,7 @@ const AdminPage: React.FC = () => {
     { id: string; type: 'approve' | 'reject' | 'deactivate' | 'reactivate' | 'delete' } | null
   >(null);
   const [modelAction, setModelAction] = useState<
-    { id: string; type: 'toggleVisibility' | 'toggleFeatured' | 'delete' } | null
+    { id: string; type: 'toggleVisibility' | 'toggleFeatured' | 'approveReview' | 'rejectReview' | 'delete' } | null
   >(null);
   const [blogAction, setBlogAction] = useState<
     { id: string; type: 'toggleStatus' | 'delete' } | null
@@ -1165,8 +1165,8 @@ const AdminPage: React.FC = () => {
     return models
       .filter(model => {
         const matchesSearch = 
-          String(model.name || '').toLowerCase().includes(q) ||
-          String(model.make || '').toLowerCase().includes(q);
+          String(model.model_name || '').toLowerCase().includes(q) ||
+          String(model.brand || '').toLowerCase().includes(q);
         
         let matchesFilter = true;
         if (modelFilter === 'featured') matchesFilter = model.isFeatured;
@@ -3659,6 +3659,45 @@ const AdminPage: React.FC = () => {
           ? error.message
           : t('admin.modelDeleteFailed', {
               defaultValue: 'Failed to delete the model.',
+            }),
+        'error',
+      );
+    } finally {
+      setModelAction(null);
+    }
+  };
+
+  const handleReviewModel = async (
+    model: Model,
+    reviewStatus: 'approved' | 'rejected',
+    reviewNotes?: string | null,
+  ) => {
+    setModelAction({ id: model.id, type: reviewStatus === 'approved' ? 'approveReview' : 'rejectReview' });
+    try {
+      await updateAdminModel({
+        modelId: model.id,
+        reviewStatus,
+        reviewNotes: reviewNotes ?? null,
+      });
+      setModelControlModel(current =>
+        current && current.id === model.id
+          ? {
+              ...current,
+              reviewStatus,
+              isActive: reviewStatus === 'approved' ? true : false,
+            }
+          : current,
+      );
+      if (modelControlModel?.id === model.id) {
+        await loadModelControlDetail(model.id);
+      }
+    } catch (error) {
+      console.error('Failed to review model:', error);
+      addToast(
+        error instanceof Error
+          ? error.message
+          : t('admin.modelReviewUpdateFailed', {
+              defaultValue: 'Failed to update the model review state.',
             }),
         'error',
       );
@@ -6569,6 +6608,16 @@ const AdminPage: React.FC = () => {
                       {model.isFeatured && (
                         <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-200">
                           {t('admin.featured')}
+                        </span>
+                      )}
+                      {model.reviewStatus === 'pending_review' && (
+                        <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-500/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-100">
+                          {t('admin.pendingReview', { defaultValue: 'Pending review' })}
+                        </span>
+                      )}
+                      {model.reviewStatus === 'rejected' && (
+                        <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-red-500/30 bg-red-500/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-red-100">
+                          {t('admin.rejected', { defaultValue: 'Rejected' })}
                         </span>
                       )}
                       {model.isActive === false && (
@@ -9616,7 +9665,7 @@ const AdminPage: React.FC = () => {
                         </div>
                         <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
                           <p className="text-[10px] uppercase tracking-wide text-gray-500">
-                            {t('admin.createdOn', { defaultValue: 'Created on' })}
+                            {t('admin.createdLabel', { defaultValue: 'Created on' })}
                           </p>
                           <p className="mt-1 text-sm text-gray-200">
                             {formatDateTime(listingControlDetail.listing.createdAt) ??
@@ -9625,7 +9674,7 @@ const AdminPage: React.FC = () => {
                         </div>
                         <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
                           <p className="text-[10px] uppercase tracking-wide text-gray-500">
-                            {t('admin.updatedOn', { defaultValue: 'Updated on' })}
+                            {t('admin.updatedLabel', { defaultValue: 'Updated on' })}
                           </p>
                           <p className="mt-1 text-sm text-gray-200">
                             {formatDateTime(listingControlDetail.listing.updatedAt) ??
@@ -9782,6 +9831,16 @@ const AdminPage: React.FC = () => {
                       ? t('admin.hidden', { defaultValue: 'Hidden' })
                       : t('admin.visible', { defaultValue: 'Visible' })}
                   </span>
+                  {modelControlDetail?.model.reviewStatus === 'pending_review' && (
+                    <span className="inline-flex items-center rounded-full border border-amber-400/30 bg-amber-500/15 px-2 py-1 text-amber-100">
+                      {t('admin.pendingReview', { defaultValue: 'Pending review' })}
+                    </span>
+                  )}
+                  {modelControlDetail?.model.reviewStatus === 'rejected' && (
+                    <span className="inline-flex items-center rounded-full border border-red-500/30 bg-red-500/15 px-2 py-1 text-red-100">
+                      {t('admin.rejected', { defaultValue: 'Rejected' })}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex flex-wrap justify-end gap-2">
@@ -9796,6 +9855,36 @@ const AdminPage: React.FC = () => {
                 </button>
                 {canManageModels && modelControlDetail && (
                   <>
+                    {modelControlDetail.model.reviewStatus === 'pending_review' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => void handleReviewModel(modelControlModel, 'approved')}
+                          disabled={modelAction !== null}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {modelAction?.id === modelControlModel.id && modelAction.type === 'approveReview' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle size={16} />
+                          )}
+                          <span>{t('admin.approveModelReview', { defaultValue: 'Approve review' })}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleReviewModel(modelControlModel, 'rejected')}
+                          disabled={modelAction !== null}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {modelAction?.id === modelControlModel.id && modelAction.type === 'rejectReview' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <XCircle size={16} />
+                          )}
+                          <span>{t('admin.rejectModelReview', { defaultValue: 'Reject review' })}</span>
+                        </button>
+                      </>
+                    )}
                     <button
                       type="button"
                       onClick={() =>
@@ -9924,6 +10013,16 @@ const AdminPage: React.FC = () => {
                               {t('admin.featured', { defaultValue: 'Featured' })}
                             </span>
                           )}
+                          {modelControlDetail.model.reviewStatus === 'pending_review' && (
+                            <span className="inline-flex items-center rounded-full border border-amber-400/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-100">
+                              {t('admin.pendingReview', { defaultValue: 'Pending review' })}
+                            </span>
+                          )}
+                          {modelControlDetail.model.reviewStatus === 'rejected' && (
+                            <span className="inline-flex items-center rounded-full border border-red-500/30 bg-red-500/15 px-2 py-0.5 text-[10px] font-medium text-red-100">
+                              {t('admin.rejected', { defaultValue: 'Rejected' })}
+                            </span>
+                          )}
                           {modelControlDetail.model.isActive === false && (
                             <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-medium text-gray-300">
                               {t('admin.hidden', { defaultValue: 'Hidden' })}
@@ -9936,6 +10035,9 @@ const AdminPage: React.FC = () => {
                               Source: {modelControlDetail.model.source}
                             </span>
                           )}
+                          <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
+                            {t('admin.reviewState', { defaultValue: 'Review state' })}: {modelControlDetail.model.reviewStatus}
+                          </span>
                           {modelControlDetail.model.bodyType && (
                             <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2 py-1 text-gray-300">
                               {modelControlDetail.model.bodyType}
@@ -10007,6 +10109,37 @@ const AdminPage: React.FC = () => {
                           <p className="mt-2 whitespace-pre-wrap text-sm text-gray-200">
                             {modelControlDetail.model.notes}
                           </p>
+                        </div>
+                      )}
+                      {(modelControlDetail.model.reviewRequestedAt ||
+                        modelControlDetail.model.reviewedAt ||
+                        modelControlDetail.model.reviewNotes) && (
+                        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {t('admin.reviewDetails', { defaultValue: 'Review details' })}
+                          </p>
+                          <div className="mt-2 space-y-2 text-sm text-gray-200">
+                            {modelControlDetail.model.reviewRequestedAt && (
+                              <p>
+                                {t('admin.reviewRequestedAt', { defaultValue: 'Requested' })}:{' '}
+                                {formatDateTime(modelControlDetail.model.reviewRequestedAt) ?? modelControlDetail.model.reviewRequestedAt}
+                              </p>
+                            )}
+                            {modelControlDetail.model.reviewedAt && (
+                              <p>
+                                {t('admin.reviewedAt', { defaultValue: 'Reviewed' })}:{' '}
+                                {formatDateTime(modelControlDetail.model.reviewedAt) ?? modelControlDetail.model.reviewedAt}
+                              </p>
+                            )}
+                            {modelControlDetail.model.reviewedBy && (
+                              <p>
+                                {t('admin.reviewedBy', { defaultValue: 'Reviewed by' })}: {modelControlDetail.model.reviewedBy}
+                              </p>
+                            )}
+                            {modelControlDetail.model.reviewNotes && (
+                              <p className="whitespace-pre-wrap">{modelControlDetail.model.reviewNotes}</p>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -10123,7 +10256,7 @@ const AdminPage: React.FC = () => {
                         </div>
                         <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
                           <p className="text-[10px] uppercase tracking-wide text-gray-500">
-                            {t('admin.createdOn', { defaultValue: 'Created on' })}
+                            {t('admin.createdLabel', { defaultValue: 'Created on' })}
                           </p>
                           <p className="mt-1 text-sm text-gray-200">
                             {formatDateTime(modelControlDetail.model.createdAt) ??
@@ -10132,7 +10265,7 @@ const AdminPage: React.FC = () => {
                         </div>
                         <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
                           <p className="text-[10px] uppercase tracking-wide text-gray-500">
-                            {t('admin.updatedOn', { defaultValue: 'Updated on' })}
+                            {t('admin.updatedLabel', { defaultValue: 'Updated on' })}
                           </p>
                           <p className="mt-1 text-sm text-gray-200">
                             {formatDateTime(modelControlDetail.model.updatedAt) ??
@@ -10526,7 +10659,7 @@ const AdminPage: React.FC = () => {
                         </div>
                         <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
                           <p className="text-[10px] uppercase tracking-wide text-gray-500">
-                            {t('admin.createdOn', { defaultValue: 'Created on' })}
+                            {t('admin.createdLabel', { defaultValue: 'Created on' })}
                           </p>
                           <p className="mt-1 text-sm text-gray-200">
                             {formatDateTime(stationControlDetail.station.createdAt) ??
@@ -10535,7 +10668,7 @@ const AdminPage: React.FC = () => {
                         </div>
                         <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
                           <p className="text-[10px] uppercase tracking-wide text-gray-500">
-                            {t('admin.updatedOn', { defaultValue: 'Updated on' })}
+                            {t('admin.updatedLabel', { defaultValue: 'Updated on' })}
                           </p>
                           <p className="mt-1 text-sm text-gray-200">
                             {formatDateTime(stationControlDetail.station.updatedAt) ??

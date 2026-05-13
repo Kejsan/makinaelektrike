@@ -9,6 +9,7 @@ import type {
   AdminRoleId,
   DealerPlanId,
   DealerSubscriptionStatus,
+  ModelReviewStatus,
   UserRole,
 } from '../types';
 
@@ -58,6 +59,7 @@ export interface AdminModelLookupResult {
     ownerUid: string | null;
     isActive: boolean;
     isFeatured: boolean;
+    reviewStatus: ModelReviewStatus;
     bodyType: string | null;
     rangeWltp: number | null;
     batteryCapacity: number | null;
@@ -68,6 +70,10 @@ export interface AdminModelLookupResult {
     galleryCount: number;
     heroImageUrl: string | null;
     notes: string | null;
+    reviewRequestedAt: string | null;
+    reviewedAt: string | null;
+    reviewedBy: string | null;
+    reviewNotes: string | null;
     createdAt: string | null;
     updatedAt: string | null;
   };

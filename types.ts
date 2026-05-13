@@ -23,6 +23,8 @@ export type AdminRoleId =
   | 'analyst';
 export type DealerPlanId = 'free' | 'paid';
 export type DealerSubscriptionStatus = 'active' | 'paused' | 'expired' | 'cancelled';
+export type ModelReviewStatus = 'approved' | 'pending_review' | 'rejected';
+export type ModelSubmissionSource = 'admin' | 'dealer' | 'import' | 'migration';
 export type AccessInviteType = 'platform_admin' | 'dealer_staff';
 export type AccessInviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
 export type AuditAction =
@@ -583,6 +585,12 @@ export interface ModelOwnershipMetadata extends FirestoreTimestamps {
   ownerUid?: string | null;
   createdBy?: string | null;
   updatedBy?: string | null;
+  reviewStatus?: ModelReviewStatus | null;
+  submissionSource?: ModelSubmissionSource | null;
+  reviewRequestedAt?: Timestamp | string | null;
+  reviewedAt?: Timestamp | string | null;
+  reviewedBy?: string | null;
+  reviewNotes?: string | null;
 }
 
 export interface Model extends ModelCore, ModelOwnershipMetadata {
@@ -633,6 +641,8 @@ interface BlogPostMetadata extends FirestoreTimestamps {
   published?: boolean;
   publishedAt?: Timestamp | null;
   status?: 'draft' | 'published';
+  revisionCount?: number;
+  latestRevisionNumber?: number;
 }
 
 export interface BlogPostTranslation {
@@ -721,6 +731,17 @@ export interface ListingLocation {
   lng?: number;
   address?: string;
   city?: string;
+}
+
+export interface BlogPostRevision extends FirestoreTimestamps {
+  id: string;
+  postId: string;
+  revisionNumber: number;
+  action: 'create' | 'save' | 'publish' | 'unpublish' | 'delete' | 'backfill';
+  snapshot: Omit<BlogPost, 'id'>;
+  createdBy?: string | null;
+  createdByEmail?: string | null;
+  summary?: string | null;
 }
 
 export interface Listing extends FirestoreTimestamps {

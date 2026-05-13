@@ -19,7 +19,14 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import { firestore } from './firebase';
-import type { Dealer, DealerDocument, Model, DealerModel, BlogPost, DealerStatus } from '../types';
+import type {
+  Dealer,
+  DealerDocument,
+  Model,
+  DealerModel,
+  BlogPost,
+  DealerStatus,
+} from '../types';
 import { omitUndefined } from '../utils/object';
 import { normalizeBlogPostImage } from '../data/blogImages';
 
@@ -62,6 +69,12 @@ export const sortModels = (models: Model[]) =>
 
     return compareStrings(first.model_name, second.model_name);
   });
+
+const isApprovedModelReviewStatus = (reviewStatus: unknown) =>
+  reviewStatus === undefined || reviewStatus === null || reviewStatus === 'approved';
+
+export const isPublicModel = (model: Model) =>
+  model.isActive !== false && isApprovedModelReviewStatus(model.reviewStatus);
 
 export const sortBlogPostsByDateDesc = (posts: BlogPost[]) =>
   [...posts].sort((first, second) => {
@@ -483,6 +496,11 @@ export const listModels = async (): Promise<Model[]> => {
   return sortModels(mapModels(snapshot));
 };
 
+export const listPublicModels = async (): Promise<Model[]> => {
+  const snapshot = await getDocs(query(modelsCollection));
+  return sortModels(mapModels(snapshot).filter(isPublicModel));
+};
+
 export const getModelById = async (id: string): Promise<Model | null> => {
   const snapshot = await getDoc(doc(modelsCollection, id));
   if (!snapshot.exists()) {
@@ -592,6 +610,17 @@ export const subscribeToPublishedBlogPosts = (
   return subscribeToCollection(
     postsQuery,
     snapshot => sortBlogPostsByDateDesc(mapBlogPosts(snapshot).filter(isPublicBlogPost)),
+    options,
+  );
+};
+
+export const subscribeToPublicModels = (
+  options: SubscriptionOptions<Model>,
+): Unsubscribe => {
+  const modelsQuery = query(modelsCollection);
+  return subscribeToCollection(
+    modelsQuery,
+    snapshot => sortModels(mapModels(snapshot).filter(isPublicModel)),
     options,
   );
 };

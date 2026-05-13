@@ -128,6 +128,12 @@ const normalizeDate = (value: FirestoreTimestampLike): string | undefined => {
   return undefined;
 };
 
+const isApprovedModelReviewStatus = (reviewStatus: unknown) =>
+  reviewStatus === undefined || reviewStatus === null || reviewStatus === 'approved';
+
+const isPublicModel = (model: Model) =>
+  model.isActive !== false && isApprovedModelReviewStatus(model.reviewStatus);
+
 const latestLastmod = (urls: SitemapUrl[]): string =>
   urls
     .map(url => url.lastmod)
@@ -278,6 +284,7 @@ const getDynamicModels = async (): Promise<SitemapUrl[]> => {
   }));
 
   return entries
+    .filter(isPublicModel)
     .sort((first, second) => {
       const brandComparison = compareStrings(first.brand as string | undefined, second.brand as string | undefined);
       if (brandComparison !== 0) {

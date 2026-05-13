@@ -25,46 +25,66 @@ service firebase.storage {
       );
     }
 
+    function getUserDataOrNull() {
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+          ? firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data
+          : null;
+    }
+
     function hasActiveUserRecord() {
-      return hasUserRecord() &&
-        !isBlockedAccountData(getUserData());
+      let userData = getUserDataOrNull();
+      return userData != null &&
+        !isBlockedAccountData(userData);
     }
 
     function isSignedInAndNotBlocked() {
+      let userData = getUserDataOrNull();
       return isAuthenticated() && (
-        !hasUserRecord() ||
-        hasActiveUserRecord()
+        userData == null ||
+        !isBlockedAccountData(userData)
       );
     }
 
     function hasUserRecord() {
-      return isAuthenticated() &&
-        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid));
+      return getUserDataOrNull() != null;
     }
 
     function getUserData() {
-      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+      return getUserDataOrNull();
     }
 
     function hasAdminRole(roleId) {
-      return hasActiveUserRecord() &&
-        ('adminRoleIds' in getUserData()) &&
-        getUserData().adminRoleIds.hasAny([roleId]);
+      let userData = getUserDataOrNull();
+      return userData != null &&
+        !isBlockedAccountData(userData) &&
+        ('adminRoleIds' in userData) &&
+        userData.adminRoleIds.hasAny([roleId]);
     }
 
     function hasDirectPermission(permission) {
-      return hasActiveUserRecord() &&
-        ('directPermissions' in getUserData()) &&
-        getUserData().directPermissions[permission] == true;
+      let userData = getUserDataOrNull();
+      return userData != null &&
+        !isBlockedAccountData(userData) &&
+        ('directPermissions' in userData) &&
+        userData.directPermissions[permission] == true;
     }
 
     function hasFullAdminAccess() {
-      return hasActiveUserRecord() && (
-        getUserData().role == 'admin' ||
-        getUserData().accountType == 'admin' ||
-        getUserData().isMasterAdmin == true ||
-        hasAdminRole('master_admin')
-      );
+      let userData = getUserDataOrNull();
+      return userData != null &&
+        !isBlockedAccountData(userData) && (
+          userData.role == 'admin' ||
+          userData.accountType == 'admin' ||
+          (
+            ('isMasterAdmin' in userData) &&
+            userData.isMasterAdmin == true
+          ) ||
+          (
+            ('adminRoleIds' in userData) &&
+            userData.adminRoleIds.hasAny(['master_admin'])
+          )
+        );
     }
 
     function canManageDealers() {
@@ -92,13 +112,15 @@ service firebase.storage {
     }
 
     function isDealerStaffForId(dealerId) {
-      return hasActiveUserRecord() &&
-        getUserData().accountType == 'dealer_staff' &&
-        getUserData().dealerId == dealerId &&
+      let userData = getUserDataOrNull();
+      return userData != null &&
+        !isBlockedAccountData(userData) &&
+        userData.accountType == 'dealer_staff' &&
+        userData.dealerId == dealerId &&
         (
-          !('accountStatus' in getUserData()) ||
-          getUserData().accountStatus == 'active' ||
-          getUserData().accountStatus == 'approved'
+          !('accountStatus' in userData) ||
+          userData.accountStatus == 'active' ||
+          userData.accountStatus == 'approved'
         );
     }
 
@@ -120,11 +142,17 @@ service firebase.storage {
       return isSignedInAndNotBlocked() &&
         firestore.exists(/databases/(default)/documents/models/$(modelId)) &&
         (
-          firestore.get(/databases/(default)/documents/models/$(modelId)).data.ownerUid == request.auth.uid ||
           (
-            ('ownerDealerId' in firestore.get(/databases/(default)/documents/models/$(modelId)).data) &&
-            firestore.get(/databases/(default)/documents/models/$(modelId)).data.ownerDealerId != null &&
-            isDealerMember(firestore.get(/databases/(default)/documents/models/$(modelId)).data.ownerDealerId)
+            firestore.get(/databases/(default)/documents/models/$(modelId)).data.reviewStatus == 'pending_review' ||
+            firestore.get(/databases/(default)/documents/models/$(modelId)).data.reviewStatus == 'rejected'
+          ) &&
+          (
+            firestore.get(/databases/(default)/documents/models/$(modelId)).data.ownerUid == request.auth.uid ||
+            (
+              ('ownerDealerId' in firestore.get(/databases/(default)/documents/models/$(modelId)).data) &&
+              firestore.get(/databases/(default)/documents/models/$(modelId)).data.ownerDealerId != null &&
+              isDealerMember(firestore.get(/databases/(default)/documents/models/$(modelId)).data.ownerDealerId)
+            )
           )
         );
     }

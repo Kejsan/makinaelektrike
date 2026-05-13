@@ -1463,6 +1463,8 @@
     "ownerUidShort": "UID {{uid}}",
     "createdOn": "Created on {{date}}",
     "updatedOn": "Updated on {{date}}",
+    "createdLabel": "Created on",
+    "updatedLabel": "Updated on",
     "createdOnShort": "Created {{date}}",
     "updatedOnShort": "Updated {{date}}",
     "phoneLabel": "Phone: {{phone}}",

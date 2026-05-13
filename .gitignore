@@ -35,3 +35,8 @@ jules-scratch/
 
 # Netlify local deployment artifacts
 .netlify/functions/
+
+# Firebase local emulator/test artifacts
+.firebase-home/
+.firebase-config/
+.firebase-cache/

@@ -35,6 +35,7 @@ import {
   subscribeToApprovedDealers,
   subscribeToDealersForAccount,
   subscribeToModels,
+  subscribeToPublicModels,
   subscribeToBlogPosts,
   subscribeToPublishedBlogPosts,
   subscribeToDealerModels,
@@ -602,7 +603,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
     if (requiresCollection('models')) {
       unsubscribers.push(
-        subscribeToModels({
+        (isAdminDataRoute || isDealerDataRoute ? subscribeToModels : subscribeToPublicModels)({
           onData: models => dataDispatch({ type: 'SET_MODELS', payload: models }),
           onError:
             isAdminDataRoute
@@ -933,6 +934,23 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         createdBy: 'createdBy',
         updatedBy: 'updatedBy',
       });
+
+      if (role === 'dealer') {
+        ownership.reviewStatus = 'pending_review';
+        ownership.submissionSource = 'dealer';
+        ownership.reviewRequestedAt = new Date().toISOString();
+        ownership.reviewedAt = null;
+        ownership.reviewedBy = null;
+        ownership.reviewNotes = null;
+        ownership.isActive = false;
+      } else {
+        if (ownership.reviewStatus === undefined || ownership.reviewStatus === null) {
+          ownership.reviewStatus = 'approved';
+        }
+        if (ownership.submissionSource === undefined || ownership.submissionSource === null) {
+          ownership.submissionSource = 'admin';
+        }
+      }
 
       return ownership;
     },

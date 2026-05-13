@@ -252,6 +252,8 @@ export const handler = async (event: FunctionEvent) => {
           ownerUid,
           isActive: modelData.isActive !== false,
           isFeatured: modelData.isFeatured === true,
+          reviewStatus:
+            typeof modelData.reviewStatus === 'string' ? modelData.reviewStatus : 'approved',
           bodyType: typeof modelData.body_type === 'string' ? modelData.body_type : null,
           rangeWltp: typeof modelData.range_wltp === 'number' ? modelData.range_wltp : null,
           batteryCapacity:
@@ -266,6 +268,10 @@ export const handler = async (event: FunctionEvent) => {
               ? modelData.image_url
               : imageGallery[0] ?? null,
           notes: typeof modelData.notes === 'string' ? modelData.notes : null,
+          reviewRequestedAt: serializeTimestamp(modelData.reviewRequestedAt),
+          reviewedAt: serializeTimestamp(modelData.reviewedAt),
+          reviewedBy: typeof modelData.reviewedBy === 'string' ? modelData.reviewedBy : null,
+          reviewNotes: typeof modelData.reviewNotes === 'string' ? modelData.reviewNotes : null,
           createdAt: serializeTimestamp(modelData.createdAt),
           updatedAt: serializeTimestamp(modelData.updatedAt),
         },

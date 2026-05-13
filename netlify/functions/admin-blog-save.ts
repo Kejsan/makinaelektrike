@@ -12,6 +12,7 @@ import {
 import { requireAdminPermission } from './_lib/adminAccess';
 import { getAdminFirestore } from './_lib/firebaseAdmin';
 import { buildAuditActor, writeAdminAuditLog } from './_lib/auditLog';
+import { writeBlogPostRevision } from './_lib/blogRevisions';
 import {
   getRequiredRecord,
   hasOwnField,
@@ -177,6 +178,17 @@ export const handler = async (event: FunctionEvent) => {
 
     const savedSnapshot = await firestore.collection('blogPosts').doc(resolvedPostId).get();
     const savedData = (savedSnapshot.data() ?? {}) as Record<string, unknown>;
+
+    await writeBlogPostRevision(firestore, {
+      postId: resolvedPostId,
+      snapshot: savedData,
+      action: isCreate ? 'create' : 'save',
+      actorUid: profile.uid,
+      actorEmail: profile.email ?? null,
+      summary: isCreate
+        ? `Initial admin revision for blog post ${resolvedPostId}.`
+        : `Saved admin revision for blog post ${resolvedPostId}.`,
+    });
 
     await writeAdminAuditLog({
       actor: buildAuditActor(profile),

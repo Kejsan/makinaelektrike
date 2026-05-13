@@ -1458,6 +1458,8 @@
     "ownerUidShort": "UID {{uid}}",
     "createdOn": "Creato il {{date}}",
     "updatedOn": "Aggiornato il {{date}}",
+    "createdLabel": "Creato il",
+    "updatedLabel": "Aggiornato il",
     "createdOnShort": "Creato {{date}}",
     "updatedOnShort": "Aggiornato {{date}}",
     "phoneLabel": "Tel: {{phone}}",

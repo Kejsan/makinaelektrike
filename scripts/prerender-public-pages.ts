@@ -823,6 +823,12 @@ const normalizeDate = (value: FirestoreTimestampLike): Date | null => {
   return null;
 };
 
+const isApprovedModelReviewStatus = (reviewStatus: unknown) =>
+  reviewStatus === undefined || reviewStatus === null || reviewStatus === 'approved';
+
+const isPublicModel = (model: Model) =>
+  model.isActive !== false && isApprovedModelReviewStatus(model.reviewStatus);
+
 const formatDate = (value: FirestoreTimestampLike, locale: IntlLocale) => {
   const parsed = normalizeDate(value);
   if (!parsed) {
@@ -996,6 +1002,7 @@ const getPublicModels = async (): Promise<Model[]> => {
 
     return snapshot.docs
       .map(docSnapshot => ({ id: docSnapshot.id, ...(docSnapshot.data() as Omit<Model, 'id'>) }))
+      .filter(isPublicModel)
       .sort((first, second) => {
         const brandComparison = first.brand.localeCompare(second.brand, undefined, { sensitivity: 'base' });
         if (brandComparison !== 0) {
