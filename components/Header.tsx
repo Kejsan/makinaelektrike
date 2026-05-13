@@ -19,10 +19,13 @@ const LanguageSwitcher: React.FC = () => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const languages = {
-    en: 'English',
-    sq: 'Shqip',
-    it: 'Italiano',
+    sq: { label: 'Shqip', short: 'AL' },
+    en: { label: 'English', short: 'EN' },
+    it: { label: 'Italiano', short: 'IT' },
   };
+  const currentLanguage =
+    languages[normalizeAppLocale(i18n.resolvedLanguage || i18n.language) as keyof typeof languages] ??
+    languages.sq;
 
   const changeLanguage = (lng: string) => {
     const nextLocale = normalizeAppLocale(lng);
@@ -41,22 +44,28 @@ const LanguageSwitcher: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-white transition-colors hover:text-gray-cyan"
+        aria-label={t('header.language')}
         aria-haspopup="true"
         aria-expanded={isOpen}
       >
-        <Globe size={20} />
-        <span className="hidden md:inline">{t('header.language')}</span>
+        <Globe size={18} />
+        <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-xs tracking-wide">
+          {currentLanguage.short}
+        </span>
       </button>
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-32 bg-gray-900/80 backdrop-blur-sm border border-gray-700 rounded-md shadow-lg py-1 z-20">
-          {Object.entries(languages).map(([code, name]) => (
+        <div className="absolute right-0 mt-2 w-40 bg-gray-900/90 backdrop-blur-sm border border-gray-700 rounded-md shadow-lg py-1 z-20">
+          {Object.entries(languages).map(([code, meta]) => (
             <button
               key={code}
               onClick={() => changeLanguage(code)}
-              className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-cyan/20 ${i18n.language === code ? 'text-gray-cyan font-semibold' : 'text-gray-200'
+              className={`flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-gray-cyan/20 ${normalizeAppLocale(i18n.language) === code ? 'text-gray-cyan font-semibold' : 'text-gray-200'
                 }`}
             >
-              {name}
+              <span className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] tracking-wide">
+                {meta.short}
+              </span>
+              <span>{meta.label}</span>
             </button>
           ))}
         </div>
@@ -182,6 +191,7 @@ const Header: React.FC = () => {
     }`;
 
   const primaryNav = [
+    { to: '/dealers', label: t('header.dealers'), featured: true },
     { to: '/listings', label: t('header.listings') },
     { to: '/models', label: t('header.models') },
     { to: '/albania-charging-stations', label: t('header.chargingStations') },
@@ -191,7 +201,6 @@ const Header: React.FC = () => {
     { to: '/about', label: t('header.about') },
     { to: '/help-center', label: t('header.helpCenter') },
     { to: '/blog', label: t('header.blog') },
-    { to: '/dealers', label: t('header.dealers') },
   ];
 
   return (
@@ -236,7 +245,11 @@ const Header: React.FC = () => {
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={navLinkClasses(item.to)}
+                  className={
+                    item.featured
+                      ? `relative rounded-full border border-gray-cyan/35 bg-gray-cyan/15 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-gray-cyan/10 transition hover:border-gray-cyan/70 hover:bg-gray-cyan/25 ${isActivePath(item.to) ? 'ring-1 ring-gray-cyan/60' : ''}`
+                      : navLinkClasses(item.to)
+                  }
                   aria-current={isActivePath(item.to) ? 'page' : undefined}
                 >
                   {item.label}

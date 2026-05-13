@@ -10,6 +10,7 @@ import {
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   type User,
@@ -69,6 +70,7 @@ interface AuthContextType {
     profile?: Partial<UserProfile>
   ) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   hasPermission: (permission: PermissionKey) => boolean;
   refreshProfile: () => Promise<void>;
@@ -95,9 +97,7 @@ export const mapErrorToMessage = (error: any): string => {
     case 'auth/wrong-password':
       return i18n.t('auth.errors.invalidCredentials');
     case 'auth/user-disabled':
-      return i18n.exists('auth.errors.accountDisabled')
-        ? i18n.t('auth.errors.accountDisabled')
-        : 'This account has been disabled. Contact support.';
+      return i18n.t('auth.errors.accountDisabled');
     case 'auth/too-many-requests':
       return i18n.t('auth.errors.tooManyRequests');
     case 'auth/network-request-failed':
@@ -240,7 +240,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         phone, 
         city, 
         website, 
-        notes 
+        notes,
+        termsAccepted,
+        privacyAccepted,
+        platformRulesAccepted,
+        dealerAuthorityAccepted,
+        consentVersion,
+        termsAcceptedAt,
+        privacyAcceptedAt,
+        platformRulesAcceptedAt,
+        dealerAuthorityAcceptedAt,
       } = profileData as any;
 
       const dealerRef = doc(firestore, 'dealers', userUid);
@@ -256,6 +265,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         city: city || '',
         website: website || '',
         notes: notes || '',
+        termsAccepted: termsAccepted === true,
+        privacyAccepted: privacyAccepted === true,
+        platformRulesAccepted: platformRulesAccepted === true,
+        dealerAuthorityAccepted: dealerAuthorityAccepted === true,
+        consentVersion: consentVersion || null,
+        termsAcceptedAt: termsAcceptedAt || null,
+        privacyAcceptedAt: privacyAcceptedAt || null,
+        platformRulesAcceptedAt: platformRulesAcceptedAt || null,
+        dealerAuthorityAcceptedAt: dealerAuthorityAcceptedAt || null,
         contact_email: email,
         contact_phone: phone || '',
         location: city || null,
@@ -295,6 +313,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     }
   }, [loadProfile]);
+
+  const resetPassword = useCallback(async (email: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (resetError) {
+      const message = mapErrorToMessage(resetError);
+      setError(message);
+      throw resetError;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const logout = useCallback(async () => {
     setLoading(true);
@@ -352,6 +384,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       registerUser,
       registerDealer,
       login,
+      resetPassword,
       logout,
       hasPermission,
       refreshProfile,
@@ -374,6 +407,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       profile,
       registerDealer,
       registerUser,
+      resetPassword,
       refreshProfile,
       role,
       user,

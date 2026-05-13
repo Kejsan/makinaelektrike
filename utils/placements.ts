@@ -63,6 +63,61 @@ export const PROMOTIONAL_CAMPAIGN_PROMOTION_TYPES = [
   'sponsored_promotion',
 ] as const satisfies readonly PromotionalCampaignPromotionType[];
 
+const toPlacementDateMillis = (value: unknown) => {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  if (typeof value === 'object' && value !== null && 'toDate' in value) {
+    try {
+      const parsed = (value as { toDate: () => Date }).toDate().getTime();
+      return Number.isNaN(parsed) ? null : parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+};
+
+export const isPromotionalCampaignPubliclyResolvable = (
+  campaign:
+    | {
+        status?: PromotionalCampaignStatus;
+        startAt?: unknown;
+        endAt?: unknown;
+      }
+    | null
+    | undefined,
+) => {
+  if (!campaign || campaign.status === 'draft' || campaign.status === 'paused' || campaign.status === 'archived') {
+    return false;
+  }
+
+  const now = Date.now();
+  const startsAt = toPlacementDateMillis(campaign.startAt);
+  const endsAt = toPlacementDateMillis(campaign.endAt);
+
+  if (startsAt !== null && startsAt > now) {
+    return false;
+  }
+
+  if (endsAt !== null && endsAt < now) {
+    return false;
+  }
+
+  return true;
+};
+
 export const PUBLIC_PLACEMENT_ZONE_KEYS = {
   homeDealerSpotlight: 'home.dealer_spotlight',
   homeModelSpotlight: 'home.model_spotlight',

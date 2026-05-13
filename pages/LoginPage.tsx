@@ -15,12 +15,14 @@ const LoginPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useLocalizedNavigate();
   const [searchParams] = useSearchParams();
-  const { login, loading, error, user, role, initializing } = useAuth();
+  const { login, resetPassword, loading, error, user, role, initializing } = useAuth();
   const redirectTarget = searchParams.get('redirect');
   const prefilledEmail = searchParams.get('email') ?? '';
   const [email, setEmail] = useState(prefilledEmail);
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [resettingPassword, setResettingPassword] = useState(false);
   const [accountType, setAccountType] = useState<AccountType>('user');
 
   useEffect(() => {
@@ -94,6 +96,26 @@ const LoginPage: React.FC = () => {
       }
     } catch (submitError) {
       console.error('Login failed', submitError);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!email) {
+      setFormError(t('loginPage.errors.resetEmailRequired'));
+      setResetMessage(null);
+      return;
+    }
+
+    setFormError(null);
+    setResetMessage(null);
+    setResettingPassword(true);
+    try {
+      await resetPassword(email);
+      setResetMessage(t('loginPage.passwordResetSent'));
+    } catch (resetError) {
+      console.error('Password reset failed', resetError);
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -174,6 +196,11 @@ const LoginPage: React.FC = () => {
                   {formError || error}
                 </div>
               )}
+              {resetMessage && (
+                <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                  {resetMessage}
+                </div>
+              )}
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-200">
@@ -191,9 +218,19 @@ const LoginPage: React.FC = () => {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-200">
-                  {t('loginPage.passwordLabel')}
-                </label>
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-200">
+                    {t('loginPage.passwordLabel')}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void handlePasswordReset()}
+                    disabled={resettingPassword || loading}
+                    className="text-xs font-semibold text-gray-cyan transition hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {resettingPassword ? t('loginPage.resetPasswordSubmitting') : t('loginPage.forgotPassword')}
+                  </button>
+                </div>
                 <input
                   id="password"
                   name="password"

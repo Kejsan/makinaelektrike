@@ -62,6 +62,7 @@ import Link from '../components/LocalizedLink';
 import DealerPlacementRequestForm, {
   type DealerPlacementEntityOption,
 } from '../components/dealer/DealerPlacementRequestForm';
+import { isPromotionalCampaignPubliclyResolvable } from '../utils/placements';
 
 interface ProfileFormState {
   name: string;
@@ -1205,8 +1206,15 @@ const DealerDashboardPage: React.FC = () => {
     [placementOrders],
   );
   const livePlacementOrders = useMemo(
-    () => placementOrders.filter(order => order.status === 'active').length,
-    [placementOrders],
+    () =>
+      placementOrders.filter(
+        order =>
+          Boolean(order.campaignId) &&
+          isPromotionalCampaignPubliclyResolvable(
+            order.campaignId ? placementCampaignById[order.campaignId] : null,
+          ),
+      ).length,
+    [placementCampaignById, placementOrders],
   );
   const pendingPaymentOrders = useMemo(
     () =>
@@ -1471,7 +1479,7 @@ const DealerDashboardPage: React.FC = () => {
                   },
                   {
                     icon: <ShieldCheck className="h-4 w-4" />,
-                    label: t('dealerDashboardPage.promotionsLiveStat', { defaultValue: 'Live campaigns' }),
+                    label: t('dealerDashboardPage.promotionsLiveStat', { defaultValue: 'Live public placements' }),
                     value: livePlacementOrders,
                   },
                 ].map(stat => (
@@ -1584,6 +1592,7 @@ const DealerDashboardPage: React.FC = () => {
                         const linkedCampaign = order.campaignId
                           ? placementCampaignById[order.campaignId]
                           : null;
+                        const linkedCampaignIsPublic = isPromotionalCampaignPubliclyResolvable(linkedCampaign);
                         const canCancelOrder =
                           canManageDealerPromotions &&
                           (order.status === 'draft' || order.status === 'quoted');
@@ -1642,6 +1651,27 @@ const DealerDashboardPage: React.FC = () => {
                                     defaultValue: 'Linked campaign',
                                   })}:{' '}
                                   {linkedCampaign.name} ({linkedCampaign.status})
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                              {linkedCampaignIsPublic ? (
+                                <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-100">
+                                  {t('dealerDashboardPage.publicPlacementLiveLabel', {
+                                    defaultValue: 'Public placement live',
+                                  })}
+                                </span>
+                              ) : linkedCampaign ? (
+                                <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-medium text-amber-100">
+                                  {t('dealerDashboardPage.publicPlacementPendingLabel', {
+                                    defaultValue: 'Campaign linked, not public yet',
+                                  })}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-medium text-amber-100">
+                                  {t('dealerDashboardPage.publicPlacementMissingCampaignLabel', {
+                                    defaultValue: 'Admin approval needed before this appears publicly',
+                                  })}
                                 </span>
                               )}
                             </div>

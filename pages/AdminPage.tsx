@@ -25,6 +25,7 @@ import {
   ImageIcon,
   MapPin,
   MessageSquare,
+  Megaphone,
   Receipt,
   CreditCard,
 } from 'lucide-react';
@@ -48,6 +49,7 @@ import {
   PlacementAnalyticsDailyBucket,
   PlacementCampaignAnalyticsSummary,
   PlacementAnalyticsZoneSummary,
+  PlacementEntityType,
   PlacementZoneAvailabilitySummary,
   PlacementZoneStatus,
   PlacementZone,
@@ -159,6 +161,7 @@ import {
 } from '../utils/accessControl';
 import {
   formatPlacementEntityTypeLabel,
+  isPromotionalCampaignPubliclyResolvable,
 } from '../utils/placements';
 
 const ModelForm = lazy(() => import('../components/admin/ModelForm'));
@@ -284,6 +287,11 @@ const coerceDate = (value: unknown): Date | null => {
   }
 
   return null;
+};
+
+const toPlacementFormDate = (value: unknown) => {
+  const parsed = coerceDate(value);
+  return parsed ? parsed.toISOString() : '';
 };
 
 const toDayKey = (value: Date) => value.toISOString().slice(0, 10);
@@ -1380,7 +1388,7 @@ const AdminPage: React.FC = () => {
       reservedOrders: sponsorshipOrders.filter(order => order.status === 'reserved').length,
       activeOrders: sponsorshipOrders.filter(order => order.status === 'active').length,
       campaigns: promotionalCampaigns.length,
-      liveCampaigns: promotionalCampaigns.filter(campaign => campaign.status === 'active').length,
+      liveCampaigns: promotionalCampaigns.filter(isPromotionalCampaignPubliclyResolvable).length,
       blockedZones: placementAvailability.filter(
         summary => summary.blockingCampaignIds.length > 0 || summary.blockingOrderIds.length > 0,
       ).length,
@@ -3389,6 +3397,128 @@ const AdminPage: React.FC = () => {
           ? error.message
           : t('admin.sponsorshipOrderStatusUpdateFailed', {
               defaultValue: 'Failed to update the sponsorship order status.',
+            });
+      setPlacementsError(errorMessage);
+      addToast(errorMessage, 'error');
+    } finally {
+      setPlacementSaving(false);
+    }
+  };
+
+  const handleCreateLinkedCampaignFromOrder = async (order: SponsorshipOrder) => {
+    if (!canManagePlacements) {
+      return;
+    }
+
+    const product = sponsorshipProducts.find(entry => entry.id === order.sponsorshipProductId);
+    const sponsoredEntityType =
+      order.sponsoredEntityType ??
+      (product?.eligibleEntityTypes.includes('dealer')
+        ? 'dealer'
+        : product?.eligibleEntityTypes[0] ?? null);
+    const sponsoredEntityId =
+      order.sponsoredEntityId ?? (sponsoredEntityType === 'dealer' ? order.dealerId : null);
+    const startAt = toPlacementFormDate(order.startAt);
+    const endAt = toPlacementFormDate(order.endAt);
+
+    if (!sponsoredEntityType || !sponsoredEntityId) {
+      addToast(
+        t('admin.linkedCampaignMissingEntity', {
+          defaultValue:
+            'Edit the order and choose the sponsored entity type and ID before creating a public campaign.',
+        }),
+        'error',
+      );
+      return;
+    }
+
+    if (!order.zoneIds.length || !startAt || !endAt) {
+      addToast(
+        t('admin.linkedCampaignMissingSchedule', {
+          defaultValue:
+            'The order needs placement zones plus start and end dates before it can become a public campaign.',
+        }),
+        'error',
+      );
+      return;
+    }
+
+    const dealer = dealers.find(entry => entry.id === order.dealerId);
+    const targetStatus = order.status === 'active' ? 'active' : 'scheduled';
+    const campaignValues: PromotionalCampaignFormValues = {
+      name: order.name,
+      description: order.notes ?? '',
+      status: 'draft',
+      promotionType: 'sponsored_promotion',
+      sponsoredEntityType: sponsoredEntityType as PlacementEntityType,
+      sponsoredEntityId,
+      sponsorshipProductId: order.sponsorshipProductId,
+      zoneIds: order.zoneIds,
+      headline: dealer?.name ? `${dealer.name}` : order.name,
+      supportingText: order.notes ?? '',
+      imageUrl: '',
+      ctaLabel: '',
+      destinationUrl: '',
+      localeTargets: [],
+      startAt,
+      endAt,
+      priority: 0,
+    };
+
+    setPlacementSaving(true);
+    setPlacementsError(null);
+    try {
+      const campaignResponse = await savePromotionalCampaign({
+        values: campaignValues,
+      });
+      const createdCampaign = campaignResponse.entity;
+
+      await saveSponsorshipOrder({
+        id: order.id,
+        values: {
+          name: order.name,
+          dealerId: order.dealerId,
+          sponsorshipProductId: order.sponsorshipProductId,
+          campaignId: createdCampaign.id,
+          zoneIds: order.zoneIds,
+          sponsoredEntityType: sponsoredEntityType as PlacementEntityType,
+          sponsoredEntityId,
+          status: order.status,
+          paymentStatus: order.paymentStatus,
+          priceAmount: order.priceAmount ?? '',
+          currency: order.currency ?? 'EUR',
+          priceLabel: order.priceLabel ?? '',
+          invoiceReference: order.invoiceReference ?? '',
+          startAt,
+          endAt,
+          paidAt: toPlacementFormDate(order.paidAt),
+          notes: order.notes ?? '',
+          internalNotes: order.internalNotes ?? '',
+        },
+      });
+
+      await savePromotionalCampaign({
+        id: createdCampaign.id,
+        values: {
+          ...campaignValues,
+          status: targetStatus,
+        },
+      });
+
+      await loadPlacementsCatalog({ silent: true });
+      addToast(
+        t('admin.linkedCampaignCreated', {
+          defaultValue: 'Linked public campaign created and published from the sponsorship order.',
+        }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to create linked campaign from sponsorship order', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('admin.linkedCampaignCreateFailed', {
+              defaultValue: 'Failed to create a linked public campaign from the sponsorship order.',
             });
       setPlacementsError(errorMessage);
       addToast(errorMessage, 'error');
@@ -7183,7 +7313,20 @@ const AdminPage: React.FC = () => {
     const activeProducts = sponsorshipProducts.filter(product => product.status === 'active').length;
     const reservedOrders = sponsorshipOrders.filter(order => order.status === 'reserved').length;
     const activeOrders = sponsorshipOrders.filter(order => order.status === 'active').length;
-    const liveCampaigns = promotionalCampaigns.filter(campaign => campaign.status === 'active').length;
+    const liveCampaigns = promotionalCampaigns.filter(isPromotionalCampaignPubliclyResolvable).length;
+    const unlinkedReservableOrders = sponsorshipOrders.filter(
+      order =>
+        !order.campaignId &&
+        (order.status === 'reserved' || order.status === 'paid' || order.status === 'active'),
+    );
+    const inactiveLinkedOrders = sponsorshipOrders.filter(order => {
+      const linkedCampaign = order.campaignId ? promotionalCampaigns.find(campaign => campaign.id === order.campaignId) : null;
+      return (
+        Boolean(linkedCampaign) &&
+        (order.status === 'reserved' || order.status === 'paid' || order.status === 'active') &&
+        !isPromotionalCampaignPubliclyResolvable(linkedCampaign)
+      );
+    });
     const analyticsByCampaignId = placementAnalytics.reduce<Record<string, PlacementCampaignAnalyticsSummary>>(
       (acc, entry) => {
         acc[entry.campaignId] = entry;
@@ -7336,6 +7479,24 @@ const AdminPage: React.FC = () => {
         {placementsError && placementsLoaded && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
             {placementsError}
+          </div>
+        )}
+
+        {(unlinkedReservableOrders.length > 0 || inactiveLinkedOrders.length > 0) && (
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-50">
+            <p className="font-semibold">
+              {t('admin.placementsNotPublicWarningTitle', {
+                defaultValue: 'Some paid or reserved promotions are not public yet.',
+              })}
+            </p>
+            <p className="mt-1 leading-6 text-amber-50/85">
+              {t('admin.placementsNotPublicWarningDescription', {
+                defaultValue:
+                  '{{unlinked}} order(s) have no linked campaign and {{inactive}} linked campaign(s) are draft, paused, expired, or scheduled for later. Public pages only render currently resolvable promotional campaigns.',
+                unlinked: unlinkedReservableOrders.length,
+                inactive: inactiveLinkedOrders.length,
+              })}
+            </p>
           </div>
         )}
 
@@ -7777,6 +7938,11 @@ const AdminPage: React.FC = () => {
                 const dealer = dealerById[order.dealerId];
                 const product = productById[order.sponsorshipProductId];
                 const linkedCampaign = order.campaignId ? campaignById[order.campaignId] : null;
+                const linkedCampaignIsPublic = isPromotionalCampaignPubliclyResolvable(linkedCampaign);
+                const orderCanCreatePublicCampaign =
+                  canManagePlacements &&
+                  !linkedCampaign &&
+                  (order.status === 'reserved' || order.status === 'paid' || order.status === 'active');
 
                 return (
                   <article
@@ -7850,6 +8016,25 @@ const AdminPage: React.FC = () => {
                             </span>
                           )}
                         </div>
+                        <div className="flex flex-wrap gap-2 text-[11px]">
+                          {linkedCampaignIsPublic ? (
+                            <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-100">
+                              {t('admin.publicPlacementLiveLabel', { defaultValue: 'Public placement live' })}
+                            </span>
+                          ) : linkedCampaign ? (
+                            <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-medium text-amber-100">
+                              {t('admin.publicPlacementNotLiveLabel', {
+                                defaultValue: 'Linked campaign is not public now',
+                              })}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-medium text-amber-100">
+                              {t('admin.publicPlacementMissingCampaignLabel', {
+                                defaultValue: 'Not public yet: no linked campaign',
+                              })}
+                            </span>
+                          )}
+                        </div>
                         {order.internalNotes && (
                           <p className="text-sm text-gray-300">{order.internalNotes}</p>
                         )}
@@ -7875,6 +8060,21 @@ const AdminPage: React.FC = () => {
                             <Pencil size={14} />
                             <span>{t('admin.edit')}</span>
                           </button>
+                          {orderCanCreatePublicCampaign && (
+                            <button
+                              type="button"
+                              onClick={() => void handleCreateLinkedCampaignFromOrder(order)}
+                              disabled={placementSaving}
+                              className="inline-flex items-center gap-1 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <Megaphone className="h-3.5 w-3.5" />
+                              <span>
+                                {t('admin.createLinkedCampaignLabel', {
+                                  defaultValue: 'Create public campaign',
+                                })}
+                              </span>
+                            </button>
+                          )}
                           {order.status === 'draft' && (
                             <button
                               type="button"

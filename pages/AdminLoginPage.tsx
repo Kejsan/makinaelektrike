@@ -9,10 +9,12 @@ import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 const AdminLoginPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { login, loading, error, user, role, initializing } = useAuth();
+  const { login, resetPassword, loading, error, user, role, initializing } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   if (initializing) {
     return (
@@ -48,6 +50,26 @@ const AdminLoginPage: React.FC = () => {
       navigate('/admin');
     } catch (err) {
       // error state handled in context
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!email) {
+      setFormError(t('admin.resetPasswordEmailRequired'));
+      setResetMessage(null);
+      return;
+    }
+
+    setFormError(null);
+    setResetMessage(null);
+    setResettingPassword(true);
+    try {
+      await resetPassword(email);
+      setResetMessage(t('admin.resetPasswordSent'));
+    } catch (err) {
+      // error state handled in context
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -102,6 +124,11 @@ const AdminLoginPage: React.FC = () => {
                 {formError || error || t('admin.loginError')}
               </div>
             )}
+            {resetMessage && (
+              <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                {resetMessage}
+              </div>
+            )}
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-200">
@@ -119,9 +146,19 @@ const AdminLoginPage: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-200">
-                {t('admin.loginPassword')}
-              </label>
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-200">
+                  {t('admin.loginPassword')}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => void handlePasswordReset()}
+                  disabled={resettingPassword || loading}
+                  className="text-xs font-semibold text-gray-cyan transition hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {resettingPassword ? t('admin.resetPasswordSubmitting') : t('admin.forgotPassword')}
+                </button>
+              </div>
               <input
                 id="password"
                 name="password"

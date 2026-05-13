@@ -286,6 +286,9 @@
     "passwordLabel": "Fjalëkalimi",
     "submitLabel": "Vazhdo",
     "loading": "Po kryhet hyrja...",
+    "forgotPassword": "Harrove fjalëkalimin?",
+    "resetPasswordSubmitting": "Po dërgohet lidhja...",
+    "passwordResetSent": "Nëse ekziston një llogari me këtë email, Firebase ka dërguar lidhjen për rivendosjen e fjalëkalimit.",
     "supportTitle": "Nuk ke llogari?",
     "supportDescription": "Krijo një profil falas sipas nevojës ose kërko akses si shitës nga ekipi ynë.",
     "registerUserCta": "Krijo llogari përdoruesi",
@@ -302,7 +305,8 @@
     "adminPrompt": "Kërkon panelin e administrimit?",
     "adminLinkLabel": "Hap hyrjen për admin",
     "errors": {
-      "missingFields": "Plotëso email-in dhe fjalëkalimin për të vazhduar."
+      "missingFields": "Plotëso email-in dhe fjalëkalimin për të vazhduar.",
+      "resetEmailRequired": "Vendos email-in para se të kërkosh rivendosjen e fjalëkalimit."
     },
     "metaTitle": "Hyrja në Makina Elektrike",
     "metaDescription": "Identifikohu për të menaxhuar kërkimet e tua për automjete elektrike ose profilin e konçesionarit.",
@@ -732,6 +736,10 @@
     "noEnquiries": "Nuk ka ende kërkesa",
     "contactInformation": "Informacioni i kontaktit",
     "saveChanges": "Ruaj ndryshimet",
+    "promotionsLiveStat": "Vendosje publike aktive",
+    "publicPlacementLiveLabel": "Vendosja publike është aktive",
+    "publicPlacementPendingLabel": "Fushata është lidhur, por nuk është ende publike",
+    "publicPlacementMissingCampaignLabel": "Duhet miratim nga admini përpara se të shfaqet publikisht",
     "stats": {
       "listings": "Listime",
       "listingsHelper": "{{active}} aktive, {{pending}} në pritje kontrolli",
@@ -1188,7 +1196,15 @@
     },
     "validation": {
       "required": "Ju lutem plotësoni të gjitha fushat e kërkuara.",
-      "passwordMismatch": "Fjalëkalimet nuk përputhen."
+      "passwordMismatch": "Fjalëkalimet nuk përputhen.",
+      "consentRequired": "Duhet të pranoni kushtet e platformës, politikën e privatësisë dhe rregullat përpara krijimit të llogarisë."
+    },
+    "consent": {
+      "acceptPoliciesPrefix": "Pranoj",
+      "termsLink": "Kushtet e Shërbimit",
+      "privacyLink": "Politikën e Privatësisë",
+      "acceptPoliciesSuffix": "dhe rregullat e platformës.",
+      "auditNotice": "Ruajmë versionin dhe kohën e pranimit në llogarinë tuaj për pajtueshmëri."
     },
     "submit": "Krijo llogarinë",
     "submitLoading": "Po krijohet llogaria...",
@@ -1226,7 +1242,16 @@
     },
     "validation": {
       "required": "Ju lutem plotësoni të gjitha fushat e kërkuara.",
-      "passwordMismatch": "Fjalëkalimet nuk përputhen."
+      "passwordMismatch": "Fjalëkalimet nuk përputhen.",
+      "consentRequired": "Duhet të pranoni kushtet, privatësinë, rregullat dhe deklaratën e autorizimit përpara dërgimit."
+    },
+    "consent": {
+      "acceptPoliciesPrefix": "Pranoj",
+      "termsLink": "Kushtet e Shërbimit",
+      "privacyLink": "Politikën e Privatësisë",
+      "acceptPoliciesSuffix": "dhe rregullat e platformës.",
+      "authorityStatement": "Konfirmoj se jam i autorizuar të përfaqësoj këtë shitës dhe të dërgoj të dhënat e biznesit për shqyrtim.",
+      "auditNotice": "Ruajmë versionin dhe kohën e pranimit me aplikimin e shitësit për pajtueshmëri."
     },
     "submit": "Dërgo aplikimin",
     "submitLoading": "Po dërgohet aplikimi...",
@@ -1339,6 +1364,7 @@
       "weakPassword": "Fjalëkalimi është shumë i dobët. Përdorni të paktën 6 karaktere.",
       "invalidEmail": "Ju lutem vendosni një adresë emaili të vlefshme.",
       "invalidCredentials": "Emaili ose fjalëkalimi është i pasaktë.",
+      "accountDisabled": "Kjo llogari është çaktivizuar. Kontaktoni suportin.",
       "tooManyRequests": "Ka pasur shumë tentativa të dështuara. Ju lutem provoni përsëri më vonë.",
       "networkFailed": "Gabim rrjeti. Kontrolloni lidhjen dhe provoni përsëri.",
       "generic": "Diçka shkoi keq. Ju lutem provoni përsëri.",
@@ -1353,6 +1379,10 @@
     "loginButton": "Hyr",
     "loginError": "Kredencialet e dhëna janë të pasakta.",
     "loginInfo": "Zonë e siguruar për administratorë dhe shitës të aprovuar. Aktiviteti monitorohet dhe ruhet.",
+    "forgotPassword": "Harrove fjalëkalimin?",
+    "resetPasswordSubmitting": "Po dërgohet lidhja...",
+    "resetPasswordSent": "Nëse ekziston një llogari admin me këtë email, Firebase ka dërguar lidhjen për rivendosjen e fjalëkalimit.",
+    "resetPasswordEmailRequired": "Vendos email-in e adminit para se të kërkosh rivendosjen e fjalëkalimit.",
     "metaTitle": "Hyrje admin Makina Elektrike",
     "metaDescription": "Identifikohuni për të menaxhuar shitës, modele dhe përmbajtje në Makina Elektrike.",
     "metaKeywords": [
@@ -1402,6 +1432,16 @@
     "bulkActionInProgress": "Përditësimi në grup po përpunohet...",
     "bulkActionSuccess": "Përditësimi në grup përfundoi me sukses.",
     "bulkActionFailed": "Përditësimi në grup dështoi.",
+    "placementsNotPublicWarningTitle": "Disa promovime të paguara ose të rezervuara nuk janë ende publike.",
+    "placementsNotPublicWarningDescription": "{{unlinked}} porosi nuk kanë fushatë të lidhur dhe {{inactive}} fushata të lidhura janë draft, të pauzuara, të skaduara ose të planifikuara për më vonë. Faqet publike shfaqin vetëm fushatat promovuese që janë aktualisht të zgjidhshme.",
+    "publicPlacementLiveLabel": "Vendosja publike është aktive",
+    "publicPlacementNotLiveLabel": "Fushata e lidhur nuk është publike tani",
+    "publicPlacementMissingCampaignLabel": "Ende jo publike: mungon fushata e lidhur",
+    "createLinkedCampaignLabel": "Krijo fushatë publike",
+    "linkedCampaignMissingEntity": "Redakto porosinë dhe zgjidh tipin dhe ID-në e entitetit të sponsorizuar përpara krijimit të fushatës publike.",
+    "linkedCampaignMissingSchedule": "Porosia ka nevojë për zona vendosjeje dhe data fillimi/mbarimi përpara se të bëhet fushatë publike.",
+    "linkedCampaignCreated": "Fushata publike e lidhur u krijua dhe u publikua nga porosia e sponsorizimit.",
+    "linkedCampaignCreateFailed": "Krijimi i fushatës publike nga porosia e sponsorizimit dështoi.",
     "listings": {
       "unknownDealer": "Shitës i panjohur",
       "searchPlaceholder": "Kërko markën, modelin ose shitësin...",

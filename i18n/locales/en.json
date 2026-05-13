@@ -286,6 +286,9 @@
     "passwordLabel": "Password",
     "submitLabel": "Continue",
     "loading": "Signing in...",
+    "forgotPassword": "Forgot password?",
+    "resetPasswordSubmitting": "Sending reset link...",
+    "passwordResetSent": "If an account exists for this email, Firebase has sent a password reset link.",
     "supportTitle": "Need an account?",
     "supportDescription": "Create a free profile tailored to your needs or request dealer access from our team.",
     "registerUserCta": "Create a user account",
@@ -302,7 +305,8 @@
     "adminPrompt": "Looking for the administration console?",
     "adminLinkLabel": "Open the admin login",
     "errors": {
-      "missingFields": "Enter both email and password to continue."
+      "missingFields": "Enter both email and password to continue.",
+      "resetEmailRequired": "Enter your email address before requesting a password reset."
     },
     "metaTitle": "Makina Elektrike login",
     "metaDescription": "Sign in to manage your saved electric vehicle research or update your dealership presence.",
@@ -732,6 +736,10 @@
     "noEnquiries": "No enquiries yet",
     "contactInformation": "Contact information",
     "saveChanges": "Save changes",
+    "promotionsLiveStat": "Live public placements",
+    "publicPlacementLiveLabel": "Public placement live",
+    "publicPlacementPendingLabel": "Campaign linked, not public yet",
+    "publicPlacementMissingCampaignLabel": "Admin approval needed before this appears publicly",
     "stats": {
       "listings": "Listings",
       "listingsHelper": "{{active}} active, {{pending}} pending review",
@@ -1188,7 +1196,15 @@
     },
     "validation": {
       "required": "Please complete all required fields.",
-      "passwordMismatch": "Passwords do not match."
+      "passwordMismatch": "Passwords do not match.",
+      "consentRequired": "You must accept the platform terms, privacy policy, and rules before creating an account."
+    },
+    "consent": {
+      "acceptPoliciesPrefix": "I agree to the",
+      "termsLink": "Terms of Service",
+      "privacyLink": "Privacy Policy",
+      "acceptPoliciesSuffix": "and platform rules.",
+      "auditNotice": "We store the consent version and timestamp on your account for compliance."
     },
     "submit": "Create account",
     "submitLoading": "Creating account...",
@@ -1226,7 +1242,16 @@
     },
     "validation": {
       "required": "Please complete all required fields.",
-      "passwordMismatch": "Passwords do not match."
+      "passwordMismatch": "Passwords do not match.",
+      "consentRequired": "You must accept the platform terms, privacy policy, rules, and dealer authority statement before submitting."
+    },
+    "consent": {
+      "acceptPoliciesPrefix": "I agree to the",
+      "termsLink": "Terms of Service",
+      "privacyLink": "Privacy Policy",
+      "acceptPoliciesSuffix": "and platform rules.",
+      "authorityStatement": "I confirm I am authorised to represent this dealership and submit business information for review.",
+      "auditNotice": "We store the consent version and timestamp with the dealer application for compliance."
     },
     "submit": "Submit application",
     "submitLoading": "Submitting application...",
@@ -1339,6 +1364,7 @@
       "weakPassword": "The password is too weak. Use at least 6 characters.",
       "invalidEmail": "Please enter a valid email address.",
       "invalidCredentials": "The email address or password is incorrect.",
+      "accountDisabled": "This account has been disabled. Contact support.",
       "tooManyRequests": "Too many failed attempts. Please try again later.",
       "networkFailed": "Network error. Check your connection and try again.",
       "generic": "Something went wrong. Please try again.",
@@ -1353,6 +1379,10 @@
     "loginButton": "Sign in",
     "loginError": "The provided credentials are invalid.",
     "loginInfo": "Secure area for administrators and approved dealers. Accounts are monitored and protected with activity logging.",
+    "forgotPassword": "Forgot password?",
+    "resetPasswordSubmitting": "Sending reset link...",
+    "resetPasswordSent": "If an admin account exists for this email, Firebase has sent a password reset link.",
+    "resetPasswordEmailRequired": "Enter your admin email before requesting a password reset.",
     "metaTitle": "Makina Elektrike admin login",
     "metaDescription": "Sign in to manage dealers, models and content for Makina Elektrike.",
     "metaKeywords": [
@@ -1402,6 +1432,16 @@
     "bulkActionInProgress": "Bulk update in progress...",
     "bulkActionSuccess": "Bulk update completed successfully.",
     "bulkActionFailed": "Bulk update failed.",
+    "placementsNotPublicWarningTitle": "Some paid or reserved promotions are not public yet.",
+    "placementsNotPublicWarningDescription": "{{unlinked}} order(s) have no linked campaign and {{inactive}} linked campaign(s) are draft, paused, expired, or scheduled for later. Public pages only render currently resolvable promotional campaigns.",
+    "publicPlacementLiveLabel": "Public placement live",
+    "publicPlacementNotLiveLabel": "Linked campaign is not public now",
+    "publicPlacementMissingCampaignLabel": "Not public yet: no linked campaign",
+    "createLinkedCampaignLabel": "Create public campaign",
+    "linkedCampaignMissingEntity": "Edit the order and choose the sponsored entity type and ID before creating a public campaign.",
+    "linkedCampaignMissingSchedule": "The order needs placement zones plus start and end dates before it can become a public campaign.",
+    "linkedCampaignCreated": "Linked public campaign created and published from the sponsorship order.",
+    "linkedCampaignCreateFailed": "Failed to create a linked public campaign from the sponsorship order.",
     "listings": {
       "unknownDealer": "Unknown dealer",
       "searchPlaceholder": "Search make, model, or dealer...",

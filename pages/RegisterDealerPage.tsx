@@ -5,8 +5,11 @@ import { useAuth, mapErrorToMessage } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import Link from '../components/LocalizedLink';
 import LocalizedNavigate from '../components/LocalizedNavigate';
 import useLocalizedNavigate from '../hooks/useLocalizedNavigate';
+
+const CONSENT_VERSION = '2026-05-13';
 
 const RegisterDealerPage: React.FC = () => {
   const { t } = useTranslation();
@@ -25,6 +28,8 @@ const RegisterDealerPage: React.FC = () => {
     confirmPassword: '',
     notes: '',
   });
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
+  const [acceptedDealerAuthority, setAcceptedDealerAuthority] = useState(false);
 
   if (initializing) {
     return (
@@ -73,9 +78,15 @@ const RegisterDealerPage: React.FC = () => {
       return;
     }
 
+    if (!acceptedPolicies || !acceptedDealerAuthority) {
+      setFormError(t('registerDealerPage.validation.consentRequired'));
+      return;
+    }
+
     setFormError(null);
 
     try {
+      const acceptedAt = new Date().toISOString();
       await registerDealer(email, password, {
         companyName,
         contactName,
@@ -83,6 +94,15 @@ const RegisterDealerPage: React.FC = () => {
         city,
         website,
         notes,
+        termsAccepted: true,
+        privacyAccepted: true,
+        platformRulesAccepted: true,
+        dealerAuthorityAccepted: true,
+        consentVersion: CONSENT_VERSION,
+        termsAcceptedAt: acceptedAt,
+        privacyAcceptedAt: acceptedAt,
+        platformRulesAcceptedAt: acceptedAt,
+        dealerAuthorityAcceptedAt: acceptedAt,
       });
 
       addToast(
@@ -295,6 +315,49 @@ const RegisterDealerPage: React.FC = () => {
                   required
                 />
               </div>
+            </div>
+
+            <div className="space-y-4 rounded-xl border border-white/10 bg-black/20 p-4">
+              <label className="flex items-start gap-3 text-sm text-gray-300">
+                <input
+                  id="acceptedDealerPolicies"
+                  name="acceptedDealerPolicies"
+                  type="checkbox"
+                  checked={acceptedPolicies}
+                  onChange={event => setAcceptedPolicies(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-white/20 bg-white/5 text-gray-cyan focus:ring-gray-cyan/50"
+                  required
+                />
+                <span>
+                  {t('registerDealerPage.consent.acceptPoliciesPrefix')}{' '}
+                  <Link to="/terms" className="font-semibold text-gray-cyan hover:text-white">
+                    {t('registerDealerPage.consent.termsLink')}
+                  </Link>
+                  {', '}
+                  <Link to="/privacy-policy" className="font-semibold text-gray-cyan hover:text-white">
+                    {t('registerDealerPage.consent.privacyLink')}
+                  </Link>
+                  {' '}
+                  {t('registerDealerPage.consent.acceptPoliciesSuffix')}
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 text-sm text-gray-300">
+                <input
+                  id="acceptedDealerAuthority"
+                  name="acceptedDealerAuthority"
+                  type="checkbox"
+                  checked={acceptedDealerAuthority}
+                  onChange={event => setAcceptedDealerAuthority(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-white/20 bg-white/5 text-gray-cyan focus:ring-gray-cyan/50"
+                  required
+                />
+                <span>{t('registerDealerPage.consent.authorityStatement')}</span>
+              </label>
+
+              <p className="text-xs text-gray-500">
+                {t('registerDealerPage.consent.auditNotice')}
+              </p>
             </div>
 
             <button

@@ -8,8 +8,11 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { UserPlus } from 'lucide-react';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
+import Link from '../components/LocalizedLink';
 import LocalizedNavigate from '../components/LocalizedNavigate';
 import useLocalizedNavigate from '../hooks/useLocalizedNavigate';
+
+const CONSENT_VERSION = '2026-05-13';
 
 const RegisterUserPage: React.FC = () => {
   const { t } = useTranslation();
@@ -28,6 +31,7 @@ const RegisterUserPage: React.FC = () => {
     password: '',
     confirmPassword: '',
   });
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
 
   useEffect(() => {
     if (prefilledEmail && !formData.email) {
@@ -74,14 +78,27 @@ const RegisterUserPage: React.FC = () => {
       return;
     }
 
+    if (!acceptedPolicies) {
+      setFormError(t('registerUserPage.validation.consentRequired'));
+      return;
+    }
+
     setFormError(null);
 
     try {
+      const acceptedAt = new Date().toISOString();
       await registerUser(email, password, {
         firstName,
         lastName,
         phone,
         displayName: `${firstName} ${lastName}`.trim(),
+        termsAccepted: true,
+        privacyAccepted: true,
+        platformRulesAccepted: true,
+        consentVersion: CONSENT_VERSION,
+        termsAcceptedAt: acceptedAt,
+        privacyAcceptedAt: acceptedAt,
+        platformRulesAcceptedAt: acceptedAt,
       });
 
       const currentUser = auth.currentUser;
@@ -93,6 +110,13 @@ const RegisterUserPage: React.FC = () => {
             lastName,
             phone,
             displayName: `${firstName} ${lastName}`.trim(),
+            termsAccepted: true,
+            privacyAccepted: true,
+            platformRulesAccepted: true,
+            consentVersion: CONSENT_VERSION,
+            termsAcceptedAt: acceptedAt,
+            privacyAcceptedAt: acceptedAt,
+            platformRulesAcceptedAt: acceptedAt,
             updatedAt: serverTimestamp(),
           },
           { merge: true }
@@ -260,6 +284,35 @@ const RegisterUserPage: React.FC = () => {
                   required
                 />
               </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+              <label className="flex items-start gap-3 text-sm text-gray-300">
+                <input
+                  id="acceptedPolicies"
+                  name="acceptedPolicies"
+                  type="checkbox"
+                  checked={acceptedPolicies}
+                  onChange={event => setAcceptedPolicies(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-white/20 bg-white/5 text-gray-cyan focus:ring-gray-cyan/50"
+                  required
+                />
+                <span>
+                  {t('registerUserPage.consent.acceptPoliciesPrefix')}{' '}
+                  <Link to="/terms" className="font-semibold text-gray-cyan hover:text-white">
+                    {t('registerUserPage.consent.termsLink')}
+                  </Link>
+                  {', '}
+                  <Link to="/privacy-policy" className="font-semibold text-gray-cyan hover:text-white">
+                    {t('registerUserPage.consent.privacyLink')}
+                  </Link>
+                  {' '}
+                  {t('registerUserPage.consent.acceptPoliciesSuffix')}
+                </span>
+              </label>
+              <p className="mt-3 text-xs text-gray-500">
+                {t('registerUserPage.consent.auditNotice')}
+              </p>
             </div>
 
             <button
