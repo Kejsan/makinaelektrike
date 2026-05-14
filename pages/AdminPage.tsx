@@ -158,6 +158,7 @@ import {
   uploadModelHeroImage,
 } from '../services/storage';
 import ModalLayout from '../components/ModalLayout';
+import DashboardInfoTooltip from '../components/DashboardInfoTooltip';
 import {
   ADMIN_ROLE_PRESETS,
   PERMISSION_KEYS,
@@ -832,20 +833,65 @@ const AdminPage: React.FC = () => {
 
   const tabs = useMemo(
     () => [
-      { id: 'overview' as TabKey, label: t('admin.overviewTab', { defaultValue: 'Overview' }) },
-      { id: 'dealers' as TabKey, label: t('admin.manageDealers') },
+      {
+        id: 'overview' as TabKey,
+        label: t('admin.overviewTab', { defaultValue: 'Overview' }),
+        description: t('admin.tooltips.overviewTab', {
+          defaultValue: 'High-level operations snapshot: pending queues, platform health, recent activity, and quick triage signals.',
+        }),
+      },
+      {
+        id: 'dealers' as TabKey,
+        label: t('admin.manageDealers'),
+        description: t('admin.tooltips.dealersTab', {
+          defaultValue: 'Approve, edit, deactivate, restore, plan-manage, and inspect dealer profiles, owners, staff, listings, and notes.',
+        }),
+      },
       ...(canReadUsers
-        ? [{ id: 'users' as TabKey, label: t('admin.manageUsers', { defaultValue: 'Users' }) }]
+        ? [{
+            id: 'users' as TabKey,
+            label: t('admin.manageUsers', { defaultValue: 'Users' }),
+            description: t('admin.tooltips.usersTab', {
+              defaultValue: 'Look up user accounts, inspect relationships, add notes, and suspend or reactivate access where permitted.',
+            }),
+          }]
         : []),
-      { id: 'models' as TabKey, label: t('admin.manageModels') },
-      { id: 'listings' as TabKey, label: t('admin.listingsTab', { defaultValue: 'Listings' }) },
-      { id: 'blog' as TabKey, label: t('admin.manageBlog') },
-      { id: 'stations' as TabKey, label: t('admin.manageStations', { defaultValue: 'Charging stations' }) },
+      {
+        id: 'models' as TabKey,
+        label: t('admin.manageModels'),
+        description: t('admin.tooltips.modelsTab', {
+          defaultValue: 'Manage canonical EV model cards, media, visibility, featured status, and dealer-submitted model reviews.',
+        }),
+      },
+      {
+        id: 'listings' as TabKey,
+        label: t('admin.listingsTab', { defaultValue: 'Listings' }),
+        description: t('admin.tooltips.listingsTab', {
+          defaultValue: 'Moderate dealer inventory, inspect model-card override reasons, and approve, hide, reject, or delete listings.',
+        }),
+      },
+      {
+        id: 'blog' as TabKey,
+        label: t('admin.manageBlog'),
+        description: t('admin.tooltips.blogTab', {
+          defaultValue: 'Create, edit, draft, publish, import, and manage blog content, SEO metadata, and editorial quality.',
+        }),
+      },
+      {
+        id: 'stations' as TabKey,
+        label: t('admin.manageStations', { defaultValue: 'Charging stations' }),
+        description: t('admin.tooltips.stationsTab', {
+          defaultValue: 'Manage public charging station data, coordinates, operator details, active state, audit history, and notes.',
+        }),
+      },
       ...(canReadPlacements
         ? [
             {
               id: 'placements' as TabKey,
               label: t('admin.placementsTab', { defaultValue: 'Placements' }),
+              description: t('admin.tooltips.placementsTab', {
+                defaultValue: 'Control monetized placement zones, sponsorship products, dealer orders, campaigns, billing state, and analytics.',
+              }),
             },
           ]
         : []),
@@ -854,6 +900,9 @@ const AdminPage: React.FC = () => {
             {
               id: 'reports' as TabKey,
               label: t('admin.reportsTab', { defaultValue: 'Reports' }),
+              description: t('admin.tooltips.reportsTab', {
+                defaultValue: 'Review platform health, quality gaps, activity trends, placement analytics, and exportable operational data.',
+              }),
             },
           ]
         : []),
@@ -862,6 +911,9 @@ const AdminPage: React.FC = () => {
             {
               id: 'access' as TabKey,
               label: t('admin.accessControlTab', { defaultValue: 'Access control' }),
+              description: t('admin.tooltips.accessTab', {
+                defaultValue: 'Invite platform admins, assign role presets, grant or deny permissions, and review effective access.',
+              }),
             },
           ]
         : []),
@@ -870,10 +922,19 @@ const AdminPage: React.FC = () => {
             {
               id: 'audit' as TabKey,
               label: t('admin.auditLogTab', { defaultValue: 'Audit log' }),
+              description: t('admin.tooltips.auditTab', {
+                defaultValue: 'Inspect trusted backend audit entries for privileged actions, actors, targets, before/after state, and metadata.',
+              }),
             },
           ]
         : []),
-      { id: 'migration' as TabKey, label: t('admin.migrationTab', { defaultValue: 'Data migration' }) },
+      {
+        id: 'migration' as TabKey,
+        label: t('admin.migrationTab', { defaultValue: 'Data migration' }),
+        description: t('admin.tooltips.migrationTab', {
+          defaultValue: 'Run controlled maintenance, migration, import, backfill, and recovery tools. Use only when you understand the data impact.',
+        }),
+      },
     ],
     [canManageAdminAccess, canReadPlacements, canReadUsers, canViewAudit, canViewReports, t]
   );
@@ -9059,91 +9120,141 @@ const AdminPage: React.FC = () => {
 
         <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-6">
           {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => navigateToAdminTab(tab.id)}
-              className={`flex w-full items-center px-4 py-3 text-sm font-medium rounded-xl transition-all ${
-                activeTab === tab.id
-                  ? 'bg-gray-cyan text-white shadow-lg'
-                  : 'text-gray-300 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              {tab.label}
-            </button>
+            <div key={tab.id} className="flex items-center gap-2">
+              <button
+                onClick={() => navigateToAdminTab(tab.id)}
+                className={`flex min-w-0 flex-1 items-center px-4 py-3 text-sm font-medium rounded-xl transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-gray-cyan text-white shadow-lg'
+                    : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <span className="min-w-0 truncate">{tab.label}</span>
+              </button>
+              <DashboardInfoTooltip label={tab.description} side="left" />
+            </div>
           ))}
         </nav>
 
         <div className="border-t border-white/10 p-4 space-y-3 bg-black/20">
-          <button
-            onClick={() => setOfflineQueueOpen(true)}
-            className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
-          >
-            <div className="flex items-center gap-2">
-              <ClipboardList size={18} />
-              <span>{t('admin.offlineQueueButton', { defaultValue: 'Offline queue' })}</span>
-            </div>
-            {offlineQueueCount > 0 && (
-              <span className="rounded-full bg-gray-cyan px-2 py-0.5 text-xs font-semibold text-white">
-                {offlineQueueCount}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setOfflineQueueOpen(true)}
+              className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <ClipboardList size={18} className="shrink-0" />
+                <span className="truncate">{t('admin.offlineQueueButton', { defaultValue: 'Offline queue' })}</span>
+              </div>
+              {offlineQueueCount > 0 && (
+                <span className="rounded-full bg-gray-cyan px-2 py-0.5 text-xs font-semibold text-white">
+                  {offlineQueueCount}
+                </span>
+              )}
+            </button>
+            <DashboardInfoTooltip
+              label={t('admin.tooltips.offlineQueueButton', {
+                defaultValue: 'Review admin actions saved while offline or during failed network requests, then retry or clear them safely.',
+              })}
+              side="left"
+            />
+          </div>
 
           {canReadAdminNotifications && (
-            <button
-              onClick={() => setAdminNotificationsOpen(true)}
-              className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-cyan/20 bg-gray-cyan/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-gray-cyan/20 hover:text-white"
-            >
-              <div className="flex items-center gap-2">
-                <Bell size={18} />
-                <span>{t('admin.notificationsButton', { defaultValue: 'Admin notifications' })}</span>
-              </div>
-              <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs font-semibold text-white">
-                {adminNotificationCount}
-              </span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setAdminNotificationsOpen(true)}
+                className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border border-gray-cyan/20 bg-gray-cyan/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-gray-cyan/20 hover:text-white"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <Bell size={18} className="shrink-0" />
+                  <span className="truncate">{t('admin.notificationsButton', { defaultValue: 'Admin notifications' })}</span>
+                </div>
+                <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs font-semibold text-white">
+                  {adminNotificationCount}
+                </span>
+              </button>
+              <DashboardInfoTooltip
+                label={t('admin.tooltips.notificationsButton', {
+                  defaultValue: 'Open actionable admin notifications for dealer requests, approvals, pending reviews, and operational issues.',
+                })}
+                side="left"
+              />
+            </div>
           )}
 
-          <button
-            onClick={() => navigate('/admin/guide')}
-            className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
-          >
-            <div className="flex items-center gap-2">
-              <BookOpen size={18} className="text-gray-cyan" />
-              <span>{t('admin.privateAdminGuide', { defaultValue: 'Admin how-to guide' })}</span>
-            </div>
-            <ExternalLink size={14} className="text-gray-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/admin/guide')}
+              className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <BookOpen size={18} className="shrink-0 text-gray-cyan" />
+                <span className="truncate">{t('admin.privateAdminGuide', { defaultValue: 'Admin how-to guide' })}</span>
+              </div>
+              <ExternalLink size={14} className="shrink-0 text-gray-400" />
+            </button>
+            <DashboardInfoTooltip
+              label={t('admin.tooltips.privateAdminGuideButton', {
+                defaultValue: 'Open the private admin manual with step-by-step explanations for every control-center workflow.',
+              })}
+              side="left"
+            />
+          </div>
 
-          <button
-            onClick={() => navigate('/admin/dealer-guide')}
-            className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
-          >
-            <div className="flex items-center gap-2">
-              <BookOpen size={18} className="text-gray-cyan" />
-              <span>{t('admin.privateDealerGuide', { defaultValue: 'Dealer how-to guide' })}</span>
-            </div>
-            <ExternalLink size={14} className="text-gray-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/admin/dealer-guide')}
+              className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <BookOpen size={18} className="shrink-0 text-gray-cyan" />
+                <span className="truncate">{t('admin.privateDealerGuide', { defaultValue: 'Dealer how-to guide' })}</span>
+              </div>
+              <ExternalLink size={14} className="shrink-0 text-gray-400" />
+            </button>
+            <DashboardInfoTooltip
+              label={t('admin.tooltips.privateDealerGuideButton', {
+                defaultValue: 'Open the dealer-facing guide as an admin so you can support dealership staff and verify instructions.',
+              })}
+              side="left"
+            />
+          </div>
 
-          <button
-            onClick={() => navigate('/')}
-            className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
-          >
-            <div className="flex items-center gap-2">
-              <Home size={18} className="text-gray-cyan" />
-              <span>{t('admin.goToHomepage', { defaultValue: 'Platform Homepage' })}</span>
-            </div>
-            <ExternalLink size={14} className="text-gray-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/')}
+              className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <Home size={18} className="shrink-0 text-gray-cyan" />
+                <span className="truncate">{t('admin.goToHomepage', { defaultValue: 'Platform Homepage' })}</span>
+              </div>
+              <ExternalLink size={14} className="shrink-0 text-gray-400" />
+            </button>
+            <DashboardInfoTooltip
+              label={t('admin.tooltips.goToHomepageButton', {
+                defaultValue: 'Open the public site to verify how approved admin, dealer, listing, model, and placement changes appear.',
+              })}
+              side="left"
+            />
+          </div>
 
-          <button
-            onClick={handleLogout}
-            className="flex w-full items-center justify-center space-x-2 rounded-lg bg-red-500/20 px-4 py-3 text-sm font-semibold text-red-400 transition hover:bg-red-500/30 hover:text-red-300"
-          >
-            <LogOut size={18} />
-            <span>{t('admin.logout')}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleLogout}
+              className="flex min-w-0 flex-1 items-center justify-center space-x-2 rounded-lg bg-red-500/20 px-4 py-3 text-sm font-semibold text-red-400 transition hover:bg-red-500/30 hover:text-red-300"
+            >
+              <LogOut size={18} />
+              <span>{t('admin.logout')}</span>
+            </button>
+            <DashboardInfoTooltip
+              label={t('admin.tooltips.logoutButton', {
+                defaultValue: 'End this admin session. Use this before leaving a shared or unattended device.',
+              })}
+              side="left"
+            />
+          </div>
         </div>
       </aside>
 
@@ -9200,17 +9311,19 @@ const AdminPage: React.FC = () => {
           
           <div className="flex overflow-x-auto gap-2 pb-1 scrollbar-hide">
             {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => navigateToAdminTab(tab.id)}
-                className={`flex-none whitespace-nowrap rounded-xl px-5 py-2.5 text-sm font-medium transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-gray-cyan text-white shadow-md'
-                    : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                {tab.label}
-              </button>
+              <span key={tab.id} className="inline-flex flex-none items-center gap-2">
+                <button
+                  onClick={() => navigateToAdminTab(tab.id)}
+                  className={`inline-flex whitespace-nowrap rounded-xl px-5 py-2.5 text-sm font-medium transition-all ${
+                    activeTab === tab.id
+                      ? 'bg-gray-cyan text-white shadow-md'
+                      : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+                <DashboardInfoTooltip label={tab.description} side="left" />
+              </span>
             ))}
           </div>
         </div>

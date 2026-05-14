@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { uploadListingImage, uploadListingGalleryImage } from '../services/listings';
 import Link from '../components/LocalizedLink';
+import DashboardInfoTooltip from '../components/DashboardInfoTooltip';
 
 const DealerListingsPage: React.FC = () => {
     const { t } = useTranslation();
@@ -291,21 +292,36 @@ const DealerListingsPage: React.FC = () => {
 
             <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">{t('dealer.listings', { defaultValue: 'My Listings' })}</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-3xl font-bold">{t('dealer.listings', { defaultValue: 'My Listings' })}</h1>
+                        <DashboardInfoTooltip
+                            label={t('dealerListingsPage.tooltips.pageTitle', {
+                                defaultValue: 'Dealer inventory manager for creating, editing, filtering, hiding, and deleting vehicle listings.',
+                            })}
+                        />
+                    </div>
                     <p className="mt-2 max-w-2xl text-sm text-gray-400">
                         {t('dealerListingsPage.pageIntro', {
                             defaultValue: 'Create, review, and manage the vehicles buyers can discover on Makina Elektrike.',
                         })}
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={handleCreate}
-                    className="bg-gray-cyan text-gray-900 px-6 py-2.5 rounded-xl font-bold hover:bg-cyan-400 transition-all shadow-[0_0_20px_rgba(79,248,210,0.2)] flex items-center justify-center gap-2 w-full sm:w-auto"
-                >
-                    <Plus className="h-5 w-5" />
-                    {t('dealer.addListing', { defaultValue: 'Add Listing' })}
-                </button>
+                <div className="flex w-full items-center gap-2 sm:w-auto">
+                    <button
+                        type="button"
+                        onClick={handleCreate}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gray-cyan px-6 py-2.5 font-bold text-gray-900 shadow-[0_0_20px_rgba(79,248,210,0.2)] transition-all hover:bg-cyan-400 sm:flex-none"
+                    >
+                        <Plus className="h-5 w-5" />
+                        {t('dealer.addListing', { defaultValue: 'Add Listing' })}
+                    </button>
+                    <DashboardInfoTooltip
+                        label={t('dealerListingsPage.tooltips.addListing', {
+                            defaultValue: 'Open the listing form. New listings are submitted for review before they appear publicly.',
+                        })}
+                        side="left"
+                    />
+                </div>
             </div>
 
             <section className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl sm:p-6">
@@ -314,9 +330,16 @@ const DealerListingsPage: React.FC = () => {
                         <p className="text-xs font-semibold uppercase tracking-wider text-gray-cyan">
                             {t('dealerListingsPage.submissionLabel', { defaultValue: 'Listing submission' })}
                         </p>
-                        <h2 className="mt-2 text-2xl font-bold text-white">
-                            {t('dealerListingsPage.submissionTitle', { defaultValue: 'Add a vehicle in a few guided steps' })}
-                        </h2>
+                        <div className="mt-2 flex items-center gap-2">
+                            <h2 className="text-2xl font-bold text-white">
+                                {t('dealerListingsPage.submissionTitle', { defaultValue: 'Add a vehicle in a few guided steps' })}
+                            </h2>
+                            <DashboardInfoTooltip
+                                label={t('dealerListingsPage.tooltips.submissionGuide', {
+                                    defaultValue: 'Explains the core flow for publishing vehicles: details, price, media, then platform moderation.',
+                                })}
+                            />
+                        </div>
                         <p className="mt-2 text-sm leading-6 text-gray-300">
                             {t('dealerListingsPage.submissionDescription', {
                                 defaultValue:
@@ -344,48 +367,70 @@ const DealerListingsPage: React.FC = () => {
             {dealerListings.length === 0 ? (
                 <div className="text-center py-20 bg-white/5 rounded-lg border border-white/10">
                     <p className="text-gray-400 text-lg mb-4">{t('dealer.noListings', { defaultValue: 'You have no listings yet.' })}</p>
-                    <button
-                        type="button"
-                        onClick={handleCreate}
-                        className="text-primary hover:underline"
-                        style={{ color: '#4ff8d2' }}
-                    >
-                        {t('dealer.createFirst', { defaultValue: 'Create your first listing' })}
-                    </button>
+                    <div className="inline-flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={handleCreate}
+                            className="text-primary hover:underline"
+                            style={{ color: '#4ff8d2' }}
+                        >
+                            {t('dealer.createFirst', { defaultValue: 'Create your first listing' })}
+                        </button>
+                        <DashboardInfoTooltip
+                            label={t('dealerListingsPage.tooltips.createFirstListing', {
+                                defaultValue: 'Start the first listing for this dealership. You can save it as pending while completing media and details.',
+                            })}
+                        />
+                    </div>
                 </div>
             ) : (
                 <div className="space-y-6">
                     <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                            <div className="relative w-full lg:max-w-sm">
-                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-                                <input
-                                    type="search"
-                                    value={searchTerm}
-                                    onChange={event => setSearchTerm(event.target.value)}
-                                    placeholder={t('dealerListingsPage.searchPlaceholder', {
-                                        defaultValue: 'Search your listings...',
+                            <div className="flex w-full items-center gap-2 lg:max-w-sm">
+                                <div className="relative min-w-0 flex-1">
+                                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                                    <input
+                                        type="search"
+                                        value={searchTerm}
+                                        onChange={event => setSearchTerm(event.target.value)}
+                                        placeholder={t('dealerListingsPage.searchPlaceholder', {
+                                            defaultValue: 'Search your listings...',
+                                        })}
+                                        className="w-full rounded-lg border border-white/10 bg-gray-950/60 py-2 pl-9 pr-3 text-sm text-white placeholder:text-gray-500 focus:border-gray-cyan focus:outline-none"
+                                    />
+                                </div>
+                                <DashboardInfoTooltip
+                                    label={t('dealerListingsPage.tooltips.searchListings', {
+                                        defaultValue: 'Search your dealer inventory by title, make, model, year, or currency.',
                                     })}
-                                    className="w-full rounded-lg border border-white/10 bg-gray-950/60 py-2 pl-9 pr-3 text-sm text-white placeholder:text-gray-500 focus:border-gray-cyan focus:outline-none"
                                 />
                             </div>
-                            <div className="flex gap-2 overflow-x-auto pb-1 lg:pb-0">
-                                {statusFilterOptions.map(option => (
-                                    <button
-                                        key={option.value}
-                                        type="button"
-                                        onClick={() => setStatusFilter(option.value)}
-                                        className={`flex-none rounded-lg border px-3 py-2 text-xs font-bold transition ${
-                                            statusFilter === option.value
-                                                ? 'border-gray-cyan bg-gray-cyan text-gray-900'
-                                                : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
-                                        }`}
-                                        aria-pressed={statusFilter === option.value}
-                                    >
-                                        {option.label}
-                                        <span className="ml-2 rounded bg-black/20 px-1.5 py-0.5">{option.count}</span>
-                                    </button>
-                                ))}
+                            <div className="flex items-center gap-2">
+                                <div className="flex gap-2 overflow-x-auto pb-1 lg:pb-0">
+                                    {statusFilterOptions.map(option => (
+                                        <button
+                                            key={option.value}
+                                            type="button"
+                                            onClick={() => setStatusFilter(option.value)}
+                                            className={`flex-none rounded-lg border px-3 py-2 text-xs font-bold transition ${
+                                                statusFilter === option.value
+                                                    ? 'border-gray-cyan bg-gray-cyan text-gray-900'
+                                                    : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                                            }`}
+                                            aria-pressed={statusFilter === option.value}
+                                        >
+                                            {option.label}
+                                            <span className="ml-2 rounded bg-black/20 px-1.5 py-0.5">{option.count}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                <DashboardInfoTooltip
+                                    label={t('dealerListingsPage.tooltips.statusFilters', {
+                                        defaultValue: 'Filter listings by moderation and visibility state: pending, active, hidden, approved, or rejected.',
+                                    })}
+                                    side="left"
+                                />
                             </div>
                         </div>
                     </div>
@@ -447,7 +492,12 @@ const DealerListingsPage: React.FC = () => {
                                             <span className="text-xs font-bold text-gray-500 uppercase">{listing.priceCurrency}</span>
                                         </div>
 
-                                        <div className="flex flex-wrap gap-2 border-t border-white/5 pt-4">
+                                        <div className="flex flex-wrap items-center gap-2 border-t border-white/5 pt-4">
+                                            <DashboardInfoTooltip
+                                                label={t('dealerListingsPage.tooltips.listingActions', {
+                                                    defaultValue: 'Use these listing actions to edit details, temporarily hide an active listing, reactivate it, or delete it from your inventory.',
+                                                })}
+                                            />
                                             <button
                                                 type="button"
                                                 onClick={() => handleEdit(listing)}
