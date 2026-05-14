@@ -182,7 +182,7 @@ const getRequiredCollections = (pathname: string): LoadedCollection[] => {
   }
 
   if (pathname === '/') {
-    return ['dealers', 'models', 'blogPosts'];
+    return ['dealers', 'models', 'blogPosts', 'listings'];
   }
 
   if (pathname === '/dealers') {

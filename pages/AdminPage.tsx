@@ -30,6 +30,9 @@ import {
   Receipt,
   CreditCard,
   BookOpen,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Palette,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -466,6 +469,7 @@ const AdminPage: React.FC = () => {
   const [browserNotificationEnabled, setBrowserNotificationEnabled] = useState(
     () => typeof window !== 'undefined' && window.localStorage.getItem('adminBrowserNotifications') === 'enabled',
   );
+  const [adminSidebarOpen, setAdminSidebarOpen] = useState(true);
   const [dealerFormState, setDealerFormState] = useState<FormState<Dealer>>(null);
   const [modelFormState, setModelFormState] = useState<FormState<Model>>(null);
   const [blogFormState, setBlogFormState] = useState<FormState<BlogPost>>(null);
@@ -937,6 +941,33 @@ const AdminPage: React.FC = () => {
       },
     ],
     [canManageAdminAccess, canReadPlacements, canReadUsers, canViewAudit, canViewReports, t]
+  );
+
+  const tabGroups = useMemo(
+    () => [
+      {
+        label: 'Dashboard',
+        ids: ['overview'] as TabKey[],
+      },
+      {
+        label: 'Marketplace',
+        ids: ['dealers', 'users', 'models', 'listings'] as TabKey[],
+      },
+      {
+        label: 'Content and growth',
+        ids: ['blog', 'stations', 'placements', 'reports'] as TabKey[],
+      },
+      {
+        label: 'Governance',
+        ids: ['access', 'audit', 'migration'] as TabKey[],
+      },
+    ].map(group => ({
+      ...group,
+      tabs: group.ids
+        .map(id => tabs.find(tab => tab.id === id))
+        .filter((tab): tab is (typeof tabs)[number] => Boolean(tab)),
+    })).filter(group => group.tabs.length > 0),
+    [tabs],
   );
 
   const navigateToAdminTab = useCallback(
@@ -9085,7 +9116,7 @@ const AdminPage: React.FC = () => {
 
   return (
     <>
-    <div className="flex min-h-screen w-full">
+    <div className="flex h-screen w-full overflow-hidden">
       <SEO
         title={t('admin.dashboardMetaTitle')}
         description={t('admin.dashboardMetaDescription')}
@@ -9108,9 +9139,23 @@ const AdminPage: React.FC = () => {
         structuredData={structuredData}
       />
       
+      <button
+        type="button"
+        onClick={() => setAdminSidebarOpen(open => !open)}
+        className="fixed left-3 top-3 z-[80] hidden h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-[#000080]/90 text-white shadow-xl backdrop-blur transition hover:border-gray-cyan/50 hover:bg-gray-cyan/20 md:inline-flex"
+        aria-label={adminSidebarOpen ? 'Close admin control panel' : 'Open admin control panel'}
+        aria-expanded={adminSidebarOpen}
+      >
+        {adminSidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
+      </button>
+
       {/* Sidebar Layout */}
-      <aside className="hidden w-64 flex-col border-r border-white/10 bg-white/5 backdrop-blur-xl md:flex shrink-0">
-        <div className="border-b border-white/10 p-6">
+      <aside
+        className={`hidden h-screen shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[#080827]/95 backdrop-blur-xl transition-[width] duration-300 md:flex ${
+          adminSidebarOpen ? 'w-72' : 'w-0 border-r-0'
+        }`}
+      >
+        <div className="border-b border-white/10 p-6 pl-16">
           <div className="flex items-center space-x-3">
             <Shield className="h-8 w-8 text-gray-cyan" />
             <h1 className="text-xl font-bold text-white">{t('admin.dashboard')}</h1>
@@ -9118,25 +9163,34 @@ const AdminPage: React.FC = () => {
           <p className="mt-2 text-xs text-gray-400 break-all">{user.email}</p>
         </div>
 
-        <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-6">
-          {tabs.map(tab => (
-            <div key={tab.id} className="flex items-center gap-2">
-              <button
-                onClick={() => navigateToAdminTab(tab.id)}
-                className={`flex min-w-0 flex-1 items-center px-4 py-3 text-sm font-medium rounded-xl transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-gray-cyan text-white shadow-lg'
-                    : 'text-gray-300 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                <span className="min-w-0 truncate">{tab.label}</span>
-              </button>
-              <DashboardInfoTooltip label={tab.description} side="left" />
-            </div>
+        <nav className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5">
+          {tabGroups.map(group => (
+            <section key={group.label}>
+              <p className="mb-2 px-2 text-[11px] font-bold uppercase text-gray-500">
+                {group.label}
+              </p>
+              <div className="space-y-2">
+                {group.tabs.map(tab => (
+                  <div key={tab.id} className="flex items-center gap-2">
+                    <button
+                      onClick={() => navigateToAdminTab(tab.id)}
+                      className={`flex min-w-0 flex-1 items-center rounded-xl px-4 py-3 text-sm font-medium transition-all ${
+                        activeTab === tab.id
+                          ? 'bg-gray-cyan text-white shadow-lg'
+                          : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      <span className="min-w-0 truncate">{tab.label}</span>
+                    </button>
+                    <DashboardInfoTooltip label={tab.description} side="left" />
+                  </div>
+                ))}
+              </div>
+            </section>
           ))}
         </nav>
 
-        <div className="border-t border-white/10 p-4 space-y-3 bg-black/20">
+        <div className="max-h-[45vh] space-y-3 overflow-y-auto border-t border-white/10 bg-black/20 p-4">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setOfflineQueueOpen(true)}
@@ -9223,6 +9277,23 @@ const AdminPage: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => navigate('/admin/design-system')}
+              className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border border-gray-cyan/20 bg-gray-cyan/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-gray-cyan/20 hover:text-white"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <Palette size={18} className="shrink-0 text-gray-cyan" />
+                <span className="truncate">Design system</span>
+              </div>
+              <ExternalLink size={14} className="shrink-0 text-gray-400" />
+            </button>
+            <DashboardInfoTooltip
+              label="Open the visual design-system reference for colors, components, states, and admin/public usage rules."
+              side="left"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
               onClick={() => navigate('/')}
               className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
             >
@@ -9259,7 +9330,7 @@ const AdminPage: React.FC = () => {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Mobile Header */}
         <div className="md:hidden flex flex-col gap-4 border-b border-white/10 bg-white/5 backdrop-blur-xl p-4 sticky top-0 z-40">
           <div className="flex items-center justify-between">
@@ -9329,7 +9400,7 @@ const AdminPage: React.FC = () => {
         </div>
 
         {/* Content Panel */}
-        <div className="flex-1 p-4 md:p-8 overflow-auto">
+        <div className="flex-1 overflow-auto p-4 md:p-8">
           {activeTab === 'overview' && renderOverviewPanel()}
           {activeTab === 'dealers' && renderDealersPanel()}
           {activeTab === 'users' && renderUsersPanel()}

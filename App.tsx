@@ -31,6 +31,7 @@ const RegisterUserPage = lazy(() => import('./pages/RegisterUserPage'));
 const RegisterDealerPage = lazy(() => import('./pages/RegisterDealerPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
+const DesignSystemPage = lazy(() => import('./pages/DesignSystemPage'));
 const AwaitingApprovalPage = lazy(() => import('./pages/AwaitingApprovalPage'));
 const DealerDashboardPage = lazy(() => import('./pages/DealerDashboardPage'));
 const DealerListingsPage = lazy(() => import('./pages/DealerListingsPage'));
@@ -251,6 +252,16 @@ const AppRoutes = () => (
         <RouteContent>
           <AdminRoute>
             <DealerGuidePage adminView />
+          </AdminRoute>
+        </RouteContent>
+      )}
+    />
+    <Route
+      path="/admin/design-system"
+      element={(
+        <RouteContent>
+          <AdminRoute>
+            <DesignSystemPage />
           </AdminRoute>
         </RouteContent>
       )}

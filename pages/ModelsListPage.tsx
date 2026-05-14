@@ -4,7 +4,7 @@ import { Model } from '../types';
 import ModelCard from '../components/ModelCard';
 import PublicPlacementRail from '../components/placements/PublicPlacementRail';
 import CustomSelect from '../components/CustomSelect';
-import { Car, Tag, Gauge, ListFilter, Scale } from 'lucide-react';
+import { Car, Tag, Gauge, ListFilter, Scale, ChevronLeft, ChevronRight } from 'lucide-react';
 import ComparisonModal from '../components/ComparisonModal';
 import { DataContext } from '../contexts/DataContext';
 import { usePublicPlacements } from '../hooks/usePublicPlacements';
@@ -44,6 +44,8 @@ const ModelsListPage: React.FC = () => {
     const [selectedBodyType, setSelectedBodyType] = useState('');
     const [minRange, setMinRange] = useState('');
     const [sortBy, setSortBy] = useState('model_asc');
+    const [currentPage, setCurrentPage] = useState(1);
+    const modelsPerPage = 12;
 
     useEffect(() => {
         setAllModels(models);
@@ -89,6 +91,10 @@ const ModelsListPage: React.FC = () => {
         setFilteredModels(models);
     }, [allModels, selectedBrand, selectedBodyType, minRange, sortBy]);
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedBrand, selectedBodyType, minRange, sortBy]);
+
     const clearFilters = () => {
         setSelectedBrand('');
         setSelectedBodyType('');
@@ -111,8 +117,45 @@ const ModelsListPage: React.FC = () => {
         { value: 'range_asc', label: t('modelsPage.sortOptions.range_asc') },
     ];
 
+    const totalPages = Math.max(1, Math.ceil(filteredModels.length / modelsPerPage));
+    const safeCurrentPage = Math.min(currentPage, totalPages);
+    const paginatedModels = filteredModels.slice(
+        (safeCurrentPage - 1) * modelsPerPage,
+        safeCurrentPage * modelsPerPage,
+    );
+    const pageStart = filteredModels.length ? (safeCurrentPage - 1) * modelsPerPage + 1 : 0;
+    const pageEnd = Math.min(safeCurrentPage * modelsPerPage, filteredModels.length);
+
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [currentPage, totalPages]);
+
     if (loading) {
-        return <div className="py-10 text-center text-white">{t('modelsPage.loading')}</div>;
+        return (
+            <div className="py-12 text-white">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div className="mb-10 text-center">
+                        <h1 className="text-4xl font-extrabold">{t('modelsPage.title')}</h1>
+                        <p className="mt-4 text-lg text-gray-300">{t('modelsPage.loading')}</p>
+                    </div>
+                    <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-6">
+                        <div className="h-6 w-48 animate-pulse rounded bg-white/10" />
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            {Array.from({ length: 4 }).map((_, index) => (
+                                <div key={index} className="h-12 animate-pulse rounded-lg bg-white/10" />
+                            ))}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {Array.from({ length: modelsPerPage }).map((_, index) => (
+                            <div key={index} className="h-80 animate-pulse rounded-xl border border-white/10 bg-white/5" />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -208,9 +251,80 @@ const ModelsListPage: React.FC = () => {
                     </div>
 
                     {filteredModels.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {filteredModels.map(model => <ModelCard key={model.id} model={model} />)}
+                        <>
+                        <div className="mb-5 flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300 sm:flex-row sm:items-center sm:justify-between">
+                            <span>
+                                Showing <span className="font-semibold text-white">{pageStart}-{pageEnd}</span> of{' '}
+                                <span className="font-semibold text-white">{filteredModels.length}</span> models
+                            </span>
+                            <span className="text-gray-400">
+                                Page {safeCurrentPage} of {totalPages}
+                            </span>
                         </div>
+                        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {paginatedModels.map(model => <ModelCard key={model.id} model={model} />)}
+                        </div>
+                        <nav className="mt-10 flex flex-col items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:flex-row" aria-label="Model pagination">
+                            <button
+                                type="button"
+                                onClick={() => setCurrentPage(page => Math.max(1, page - 1))}
+                                disabled={safeCurrentPage === 1}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-gray-cyan/50 hover:bg-gray-cyan/10 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                                Previous
+                            </button>
+                            <div className="flex flex-wrap justify-center gap-2">
+                                {Array.from({ length: totalPages }).map((_, index) => {
+                                    const page = index + 1;
+                                    const isVisible =
+                                        page === 1 ||
+                                        page === totalPages ||
+                                        Math.abs(page - safeCurrentPage) <= 1;
+                                    const previousPage = index;
+                                    const needsGap =
+                                        isVisible &&
+                                        previousPage > 0 &&
+                                        !(
+                                            previousPage === 1 ||
+                                            previousPage === totalPages ||
+                                            Math.abs(previousPage - safeCurrentPage) <= 1
+                                        );
+
+                                    if (!isVisible) {
+                                        return null;
+                                    }
+
+                                    return (
+                                        <React.Fragment key={page}>
+                                            {needsGap && <span className="px-2 py-2 text-sm text-gray-500">...</span>}
+                                            <button
+                                                type="button"
+                                                onClick={() => setCurrentPage(page)}
+                                                className={`h-10 min-w-10 rounded-lg px-3 text-sm font-semibold transition ${
+                                                    safeCurrentPage === page
+                                                        ? 'bg-gray-cyan text-white'
+                                                        : 'border border-white/10 bg-white/5 text-gray-300 hover:border-gray-cyan/50 hover:text-white'
+                                                }`}
+                                                aria-current={safeCurrentPage === page ? 'page' : undefined}
+                                            >
+                                                {page}
+                                            </button>
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))}
+                                disabled={safeCurrentPage === totalPages}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-gray-cyan/50 hover:bg-gray-cyan/10 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+                            >
+                                Next
+                                <ChevronRight className="h-4 w-4" />
+                            </button>
+                        </nav>
+                        </>
                     ) : (
                         <p className="text-center text-gray-400 py-10">{t('modelsPage.noResults')}</p>
                     )}
