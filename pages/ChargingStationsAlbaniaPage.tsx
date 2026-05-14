@@ -564,7 +564,12 @@ const ChargingStationsAlbaniaPage: React.FC = () => {
         // Public endpoint may have rate limits; if it fails we surface the original error.
         const res = await fetch('https://ipapi.co/json/', { method: 'GET' });
         if (!res.ok) return null;
-        const data = (await res.json()) as any;
+        const rawText = await res.text();
+        const trimmedText = rawText.trim();
+        if (!trimmedText || /^<!doctype\s+html/i.test(trimmedText) || /^<html[\s>]/i.test(trimmedText)) {
+          return null;
+        }
+        const data = JSON.parse(rawText) as any;
         const latitude = Number(data?.latitude);
         const longitude = Number(data?.longitude);
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;

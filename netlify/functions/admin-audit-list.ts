@@ -6,10 +6,12 @@ import {
   internalError,
   json,
   methodNotAllowed,
+  quotaExceeded,
   serviceUnavailable,
   unauthorized,
 } from './_lib/http';
 import { requireAdminPermission } from './_lib/adminAccess';
+import { isFirestoreQuotaError } from './_lib/firebaseErrors';
 import { getAdminFirestore } from './_lib/firebaseAdmin';
 
 const DEFAULT_LIMIT = 50;
@@ -111,6 +113,9 @@ export const handler = async (event: FunctionEvent) => {
     }
     if (message.includes('limit must be')) {
       return badRequest(message);
+    }
+    if (isFirestoreQuotaError(error)) {
+      return quotaExceeded('Firestore quota is exhausted, so audit logs are temporarily unavailable.');
     }
 
     return internalError(message);

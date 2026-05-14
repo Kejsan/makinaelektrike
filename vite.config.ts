@@ -17,7 +17,7 @@ export default defineConfig(({ command, mode }) => {
         host: '0.0.0.0',
       },
       envPrefix: ['VITE_'],
-      plugins: [react(), ...(command === 'serve' ? [netlifyFunctionsPlugin()] : [])],
+      plugins: [react(), netlifyFunctionsPlugin()],
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),

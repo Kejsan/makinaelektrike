@@ -6,10 +6,12 @@ import {
   internalError,
   json,
   methodNotAllowed,
+  quotaExceeded,
   serviceUnavailable,
   unauthorized,
 } from './_lib/http';
 import { requireAuthenticatedProfile } from './_lib/adminAccess';
+import { isFirestoreQuotaError } from './_lib/firebaseErrors';
 import { getAdminFirestore } from './_lib/firebaseAdmin';
 import { serializeTimestamp } from './_lib/placements';
 import { hasPermission } from '../../utils/accessControl';
@@ -435,6 +437,9 @@ export const handler = async (event: FunctionEvent) => {
     }
     if (message.startsWith('Missing Firebase admin credentials')) {
       return serviceUnavailable('Server-side admin notifications are not configured.');
+    }
+    if (isFirestoreQuotaError(error)) {
+      return quotaExceeded('Firestore quota is exhausted, so admin notifications are temporarily unavailable.');
     }
 
     return internalError(message);

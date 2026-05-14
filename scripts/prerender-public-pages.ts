@@ -1218,7 +1218,6 @@ const renderFooter = (lang: AppLocale) => {
           )
           .join('')}
       </div>
-      <p class="pr-muted" style="margin-top:16px;">${escapeHtml(messages.footer.legalBody)}</p>
     </footer>
   `;
 };

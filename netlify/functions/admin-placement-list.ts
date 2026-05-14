@@ -5,10 +5,12 @@ import {
   internalError,
   json,
   methodNotAllowed,
+  quotaExceeded,
   serviceUnavailable,
   unauthorized,
 } from './_lib/http';
 import { requireAdminPermission } from './_lib/adminAccess';
+import { isFirestoreQuotaError } from './_lib/firebaseErrors';
 import { getAdminFirestore } from './_lib/firebaseAdmin';
 import { buildPlacementZoneAvailability } from './_lib/placementOrders';
 import {
@@ -80,6 +82,9 @@ export const handler = async (event: FunctionEvent) => {
     }
     if (message.startsWith('Missing Firebase admin credentials')) {
       return serviceUnavailable('Server-side placement management is not configured.');
+    }
+    if (isFirestoreQuotaError(error)) {
+      return quotaExceeded('Firestore quota is exhausted, so placement management data is temporarily unavailable.');
     }
 
     return internalError(message);

@@ -186,19 +186,6 @@ const Footer: React.FC = () => {
           </div>
         </div>
 
-        {/* Legal summary card */}
-        <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 p-5 text-xs leading-relaxed text-gray-300 sm:text-sm">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-            <span className="font-semibold text-white">{t('footer.moreInfo')}</span>
-            <span className="text-[10px] uppercase tracking-[0.22em] text-gray-400 sm:text-xs">
-              {t('footer.legalSummary')}
-            </span>
-          </div>
-          <p className="mt-3">
-            {t('footer.legalBody')}
-          </p>
-        </div>
-
         {/* Bottom bar */}
         <div className="mt-10 flex flex-col gap-4 border-t border-white/10 pt-6 text-center text-xs text-gray-400 sm:text-sm md:flex-row md:items-center md:justify-between md:text-left">
           <p className="text-sm text-gray-400">&copy; {new Date().getFullYear()} Makina Elektrike. {t('footer.rightsReserved')}</p>

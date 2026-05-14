@@ -46,6 +46,18 @@ export const methodNotAllowed = (allowedMethods: string[]) =>
 
 export const serviceUnavailable = (error: string) => json(503, { error });
 
+export const quotaExceeded = (
+  error = 'Firestore quota has been exceeded. Please retry after the quota resets or increase the Firebase quota.',
+) =>
+  json(
+    429,
+    {
+      error,
+      code: 'FIRESTORE_QUOTA_EXHAUSTED',
+    },
+    { 'Retry-After': '3600' },
+  );
+
 export const upstreamError = (error: string, statusCode = 502) =>
   json(statusCode, { error });
 

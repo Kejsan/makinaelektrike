@@ -1,5 +1,5 @@
 import type { FeatureCollection, Point } from 'geojson';
-import { fetchFunctionJson } from './serverFunctions';
+import { fetchFunctionJson, isFunctionHtmlResponseError } from './serverFunctions';
 
 export interface OCMOperator {
   id: number;
@@ -122,6 +122,11 @@ interface FetchStationsOptions {
   signal?: AbortSignal;
 }
 
+const emptyStationCollection = (): StationFeatureCollection => ({
+  type: 'FeatureCollection',
+  features: [],
+});
+
 export async function fetchStations({
   mode,
   countryCode = 'AL',
@@ -129,17 +134,25 @@ export async function fetchStations({
   filters,
   signal,
 }: FetchStationsOptions): Promise<StationFeatureCollection> {
-  return fetchFunctionJson<StationFeatureCollection>('ocm-stations', {
-    query: {
-      mode,
-      countryCode,
-      boundingBox,
-      operators: filters?.operators,
-      connectionTypes: filters?.connectionTypes,
-      levels: filters?.levels,
-      usageTypes: filters?.usageTypes,
-      statusTypes: filters?.statusTypes,
-    },
-    signal,
-  });
+  try {
+    return await fetchFunctionJson<StationFeatureCollection>('ocm-stations', {
+      query: {
+        mode,
+        countryCode,
+        boundingBox,
+        operators: filters?.operators,
+        connectionTypes: filters?.connectionTypes,
+        levels: filters?.levels,
+        usageTypes: filters?.usageTypes,
+        statusTypes: filters?.statusTypes,
+      },
+      signal,
+    });
+  } catch (error) {
+    if (isFunctionHtmlResponseError(error)) {
+      return emptyStationCollection();
+    }
+
+    throw error;
+  }
 }

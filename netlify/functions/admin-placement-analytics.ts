@@ -5,10 +5,12 @@ import {
   internalError,
   json,
   methodNotAllowed,
+  quotaExceeded,
   serviceUnavailable,
   unauthorized,
 } from './_lib/http';
 import { requireAdminPermission } from './_lib/adminAccess';
+import { isFirestoreQuotaError } from './_lib/firebaseErrors';
 import { getAdminFirestore } from './_lib/firebaseAdmin';
 import {
   serializePlacementAnalyticsDailyBucket,
@@ -84,11 +86,23 @@ export const handler = async (event: FunctionEvent) => {
     const selectedZoneKey = normalizeZoneKey(event.queryStringParameters?.zoneKey);
     const dateKeys = buildDateKeys(rangeDays);
     const dateKeySet = new Set(dateKeys);
+    const firstDateKey = dateKeys[0]!;
+    const lastDateKey = dateKeys[dateKeys.length - 1]!;
     const firestore = getAdminFirestore();
     const [dailySnapshot, zoneSnapshot, dailyZoneSnapshot] = await Promise.all([
-      firestore.collectionGroup('daily').get(),
+      firestore
+        .collectionGroup('daily')
+        .where('dateKey', '>=', firstDateKey)
+        .where('dateKey', '<=', lastDateKey)
+        .get(),
       firestore.collectionGroup('zones').get(),
-      selectedZoneKey ? firestore.collectionGroup('dailyZones').get() : Promise.resolve(null),
+      selectedZoneKey
+        ? firestore
+            .collectionGroup('dailyZones')
+            .where('dateKey', '>=', firstDateKey)
+            .where('dateKey', '<=', lastDateKey)
+            .get()
+        : Promise.resolve(null),
     ]);
     const campaignMap = new Map<
       string,
@@ -267,6 +281,9 @@ export const handler = async (event: FunctionEvent) => {
     }
     if (message.startsWith('Missing Firebase admin credentials')) {
       return serviceUnavailable('Server-side placement analytics are not configured.');
+    }
+    if (isFirestoreQuotaError(error)) {
+      return quotaExceeded('Firestore quota is exhausted, so placement analytics are temporarily unavailable.');
     }
 
     return internalError(message);

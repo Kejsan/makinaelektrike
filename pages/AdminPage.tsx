@@ -141,6 +141,7 @@ import {
   saveSponsorshipProduct,
 } from '../services/adminPlacements';
 import { listAdminNotifications } from '../services/adminNotifications';
+import { isFunctionQuotaExceededError } from '../services/serverFunctions';
 import {
   lookupAdminStation,
   type AdminStationLookupResult,
@@ -465,6 +466,7 @@ const AdminPage: React.FC = () => {
   const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
   const [adminNotificationsLoading, setAdminNotificationsLoading] = useState(false);
   const [adminNotificationsError, setAdminNotificationsError] = useState<string | null>(null);
+  const [adminNotificationsPausedUntil, setAdminNotificationsPausedUntil] = useState<number | null>(null);
   const [adminNotificationsOpen, setAdminNotificationsOpen] = useState(false);
   const [browserNotificationEnabled, setBrowserNotificationEnabled] = useState(
     () => typeof window !== 'undefined' && window.localStorage.getItem('adminBrowserNotifications') === 'enabled',
@@ -970,6 +972,20 @@ const AdminPage: React.FC = () => {
     [tabs],
   );
 
+  const getAdminLoadErrorMessage = useCallback(
+    (error: unknown, fallbackKey: string, defaultValue: string) => {
+      if (isFunctionQuotaExceededError(error)) {
+        return t('admin.firestoreQuotaExceeded', {
+          defaultValue:
+            'Firebase quota is currently exhausted, so live admin data cannot be loaded. Retry after the quota resets or increase the Firebase quota.',
+        });
+      }
+
+      return error instanceof Error ? error.message : t(fallbackKey, { defaultValue });
+    },
+    [t],
+  );
+
   const navigateToAdminTab = useCallback(
     (tabId: TabKey) => {
       setActiveTab(tabId);
@@ -1011,6 +1027,13 @@ const AdminPage: React.FC = () => {
         return;
       }
 
+      if (
+        adminNotificationsPausedUntil &&
+        Date.now() < adminNotificationsPausedUntil
+      ) {
+        return;
+      }
+
       if (!silent) {
         setAdminNotificationsLoading(true);
       }
@@ -1018,6 +1041,7 @@ const AdminPage: React.FC = () => {
 
       try {
         const response = await listAdminNotifications();
+        setAdminNotificationsPausedUntil(null);
         const previousIds = notificationKnownIdsRef.current;
         const incomingIds = new Set(response.notifications.map(notification => notification.id));
         const newNotifications = response.notifications.filter(notification => !previousIds.has(notification.id));
@@ -1031,19 +1055,28 @@ const AdminPage: React.FC = () => {
 
         notificationInitialLoadRef.current = true;
       } catch (error) {
-        console.error('Failed to load admin notifications:', error);
-        setAdminNotificationsError(
-          error instanceof Error
-            ? error.message
-            : t('admin.notificationsLoadFailed', {
-                defaultValue: 'Failed to load admin notifications.',
-              }),
-        );
+        if (isFunctionQuotaExceededError(error)) {
+          console.warn('Admin notification loading paused because Firestore quota is exhausted.', error);
+          setAdminNotificationsPausedUntil(Date.now() + 15 * 60 * 1000);
+        } else {
+          console.error('Failed to load admin notifications:', error);
+        }
+        setAdminNotificationsError(getAdminLoadErrorMessage(
+          error,
+          'admin.notificationsLoadFailed',
+          'Failed to load admin notifications.',
+        ));
       } finally {
         setAdminNotificationsLoading(false);
       }
     },
-    [browserNotificationEnabled, canReadAdminNotifications, showBrowserNotification, t],
+    [
+      adminNotificationsPausedUntil,
+      browserNotificationEnabled,
+      canReadAdminNotifications,
+      getAdminLoadErrorMessage,
+      showBrowserNotification,
+    ],
   );
 
   const requestBrowserNotifications = useCallback(async () => {
@@ -1174,21 +1207,23 @@ const AdminPage: React.FC = () => {
         setPromotionalCampaigns(response.campaigns);
         setPlacementsLoaded(true);
       } catch (error) {
-        console.error('Failed to load placements catalog', error);
-        setPlacementsError(
-          error instanceof Error
-            ? error.message
-            : t('admin.placementsLoadFailed', {
-                defaultValue: 'Failed to load placements management data.',
-              }),
-        );
+        if (isFunctionQuotaExceededError(error)) {
+          console.warn('Placements catalog could not load because Firestore quota is exhausted.', error);
+        } else {
+          console.error('Failed to load placements catalog', error);
+        }
+        setPlacementsError(getAdminLoadErrorMessage(
+          error,
+          'admin.placementsLoadFailed',
+          'Failed to load placements management data.',
+        ));
       } finally {
         if (!silent) {
           setPlacementsLoading(false);
         }
       }
     },
-    [canReadPlacements, t],
+    [canReadPlacements, getAdminLoadErrorMessage],
   );
 
   const loadPlacementAnalytics = useCallback(
@@ -1212,21 +1247,28 @@ const AdminPage: React.FC = () => {
         setPlacementAnalyticsFilters(response.filters);
         setPlacementAnalyticsLoaded(true);
       } catch (error) {
-        console.error('Failed to load placement analytics', error);
-        setPlacementAnalyticsError(
-          error instanceof Error
-            ? error.message
-            : t('admin.placementsAnalyticsLoadFailed', {
-                defaultValue: 'Failed to load placement analytics.',
-              }),
-        );
+        if (isFunctionQuotaExceededError(error)) {
+          console.warn('Placement analytics could not load because Firestore quota is exhausted.', error);
+        } else {
+          console.error('Failed to load placement analytics', error);
+        }
+        setPlacementAnalyticsError(getAdminLoadErrorMessage(
+          error,
+          'admin.placementsAnalyticsLoadFailed',
+          'Failed to load placement analytics.',
+        ));
       } finally {
         if (!silent) {
           setPlacementAnalyticsLoading(false);
         }
       }
     },
-    [canReadPlacementAnalytics, placementAnalyticsFilters.days, placementAnalyticsFilters.zoneKey, t],
+    [
+      canReadPlacementAnalytics,
+      getAdminLoadErrorMessage,
+      placementAnalyticsFilters.days,
+      placementAnalyticsFilters.zoneKey,
+    ],
   );
 
   const handlePlacementBootstrap = useCallback(async () => {
@@ -1281,6 +1323,7 @@ const AdminPage: React.FC = () => {
         days: typeof updates.days === 'number' ? updates.days : prev.days,
         zoneKey: updates.zoneKey === undefined ? prev.zoneKey ?? null : updates.zoneKey,
       }));
+      setPlacementAnalyticsError(null);
       setPlacementAnalyticsLoaded(false);
     },
     [],
@@ -2132,6 +2175,10 @@ const AdminPage: React.FC = () => {
         return;
       }
 
+      if (auditError && !force) {
+        return;
+      }
+
       setAuditLoading(true);
       setAuditError(null);
       try {
@@ -2139,19 +2186,21 @@ const AdminPage: React.FC = () => {
         setAuditLogs(logs);
         setAuditLoaded(true);
       } catch (error) {
-        console.error('Failed to load admin audit logs', error);
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : t('admin.auditLogLoadFailed', {
-                defaultValue: 'Failed to load the audit log.',
-              });
-        setAuditError(errorMessage);
+        if (isFunctionQuotaExceededError(error)) {
+          console.warn('Audit logs could not load because Firestore quota is exhausted.', error);
+        } else {
+          console.error('Failed to load admin audit logs', error);
+        }
+        setAuditError(getAdminLoadErrorMessage(
+          error,
+          'admin.auditLogLoadFailed',
+          'Failed to load the audit log.',
+        ));
       } finally {
         setAuditLoading(false);
       }
     },
-    [auditLoaded, auditLoading, canViewAudit, t],
+    [auditError, auditLoaded, auditLoading, canViewAudit, getAdminLoadErrorMessage],
   );
 
   useEffect(() => {
@@ -4211,6 +4260,7 @@ const AdminPage: React.FC = () => {
       (activeTab !== 'placements' && activeTab !== 'overview' && activeTab !== 'reports') ||
       placementsLoaded ||
       placementsLoading ||
+      placementsError ||
       !canReadPlacements
     ) {
       return;
@@ -4221,6 +4271,7 @@ const AdminPage: React.FC = () => {
     activeTab,
     canReadPlacements,
     loadPlacementsCatalog,
+    placementsError,
     placementsLoaded,
     placementsLoading,
   ]);
@@ -4230,6 +4281,7 @@ const AdminPage: React.FC = () => {
       (activeTab !== 'placements' && activeTab !== 'overview' && activeTab !== 'reports') ||
       placementAnalyticsLoaded ||
       placementAnalyticsLoading ||
+      placementAnalyticsError ||
       !canReadPlacementAnalytics
     ) {
       return;
@@ -4240,6 +4292,7 @@ const AdminPage: React.FC = () => {
     activeTab,
     canReadPlacementAnalytics,
     loadPlacementAnalytics,
+    placementAnalyticsError,
     placementAnalyticsLoaded,
     placementAnalyticsLoading,
   ]);
