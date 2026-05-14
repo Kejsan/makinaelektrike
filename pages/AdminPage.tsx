@@ -1,5 +1,6 @@
-import React, { Suspense, lazy, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Bell,
   Shield,
   LogOut,
   Plus,
@@ -30,7 +31,7 @@ import {
   CreditCard,
   BookOpen,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -66,6 +67,7 @@ import {
   SponsorshipProductStatus,
   SponsorshipProduct,
   SponsorshipProductFormValues,
+  AdminNotification,
 } from '../types';
 import DealerForm, { DealerFormValues } from '../components/admin/DealerForm';
 import type { ModelFormValues } from '../components/admin/ModelForm';
@@ -135,6 +137,7 @@ import {
   savePromotionalCampaign,
   saveSponsorshipProduct,
 } from '../services/adminPlacements';
+import { listAdminNotifications } from '../services/adminNotifications';
 import {
   lookupAdminStation,
   type AdminStationLookupResult,
@@ -209,6 +212,27 @@ type TabKey =
   | 'audit'
   | 'migration';
 type DealerFilterKey = 'active' | 'inactive' | 'pending' | 'deleted';
+const TAB_KEYS: readonly TabKey[] = [
+  'overview',
+  'dealers',
+  'users',
+  'models',
+  'listings',
+  'blog',
+  'stations',
+  'placements',
+  'reports',
+  'access',
+  'audit',
+  'migration',
+] as const;
+const DEALER_FILTER_KEYS: readonly DealerFilterKey[] = ['active', 'inactive', 'pending', 'deleted'];
+const MODEL_FILTER_KEYS = ['all', 'featured', 'visible', 'hidden'] as const;
+const BLOG_FILTER_KEYS = ['all', 'published', 'draft'] as const;
+const STATION_FILTER_KEYS = ['all', 'active', 'inactive'] as const;
+
+const isTabKey = (value: string | null): value is TabKey =>
+  !!value && (TAB_KEYS as readonly string[]).includes(value);
 type DealerPlanDraft = {
   planId: DealerPlanId;
   subscriptionStatus: DealerSubscriptionStatus;
@@ -357,7 +381,10 @@ const AdminPage: React.FC = () => {
   const { logout, user, role, hasPermission, isMasterAdmin } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation();
+  const notificationKnownIdsRef = useRef<Set<string>>(new Set());
+  const notificationInitialLoadRef = useRef(false);
 
   const [activationModalDealer, setActivationModalDealer] = useState<Dealer | null>(null);
   const [activationPassword, setActivationPassword] = useState('');
@@ -431,6 +458,13 @@ const AdminPage: React.FC = () => {
   } = useContext(DataContext);
 
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+  const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
+  const [adminNotificationsLoading, setAdminNotificationsLoading] = useState(false);
+  const [adminNotificationsError, setAdminNotificationsError] = useState<string | null>(null);
+  const [adminNotificationsOpen, setAdminNotificationsOpen] = useState(false);
+  const [browserNotificationEnabled, setBrowserNotificationEnabled] = useState(
+    () => typeof window !== 'undefined' && window.localStorage.getItem('adminBrowserNotifications') === 'enabled',
+  );
   const [dealerFormState, setDealerFormState] = useState<FormState<Dealer>>(null);
   const [modelFormState, setModelFormState] = useState<FormState<Model>>(null);
   const [blogFormState, setBlogFormState] = useState<FormState<BlogPost>>(null);
@@ -552,9 +586,24 @@ const AdminPage: React.FC = () => {
     hasPermission('placements.override');
   const canOverridePlacements = hasPermission('placements.override');
   const canReadPlacementAnalytics = hasPermission('placements.analytics_read');
+  const canReadBlog =
+    hasPermission('blog.read') ||
+    hasPermission('blog.publish') ||
+    hasPermission('blog.schedule');
   const canViewAudit = hasPermission('audit.view');
   const canViewReports = hasPermission('reports.export') || canReadPlacementAnalytics || canViewAudit;
   const canExportReports = hasPermission('reports.export');
+  const canReadAdminNotifications =
+    canReadDealers ||
+    canReadUsers ||
+    canReadListings ||
+    canReadModels ||
+    canReadStations ||
+    canReadPlacements ||
+    canReadBlog ||
+    canManageAdminAccess ||
+    canInviteAdmins ||
+    hasPermission('enquiries.read');
 
   // Reset selection and search on tab/filter change
   useEffect(() => {
@@ -828,6 +877,171 @@ const AdminPage: React.FC = () => {
     ],
     [canManageAdminAccess, canReadPlacements, canReadUsers, canViewAudit, canViewReports, t]
   );
+
+  const navigateToAdminTab = useCallback(
+    (tabId: TabKey) => {
+      setActiveTab(tabId);
+      const nextParams = new URLSearchParams(searchParams);
+      if (tabId === 'overview') {
+        nextParams.delete('tab');
+      } else {
+        nextParams.set('tab', tabId);
+      }
+      nextParams.delete('focus');
+      setSearchParams(nextParams, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const showBrowserNotification = useCallback((notification: AdminNotification) => {
+    if (
+      typeof window === 'undefined' ||
+      !('Notification' in window) ||
+      Notification.permission !== 'granted'
+    ) {
+      return;
+    }
+
+    const browserNotification = new Notification(notification.title, {
+      body: notification.message,
+      tag: notification.id,
+    });
+    browserNotification.onclick = () => {
+      window.focus();
+      navigate(notification.href);
+      browserNotification.close();
+    };
+  }, [navigate]);
+
+  const loadAdminNotificationFeed = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
+      if (!canReadAdminNotifications) {
+        return;
+      }
+
+      if (!silent) {
+        setAdminNotificationsLoading(true);
+      }
+      setAdminNotificationsError(null);
+
+      try {
+        const response = await listAdminNotifications();
+        const previousIds = notificationKnownIdsRef.current;
+        const incomingIds = new Set(response.notifications.map(notification => notification.id));
+        const newNotifications = response.notifications.filter(notification => !previousIds.has(notification.id));
+
+        setAdminNotifications(response.notifications);
+        notificationKnownIdsRef.current = incomingIds;
+
+        if (notificationInitialLoadRef.current && browserNotificationEnabled) {
+          newNotifications.slice(0, 3).forEach(showBrowserNotification);
+        }
+
+        notificationInitialLoadRef.current = true;
+      } catch (error) {
+        console.error('Failed to load admin notifications:', error);
+        setAdminNotificationsError(
+          error instanceof Error
+            ? error.message
+            : t('admin.notificationsLoadFailed', {
+                defaultValue: 'Failed to load admin notifications.',
+              }),
+        );
+      } finally {
+        setAdminNotificationsLoading(false);
+      }
+    },
+    [browserNotificationEnabled, canReadAdminNotifications, showBrowserNotification, t],
+  );
+
+  const requestBrowserNotifications = useCallback(async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      addToast(
+        t('admin.browserNotificationsUnsupported', {
+          defaultValue: 'This browser does not support browser notifications.',
+        }),
+        'error',
+      );
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      window.localStorage.setItem('adminBrowserNotifications', 'enabled');
+      setBrowserNotificationEnabled(true);
+      addToast(
+        t('admin.browserNotificationsEnabled', {
+          defaultValue: 'Browser notifications are enabled while this dashboard is open.',
+        }),
+        'success',
+      );
+      return;
+    }
+
+    window.localStorage.removeItem('adminBrowserNotifications');
+    setBrowserNotificationEnabled(false);
+    addToast(
+      t('admin.browserNotificationsDenied', {
+        defaultValue: 'Browser notifications were not enabled.',
+      }),
+      'info',
+    );
+  }, [addToast, t]);
+
+  useEffect(() => {
+    const requestedTab = searchParams.get('tab');
+    const visibleTabIds = new Set(tabs.map(tab => tab.id));
+    if (isTabKey(requestedTab) && visibleTabIds.has(requestedTab) && requestedTab !== activeTab) {
+      setActiveTab(requestedTab);
+    }
+
+    const requestedDealerFilter = searchParams.get('dealerFilter');
+    if (
+      requestedDealerFilter &&
+      (DEALER_FILTER_KEYS as readonly string[]).includes(requestedDealerFilter)
+    ) {
+      setDealerFilter(requestedDealerFilter as DealerFilterKey);
+    }
+
+    const requestedModelFilter = searchParams.get('modelFilter');
+    if (
+      requestedModelFilter &&
+      (MODEL_FILTER_KEYS as readonly string[]).includes(requestedModelFilter)
+    ) {
+      setModelFilter(requestedModelFilter as (typeof MODEL_FILTER_KEYS)[number]);
+    }
+
+    const requestedBlogFilter = searchParams.get('blogFilter');
+    if (
+      requestedBlogFilter &&
+      (BLOG_FILTER_KEYS as readonly string[]).includes(requestedBlogFilter)
+    ) {
+      setBlogFilter(requestedBlogFilter as (typeof BLOG_FILTER_KEYS)[number]);
+    }
+
+    const requestedStationFilter = searchParams.get('stationFilter');
+    if (
+      requestedStationFilter &&
+      (STATION_FILTER_KEYS as readonly string[]).includes(requestedStationFilter)
+    ) {
+      setStationFilter(requestedStationFilter as (typeof STATION_FILTER_KEYS)[number]);
+    }
+  }, [activeTab, searchParams, tabs]);
+
+  useEffect(() => {
+    if (!canReadAdminNotifications) {
+      return;
+    }
+
+    void loadAdminNotificationFeed();
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void loadAdminNotificationFeed({ silent: true });
+      }
+    }, 60000);
+
+    return () => window.clearInterval(intervalId);
+  }, [canReadAdminNotifications, loadAdminNotificationFeed]);
 
   const handleLogout = async () => {
     try {
@@ -1518,6 +1732,7 @@ const AdminPage: React.FC = () => {
   );
 
   const recentAuditHighlights = useMemo(() => auditLogs.slice(0, 8), [auditLogs]);
+  const adminNotificationCount = adminNotifications.length;
 
   const isAdmin = role === 'admin';
   const canAssignDealerPlans =
@@ -3974,6 +4189,141 @@ const AdminPage: React.FC = () => {
       </button>
     </div>
   );
+
+  const renderAdminNotificationsPanel = () => {
+    if (!adminNotificationsOpen) {
+      return null;
+    }
+
+    const severityClasses: Record<AdminNotification['severity'], string> = {
+      urgent: 'border-red-500/30 bg-red-500/10 text-red-100',
+      attention: 'border-amber-500/30 bg-amber-500/10 text-amber-100',
+      info: 'border-sky-500/30 bg-sky-500/10 text-sky-100',
+    };
+
+    return (
+      <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true">
+        <button
+          type="button"
+          aria-label={t('admin.closeNotifications', { defaultValue: 'Close notifications' })}
+          className="absolute inset-0 h-full w-full cursor-default"
+          onClick={() => setAdminNotificationsOpen(false)}
+        />
+        <aside className="absolute right-0 top-0 flex h-full w-full max-w-xl flex-col border-l border-white/10 bg-[#07111f] shadow-2xl">
+          <div className="border-b border-white/10 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-gray-cyan/80">
+                  {t('admin.notificationCenterEyebrow', { defaultValue: 'Action center' })}
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">
+                  {t('admin.notificationCenterTitle', { defaultValue: 'Admin notifications' })}
+                </h2>
+                <p className="mt-2 text-sm text-gray-400">
+                  {t('admin.notificationCenterDescription', {
+                    defaultValue:
+                      'Actionable items that need review, approval, verification, payment handling, or follow-up.',
+                  })}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAdminNotificationsOpen(false)}
+                className="rounded-lg p-2 text-gray-400 transition hover:bg-white/10 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void loadAdminNotificationFeed()}
+                disabled={adminNotificationsLoading}
+                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {adminNotificationsLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCcw size={15} />
+                )}
+                <span>{t('admin.refreshNotifications', { defaultValue: 'Refresh' })}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void requestBrowserNotifications()}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-cyan/20 bg-gray-cyan/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-gray-cyan/20"
+              >
+                <Bell size={15} />
+                <span>
+                  {browserNotificationEnabled
+                    ? t('admin.browserNotificationsOn', { defaultValue: 'Browser alerts on' })
+                    : t('admin.enableBrowserNotifications', { defaultValue: 'Enable browser alerts' })}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-5">
+            {adminNotificationsError && (
+              <div className="mb-4 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
+                {adminNotificationsError}
+              </div>
+            )}
+
+            {adminNotificationsLoading && adminNotifications.length === 0 ? (
+              <div className="flex items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-10 text-sm text-gray-300">
+                <Loader2 className="h-4 w-4 animate-spin text-gray-cyan" />
+                <span>{t('admin.loadingNotifications', { defaultValue: 'Loading notifications...' })}</span>
+              </div>
+            ) : adminNotifications.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-8 text-center text-sm text-gray-300">
+                {t('admin.noAdminNotifications', {
+                  defaultValue: 'No pending admin actions are currently visible for your permissions.',
+                })}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {adminNotifications.map(notification => (
+                  <article
+                    key={notification.id}
+                    className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span
+                          className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${severityClasses[notification.severity]}`}
+                        >
+                          {notification.severity}
+                        </span>
+                        <h3 className="mt-3 text-base font-semibold text-white">{notification.title}</h3>
+                      </div>
+                      {notification.createdAt && (
+                        <span className="shrink-0 text-xs text-gray-500">
+                          {formatDateTime(notification.createdAt)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-gray-300">{notification.message}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdminNotificationsOpen(false);
+                        navigate(notification.href);
+                      }}
+                      className="mt-4 inline-flex items-center gap-2 rounded-lg bg-gray-cyan px-3 py-2 text-xs font-semibold text-white transition hover:bg-cyan-400"
+                    >
+                      <span>{notification.actionLabel}</span>
+                      <ExternalLink size={14} />
+                    </button>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
+    );
+  };
 
   const handleExportOperationalReport = useCallback(() => {
     if (!canExportReports || typeof window === 'undefined') {
@@ -8711,7 +9061,7 @@ const AdminPage: React.FC = () => {
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => navigateToAdminTab(tab.id)}
               className={`flex w-full items-center px-4 py-3 text-sm font-medium rounded-xl transition-all ${
                 activeTab === tab.id
                   ? 'bg-gray-cyan text-white shadow-lg'
@@ -8738,6 +9088,21 @@ const AdminPage: React.FC = () => {
               </span>
             )}
           </button>
+
+          {canReadAdminNotifications && (
+            <button
+              onClick={() => setAdminNotificationsOpen(true)}
+              className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-cyan/20 bg-gray-cyan/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-gray-cyan/20 hover:text-white"
+            >
+              <div className="flex items-center gap-2">
+                <Bell size={18} />
+                <span>{t('admin.notificationsButton', { defaultValue: 'Admin notifications' })}</span>
+              </div>
+              <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs font-semibold text-white">
+                {adminNotificationCount}
+              </span>
+            </button>
+          )}
 
           <button
             onClick={() => navigate('/admin/guide')}
@@ -8799,6 +9164,20 @@ const AdminPage: React.FC = () => {
               >
                 <BookOpen size={20} />
               </button>
+              {canReadAdminNotifications && (
+                <button
+                  onClick={() => setAdminNotificationsOpen(true)}
+                  className="relative p-2 text-gray-300 hover:text-white transition rounded-lg hover:bg-white/10"
+                  aria-label={t('admin.notificationsButton', { defaultValue: 'Admin notifications' })}
+                >
+                  <Bell size={20} />
+                  {adminNotificationCount > 0 && (
+                    <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-gray-cyan px-1 text-[10px] font-bold text-white">
+                      {adminNotificationCount}
+                    </span>
+                  )}
+                </button>
+              )}
               <button
                 onClick={() => setOfflineQueueOpen(true)}
                 className="relative p-2 text-gray-300 hover:text-white transition rounded-lg hover:bg-white/10"
@@ -8823,7 +9202,7 @@ const AdminPage: React.FC = () => {
             {tabs.map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => navigateToAdminTab(tab.id)}
                 className={`flex-none whitespace-nowrap rounded-xl px-5 py-2.5 text-sm font-medium transition-all ${
                   activeTab === tab.id
                     ? 'bg-gray-cyan text-white shadow-md'
@@ -8865,6 +9244,8 @@ const AdminPage: React.FC = () => {
         </div>
       </main>
     </div>
+
+      {renderAdminNotificationsPanel()}
 
       {dealerFormState && (
         <AdminModal

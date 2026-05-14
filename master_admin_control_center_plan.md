@@ -15,6 +15,7 @@ This document defines the plan for evolving Makina Elektrike from its current si
 - full control over dynamic promotional inventory and paid placement visibility throughout the platform
 - safer backend authority for privileged operations
 - auditability, restoreability, and operational visibility
+- actionable admin notifications for approvals, verification queues, dealer requests, support intake, billing follow-up, and other items requiring operator handling
 
 This is intended to be the canonical reference for the admin control-center redesign and rollout.
 
@@ -118,6 +119,7 @@ What does not exist in the current admin UI:
 - impersonation or shadow-access tools
 - explicit approval queues dashboard
 - charts, trends, operational maps, or quality metrics
+- durable notification inbox for pending reviews, approvals, payment follow-up, support messages, or SLA-based escalation
 
 Assessment:
 
@@ -205,11 +207,12 @@ What is missing:
 - admin activity trends
 - abuse/security signals
 - saved views and operational work queues
+- dashboard notifications and browser alerts for new work that needs privileged attention
 
 Assessment:
 
 - data visualization maturity: low
-- admin operability maturity: medium-low
+- admin operability maturity: medium-low without notifications; medium once the action-center feed is active
 
 ### 7. Current Monetization and Placement Control
 
@@ -627,6 +630,7 @@ Recommended page structure:
 
 - a shared `AdminLayout`
 - role-aware sidebar navigation
+- global admin notification bell / action center
 - global search / command palette
 - saved filters and queue views
 - list pages with bulk actions
@@ -653,6 +657,8 @@ Recommended entity detail tabs:
 The new admin UI should include:
 
 - consistent action bars across pages
+- actionable notification items with direct links into the responsible admin module
+- optional browser notifications for logged-in admins while the dashboard is open
 - bulk actions with confirmation and undo-friendly design
 - saved filters and queue presets
 - strong search across entities
@@ -660,6 +666,37 @@ The new admin UI should include:
 - relationship visibility between users, dealers, listings, models, and content
 - internal notes for operational coordination
 - history views for trust and recoverability
+
+### Notification And Escalation Requirements
+
+The control center should treat notifications as current pending work, not as the same thing as audit logs.
+
+Initial notification sources:
+
+- pending dealer approvals
+- pending listing approvals
+- pending canonical EV model reviews
+- dealer promotion / sponsorship requests needing quote, invoice, reservation, payment, or campaign linkage
+- new contact form messages
+- new listing enquiries visible to platform operators
+- pending user account states
+- inactive or incomplete charging-station records
+- draft blog posts waiting for editorial action
+- pending platform-admin or dealer-staff invites
+
+Notification behavior:
+
+- visible only to authenticated admins with the permission needed to see the underlying workflow
+- includes title, summary, severity, created date, entity type, entity ID, and action link
+- links directly to the responsible admin tab or control-center section
+- refreshes automatically while the dashboard is open
+- can trigger browser notifications after the admin explicitly grants browser permission
+- should later support read/dismiss state, assignment, SLA timers, escalation rules, and email/true-push delivery
+
+Important distinction:
+
+- notification feed = unresolved or attention-worthy work
+- audit log = immutable record of privileged actions already taken
 
 ## Data Visualization and Reporting Plan
 
@@ -1072,6 +1109,8 @@ Deliverables:
 
 - `/admin/overview`
 - `/admin/reports`
+- admin notification action center
+- optional browser alerts for logged-in admins
 - dashboard cards
 - trend charts
 - geo dashboards
@@ -1081,6 +1120,8 @@ Deliverables:
 Acceptance criteria:
 
 - leadership and operators can understand platform health without manually inspecting collections
+- admins can see and open pending work from a central notification feed
+- notification visibility respects admin permissions
 
 ### Phase 8: Migration, Rollout, and Hardening
 

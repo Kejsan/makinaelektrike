@@ -110,6 +110,18 @@ export type PromotionalCampaignStatus =
   | 'archived';
 export type PromotionalCampaignPromotionType = 'house_promotion' | 'sponsored_promotion';
 export type PlacementAnalyticsEventType = 'impression' | 'click';
+export type AdminNotificationSeverity = 'info' | 'attention' | 'urgent';
+export type AdminNotificationType =
+  | 'dealer_approval'
+  | 'listing_review'
+  | 'model_review'
+  | 'sponsorship_request'
+  | 'contact_message'
+  | 'enquiry'
+  | 'user_review'
+  | 'station_quality'
+  | 'blog_draft'
+  | 'access_invite';
 export type PermissionKey =
   | 'users.read'
   | 'users.edit'
@@ -192,6 +204,20 @@ export interface AdminAuditLog {
   after?: Record<string, unknown> | null;
   metadata?: Record<string, unknown> | null;
   createdAt?: Timestamp | string | null;
+}
+
+export interface AdminNotification {
+  id: string;
+  type: AdminNotificationType;
+  severity: AdminNotificationSeverity;
+  title: string;
+  message: string;
+  actionLabel: string;
+  href: string;
+  entityType: AuditEntityType | 'contact_message' | 'enquiry' | 'system';
+  entityId: string;
+  permissionHint?: PermissionKey | null;
+  createdAt?: string | null;
 }
 
 export interface AdminEntityNote {

@@ -1425,7 +1425,7 @@ const DealerDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+          <div id="enquiries" className="scroll-mt-28 lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-gray-400 flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" />
@@ -1479,7 +1479,7 @@ const DealerDashboardPage: React.FC = () => {
         </div>
 
         {canViewDealerPromotions && (
-          <section className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+          <section id="promotions" className="scroll-mt-28 mb-8 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-cyan">
@@ -1751,7 +1751,7 @@ const DealerDashboardPage: React.FC = () => {
         )}
 
         {canViewDealerTeam && (
-          <section className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+          <section id="team" className="scroll-mt-28 mb-8 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-cyan">
@@ -2359,7 +2359,7 @@ const DealerDashboardPage: React.FC = () => {
               </form>
             </section>
 
-            <section className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+            <section id="profile" className="scroll-mt-28 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
               <div className="mb-6 flex items-center justify-between">
                 <h2 className="text-xl font-semibold">
                   {t('dealerDashboardPage.modelsTitle', { defaultValue: 'Models you represent' })}
@@ -2741,7 +2741,7 @@ const DealerDashboardPage: React.FC = () => {
               )}
             </section>
 
-            <section className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+            <section id="models" className="scroll-mt-28 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
               <h2 className="text-xl font-semibold">
                 {t('dealerDashboardPage.galleryTitle', { defaultValue: 'Gallery' })}
               </h2>

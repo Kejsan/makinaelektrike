@@ -6,6 +6,10 @@ export type InternalGuideId = 'master-admin' | 'dealer';
 export interface InternalGuideStep {
   title: string;
   body: string;
+  bullets?: string[];
+  result?: string;
+  warning?: string;
+  links?: InternalGuideLink[];
 }
 
 export interface InternalGuideLink {
@@ -20,6 +24,7 @@ export interface InternalGuideSection {
   summary: string;
   icon: string;
   steps: InternalGuideStep[];
+  checklist?: string[];
   links?: InternalGuideLink[];
 }
 

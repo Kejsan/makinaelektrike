@@ -1,15 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import {
+  BarChart3,
+  Bell,
   BookOpen,
+  CarFront,
   ClipboardCheck,
   Database,
   FileText,
   LayoutDashboard,
   LockKeyhole,
+  MapPin,
   Megaphone,
+  Receipt,
+  Search,
+  Settings,
   ShieldCheck,
   Store,
   Users,
+  Wrench,
 } from 'lucide-react';
 import SEO from '../components/SEO';
 import Link from '../components/LocalizedLink';
@@ -21,16 +29,24 @@ import {
 } from '../services/internalGuides';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  analytics: BarChart3,
+  bell: Bell,
   book: BookOpen,
+  car: CarFront,
   clipboard: ClipboardCheck,
   database: Database,
   file: FileText,
   layout: LayoutDashboard,
   lock: LockKeyhole,
+  map: MapPin,
   megaphone: Megaphone,
+  receipt: Receipt,
+  search: Search,
+  settings: Settings,
   shield: ShieldCheck,
   store: Store,
   users: Users,
+  wrench: Wrench,
 };
 
 const LoadingGuide = () => (
@@ -38,6 +54,43 @@ const LoadingGuide = () => (
     Loading private guide...
   </div>
 );
+
+const GuideActionLink: React.FC<{ link: { label: string; to: string; note?: string }; compact?: boolean }> = ({
+  link,
+  compact = false,
+}) => {
+  const className = compact
+    ? 'inline-flex items-center rounded-lg border border-gray-cyan/25 bg-gray-cyan/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:border-gray-cyan/60 hover:bg-gray-cyan/15'
+    : 'rounded-2xl border border-gray-cyan/25 bg-gray-cyan/10 p-4 transition hover:border-gray-cyan/60 hover:bg-gray-cyan/15';
+
+  if (link.to.startsWith('#')) {
+    return (
+      <a href={link.to} className={className}>
+        {compact ? (
+          link.label
+        ) : (
+          <>
+            <p className="font-semibold text-white">{link.label}</p>
+            {link.note && <p className="mt-1 text-sm text-gray-300">{link.note}</p>}
+          </>
+        )}
+      </a>
+    );
+  }
+
+  return (
+    <Link to={link.to} className={className}>
+      {compact ? (
+        link.label
+      ) : (
+        <>
+          <p className="font-semibold text-white">{link.label}</p>
+          {link.note && <p className="mt-1 text-sm text-gray-300">{link.note}</p>}
+        </>
+      )}
+    </Link>
+  );
+};
 
 const GuideSectionCard: React.FC<{ section: InternalGuideSection }> = ({ section }) => {
   const Icon = iconMap[section.icon] ?? BookOpen;
@@ -53,26 +106,67 @@ const GuideSectionCard: React.FC<{ section: InternalGuideSection }> = ({ section
       <h2 className="mt-4 text-2xl font-black text-white">{section.title}</h2>
       <p className="mt-2 max-w-3xl text-sm leading-7 text-gray-300">{section.summary}</p>
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-2">
-        {section.steps.map(step => (
+      <div className="mt-6 grid gap-4">
+        {section.steps.map((step, index) => (
           <article key={step.title} className="rounded-2xl border border-white/10 bg-gray-950/50 p-5">
-            <h3 className="text-base font-bold text-white">{step.title}</h3>
-            <p className="mt-3 text-sm leading-7 text-gray-300">{step.body}</p>
+            <div className="flex flex-col gap-3 md:flex-row md:items-start">
+              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-cyan text-sm font-black text-gray-950">
+                {index + 1}
+              </span>
+              <div>
+                <h3 className="text-base font-bold text-white">{step.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-gray-300">{step.body}</p>
+              </div>
+            </div>
+            {step.bullets && (
+              <ul className="mt-4 space-y-2 text-sm leading-6 text-gray-300">
+                {step.bullets.map(item => (
+                  <li key={item} className="flex gap-2">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gray-cyan" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {step.warning && (
+              <p className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-100">
+                {step.warning}
+              </p>
+            )}
+            {step.result && (
+              <p className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm leading-6 text-emerald-100">
+                {step.result}
+              </p>
+            )}
+            {step.links && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {step.links.map(link => (
+                  <GuideActionLink key={`${step.title}:${link.to}:${link.label}`} link={link} compact />
+                ))}
+              </div>
+            )}
           </article>
         ))}
       </div>
 
+      {section.checklist && (
+        <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-5">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-white">Operational checklist</h3>
+          <ul className="mt-4 grid gap-2 text-sm leading-6 text-gray-300 md:grid-cols-2">
+            {section.checklist.map(item => (
+              <li key={item} className="flex gap-2">
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {section.links && (
         <div className="mt-6 grid gap-3 md:grid-cols-2">
           {section.links.map(link => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className="rounded-2xl border border-gray-cyan/25 bg-gray-cyan/10 p-4 transition hover:border-gray-cyan/60 hover:bg-gray-cyan/15"
-            >
-              <p className="font-semibold text-white">{link.label}</p>
-              <p className="mt-1 text-sm text-gray-300">{link.note}</p>
-            </Link>
+            <GuideActionLink key={link.to} link={link} />
           ))}
         </div>
       )}
