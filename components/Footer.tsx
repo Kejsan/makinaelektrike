@@ -1,9 +1,10 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Facebook, Instagram, Twitter, Linkedin } from 'lucide-react';
+import { AlertTriangle, Facebook, Instagram, Twitter, Linkedin } from 'lucide-react';
 import { SITE_LOGO, SITE_LOGO_ALT } from '../constants/media';
 import Link from './LocalizedLink';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,12 +13,20 @@ const Footer: React.FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const { role } = useAuth();
+  const { settings } = useSiteSettings();
   
   const isAdminDashboard = (role === 'admin' || location.pathname.startsWith('/admin')) && location.pathname.startsWith('/admin');
 
   if (isAdminDashboard) {
     return null;
   }
+
+  const socialLinks = [
+    { key: 'facebook', label: 'Facebook', href: settings.socialLinks.facebook, icon: Facebook },
+    { key: 'instagram', label: 'Instagram', href: settings.socialLinks.instagram, icon: Instagram },
+    { key: 'twitter', label: 'Twitter', href: settings.socialLinks.twitter, icon: Twitter },
+    { key: 'linkedin', label: 'LinkedIn', href: settings.socialLinks.linkedin, icon: Linkedin },
+  ].filter(item => item.href);
 
   return (
     <footer className="bg-transparent text-white mt-20 border-t border-white/10">
@@ -33,47 +42,30 @@ const Footer: React.FC = () => {
               {t('footer.description')}
             </p>
             <div className="pt-2">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
-                {t('footer.socialTitle')}
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <a
-                  href="https://www.facebook.com/makina-elektrike"
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="icon-glow inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 text-gray-300 transition-all hover:border-gray-cyan/70 hover:text-gray-cyan"
-                >
-                  <span className="sr-only">Facebook</span>
-                  <Facebook size={20} />
-                </a>
-                <a
-                  href="https://www.instagram.com/makina-elektrike"
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="icon-glow inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 text-gray-300 transition-all hover:border-gray-cyan/70 hover:text-gray-cyan"
-                >
-                  <span className="sr-only">Instagram</span>
-                  <Instagram size={20} />
-                </a>
-                <a
-                  href="https://twitter.com/makina-elektrike"
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="icon-glow inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 text-gray-300 transition-all hover:border-gray-cyan/70 hover:text-gray-cyan"
-                >
-                  <span className="sr-only">Twitter</span>
-                  <Twitter size={20} />
-                </a>
-                <a
-                  href="https://www.linkedin.com/company/makina-elektrike"
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="icon-glow inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 text-gray-300 transition-all hover:border-gray-cyan/70 hover:text-gray-cyan"
-                >
-                  <span className="sr-only">LinkedIn</span>
-                  <Linkedin size={20} />
-                </a>
-              </div>
+              {socialLinks.length > 0 && (
+                <>
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                    {t('footer.socialTitle')}
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {socialLinks.map(item => {
+                      const Icon = item.icon;
+                      return (
+                        <a
+                          key={item.key}
+                          href={item.href}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="icon-glow inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 text-gray-300 transition-all hover:border-gray-cyan/70 hover:text-gray-cyan"
+                        >
+                          <span className="sr-only">{item.label}</span>
+                          <Icon size={20} />
+                        </a>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -185,6 +177,25 @@ const Footer: React.FC = () => {
             </div>
           </div>
         </div>
+
+        <section
+          aria-labelledby="footer-important-notice-title"
+          className="mt-10 rounded-2xl border border-gray-cyan/25 bg-[linear-gradient(135deg,rgba(84,160,155,0.16),rgba(255,255,255,0.045))] p-5 shadow-[0_20px_70px_rgba(0,0,128,0.28)] ring-1 ring-white/5 md:p-6"
+        >
+          <div className="space-y-5">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-cyan/30 bg-gray-cyan/15 text-gray-cyan">
+                <AlertTriangle size={20} />
+              </span>
+              <h2 id="footer-important-notice-title" className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-cyan/85">
+                {t('footer.legalSummary')}
+              </h2>
+            </div>
+            <p className="text-sm leading-7 text-gray-300">
+              {t('footer.legalBody')}
+            </p>
+          </div>
+        </section>
 
         {/* Bottom bar */}
         <div className="mt-10 flex flex-col gap-4 border-t border-white/10 pt-6 text-center text-xs text-gray-400 sm:text-sm md:flex-row md:items-center md:justify-between md:text-left">

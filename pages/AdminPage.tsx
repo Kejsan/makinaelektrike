@@ -59,6 +59,7 @@ import {
   PlacementZoneStatus,
   PlacementZone,
   PlacementZoneFormValues,
+  PublicSiteSettings,
   PromotionalCampaign,
   PromotionalCampaignFormValues,
   BlogPost,
@@ -141,6 +142,10 @@ import {
   saveSponsorshipProduct,
 } from '../services/adminPlacements';
 import { listAdminNotifications } from '../services/adminNotifications';
+import {
+  getAdminSiteSettings,
+  saveAdminSiteSettings,
+} from '../services/adminSiteSettings';
 import { isFunctionQuotaExceededError } from '../services/serverFunctions';
 import {
   lookupAdminStation,
@@ -172,6 +177,7 @@ import {
   formatPlacementEntityTypeLabel,
   isPromotionalCampaignPubliclyResolvable,
 } from '../utils/placements';
+import { DEFAULT_SITE_SETTINGS } from '../constants/siteSettings';
 
 const ModelForm = lazy(() => import('../components/admin/ModelForm'));
 const BulkImportModal = lazy(() => import('../components/admin/BulkImportModal'));
@@ -210,6 +216,7 @@ type TabKey =
   | 'models'
   | 'listings'
   | 'blog'
+  | 'settings'
   | 'stations'
   | 'placements'
   | 'reports'
@@ -224,6 +231,7 @@ const TAB_KEYS: readonly TabKey[] = [
   'models',
   'listings',
   'blog',
+  'settings',
   'stations',
   'placements',
   'reports',
@@ -382,6 +390,15 @@ const formatPermissionActionLabel = (permission: PermissionKey) => {
     .join(' ');
 };
 
+const normalizeSiteSettingsDraft = (settings: PublicSiteSettings): PublicSiteSettings => ({
+  socialLinks: {
+    ...DEFAULT_SITE_SETTINGS.socialLinks,
+    ...settings.socialLinks,
+  },
+  homeHeroImages: settings.homeHeroImages ?? [],
+  updatedAt: settings.updatedAt ?? null,
+});
+
 const AdminPage: React.FC = () => {
   const { logout, user, role, hasPermission, isMasterAdmin } = useAuth();
   const { addToast } = useToast();
@@ -463,6 +480,12 @@ const AdminPage: React.FC = () => {
   } = useContext(DataContext);
 
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+  const [siteSettingsDraft, setSiteSettingsDraft] =
+    useState<PublicSiteSettings>(DEFAULT_SITE_SETTINGS);
+  const [siteSettingsLoaded, setSiteSettingsLoaded] = useState(false);
+  const [siteSettingsLoading, setSiteSettingsLoading] = useState(false);
+  const [siteSettingsSaving, setSiteSettingsSaving] = useState(false);
+  const [siteSettingsError, setSiteSettingsError] = useState<string | null>(null);
   const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
   const [adminNotificationsLoading, setAdminNotificationsLoading] = useState(false);
   const [adminNotificationsError, setAdminNotificationsError] = useState<string | null>(null);
@@ -597,6 +620,7 @@ const AdminPage: React.FC = () => {
     hasPermission('blog.read') ||
     hasPermission('blog.publish') ||
     hasPermission('blog.schedule');
+  const canManageSiteSettings = isMasterAdmin || hasPermission('blog.publish');
   const canViewAudit = hasPermission('audit.view');
   const canViewReports = hasPermission('reports.export') || canReadPlacementAnalytics || canViewAudit;
   const canExportReports = hasPermission('reports.export');
@@ -883,6 +907,17 @@ const AdminPage: React.FC = () => {
           defaultValue: 'Create, edit, draft, publish, import, and manage blog content, SEO metadata, and editorial quality.',
         }),
       },
+      ...(canManageSiteSettings
+        ? [
+            {
+              id: 'settings' as TabKey,
+              label: t('admin.siteSettingsTab', { defaultValue: 'Site settings' }),
+              description: t('admin.tooltips.siteSettingsTab', {
+                defaultValue: 'Edit public footer social links and homepage hero background images.',
+              }),
+            },
+          ]
+        : []),
       {
         id: 'stations' as TabKey,
         label: t('admin.manageStations', { defaultValue: 'Charging stations' }),
@@ -942,7 +977,15 @@ const AdminPage: React.FC = () => {
         }),
       },
     ],
-    [canManageAdminAccess, canReadPlacements, canReadUsers, canViewAudit, canViewReports, t]
+    [
+      canManageAdminAccess,
+      canManageSiteSettings,
+      canReadPlacements,
+      canReadUsers,
+      canViewAudit,
+      canViewReports,
+      t,
+    ]
   );
 
   const tabGroups = useMemo(
@@ -957,7 +1000,7 @@ const AdminPage: React.FC = () => {
       },
       {
         label: 'Content and growth',
-        ids: ['blog', 'stations', 'placements', 'reports'] as TabKey[],
+        ids: ['blog', 'settings', 'stations', 'placements', 'reports'] as TabKey[],
       },
       {
         label: 'Governance',
@@ -985,6 +1028,130 @@ const AdminPage: React.FC = () => {
     },
     [t],
   );
+
+  const loadSiteSettings = useCallback(
+    async (force = false) => {
+      if (!canManageSiteSettings || siteSettingsLoading || (siteSettingsLoaded && !force)) {
+        return;
+      }
+
+      setSiteSettingsLoading(true);
+      setSiteSettingsError(null);
+      try {
+        const response = await getAdminSiteSettings();
+        setSiteSettingsDraft(normalizeSiteSettingsDraft(response.settings));
+        setSiteSettingsLoaded(true);
+      } catch (error) {
+        console.error('Failed to load site settings', error);
+        setSiteSettingsError(getAdminLoadErrorMessage(
+          error,
+          'admin.siteSettingsLoadFailed',
+          'Failed to load site settings.',
+        ));
+      } finally {
+        setSiteSettingsLoading(false);
+      }
+    },
+    [
+      canManageSiteSettings,
+      getAdminLoadErrorMessage,
+      siteSettingsLoaded,
+      siteSettingsLoading,
+    ],
+  );
+
+  const updateSiteSocialLink = useCallback(
+    (key: keyof PublicSiteSettings['socialLinks'], value: string) => {
+      setSiteSettingsDraft(prev => ({
+        ...prev,
+        socialLinks: {
+          ...prev.socialLinks,
+          [key]: value,
+        },
+      }));
+    },
+    [],
+  );
+
+  const updateSiteHeroImage = useCallback(
+    (id: string, field: keyof Pick<PublicSiteSettings['homeHeroImages'][number], 'imageUrl' | 'mobileImageUrl' | 'alt'>, value: string) => {
+      setSiteSettingsDraft(prev => ({
+        ...prev,
+        homeHeroImages: prev.homeHeroImages.map(image =>
+          image.id === id ? { ...image, [field]: value } : image,
+        ),
+      }));
+    },
+    [],
+  );
+
+  const addSiteHeroImage = useCallback(() => {
+    const id = `hero-${Date.now()}`;
+    setSiteSettingsDraft(prev => ({
+      ...prev,
+      homeHeroImages: [
+        ...prev.homeHeroImages,
+        {
+          id,
+          imageUrl: '',
+          mobileImageUrl: '',
+          alt: '',
+        },
+      ],
+    }));
+  }, []);
+
+  const removeSiteHeroImage = useCallback((id: string) => {
+    setSiteSettingsDraft(prev => ({
+      ...prev,
+      homeHeroImages: prev.homeHeroImages.filter(image => image.id !== id),
+    }));
+  }, []);
+
+  const handleSaveSiteSettings = useCallback(async () => {
+    if (!canManageSiteSettings) {
+      return;
+    }
+
+    setSiteSettingsSaving(true);
+    setSiteSettingsError(null);
+    try {
+      const response = await saveAdminSiteSettings({
+        ...siteSettingsDraft,
+        homeHeroImages: siteSettingsDraft.homeHeroImages
+          .map(image => ({
+            ...image,
+            imageUrl: image.imageUrl.trim(),
+            mobileImageUrl: image.mobileImageUrl?.trim() ?? '',
+            alt: image.alt?.trim() ?? '',
+          }))
+          .filter(image => image.imageUrl),
+      });
+      setSiteSettingsDraft(normalizeSiteSettingsDraft(response.settings));
+      setSiteSettingsLoaded(true);
+      addToast(
+        t('admin.siteSettingsSaved', { defaultValue: 'Site settings saved.' }),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to save site settings', error);
+      const message = getAdminLoadErrorMessage(
+        error,
+        'admin.siteSettingsSaveFailed',
+        'Failed to save site settings.',
+      );
+      setSiteSettingsError(message);
+      addToast(message, 'error');
+    } finally {
+      setSiteSettingsSaving(false);
+    }
+  }, [
+    addToast,
+    canManageSiteSettings,
+    getAdminLoadErrorMessage,
+    siteSettingsDraft,
+    t,
+  ]);
 
   const navigateToAdminTab = useCallback(
     (tabId: TabKey) => {
@@ -1928,6 +2095,12 @@ const AdminPage: React.FC = () => {
     }
   }, [activeTab, canViewReports]);
 
+  useEffect(() => {
+    if (!canManageSiteSettings && activeTab === 'settings') {
+      setActiveTab('overview');
+    }
+  }, [activeTab, canManageSiteSettings]);
+
   const getDealerPlanDraft = useCallback(
     (dealer: Dealer): DealerPlanDraft => ({
       planId: dealer.planId ?? 'free',
@@ -2208,6 +2381,12 @@ const AdminPage: React.FC = () => {
       void loadAuditLogs();
     }
   }, [activeTab, canViewAudit, loadAuditLogs]);
+
+  useEffect(() => {
+    if (activeTab === 'settings' && canManageSiteSettings) {
+      void loadSiteSettings();
+    }
+  }, [activeTab, canManageSiteSettings, loadSiteSettings]);
 
   const hydrateAdminAccessDraft = useCallback((result: AdminAccessLookupResult) => {
     setAdminAccessRoleDraftIds(result.adminRoleIds ?? []);
@@ -7577,6 +7756,218 @@ const AdminPage: React.FC = () => {
     );
   };
 
+  const renderSiteSettingsPanel = () => {
+    const socialFields: Array<{
+      key: keyof PublicSiteSettings['socialLinks'];
+      label: string;
+      placeholder: string;
+    }> = [
+      {
+        key: 'facebook',
+        label: 'Facebook',
+        placeholder: 'https://www.facebook.com/makina-elektrike',
+      },
+      {
+        key: 'instagram',
+        label: 'Instagram',
+        placeholder: 'https://www.instagram.com/makina-elektrike',
+      },
+      {
+        key: 'twitter',
+        label: 'X / Twitter',
+        placeholder: 'https://twitter.com/makina-elektrike',
+      },
+      {
+        key: 'linkedin',
+        label: 'LinkedIn',
+        placeholder: 'https://www.linkedin.com/company/makina-elektrike',
+      },
+    ];
+
+    if (siteSettingsLoading && !siteSettingsLoaded) {
+      return renderLoadingState();
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-cyan">
+              {t('admin.siteSettingsEyebrow', { defaultValue: 'Public site controls' })}
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-white">
+              {t('admin.siteSettingsTitle', { defaultValue: 'Site settings' })}
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">
+              {t('admin.siteSettingsDescription', {
+                defaultValue:
+                  'Manage footer social links and the homepage hero background image slider without editing code.',
+              })}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void loadSiteSettings(true)}
+              disabled={siteSettingsLoading || siteSettingsSaving}
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-gray-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RefreshCcw size={16} className={siteSettingsLoading ? 'animate-spin' : ''} />
+              <span>{t('admin.reloadSettings', { defaultValue: 'Reload' })}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSaveSiteSettings()}
+              disabled={siteSettingsSaving}
+              className="inline-flex items-center gap-2 rounded-lg bg-gray-cyan px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {siteSettingsSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check size={16} />}
+              <span>{t('admin.saveSiteSettings', { defaultValue: 'Save settings' })}</span>
+            </button>
+          </div>
+        </div>
+
+        {siteSettingsError && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            {siteSettingsError}
+          </div>
+        )}
+
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-5">
+            <h3 className="text-lg font-semibold text-white">
+              {t('admin.footerSocialLinksTitle', { defaultValue: 'Footer social links' })}
+            </h3>
+            <p className="mt-1 text-sm text-gray-400">
+              {t('admin.footerSocialLinksDescription', {
+                defaultValue: 'These URLs control the social icon buttons shown in the public footer.',
+              })}
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {socialFields.map(field => (
+              <label key={field.key} className="block text-sm text-gray-300">
+                <span className="font-semibold text-gray-200">{field.label}</span>
+                <input
+                  type="url"
+                  value={siteSettingsDraft.socialLinks[field.key]}
+                  placeholder={field.placeholder}
+                  onChange={event => updateSiteSocialLink(field.key, event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-gray-cyan/70"
+                />
+              </label>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-white">
+                {t('admin.heroImagesTitle', { defaultValue: 'Homepage hero background images' })}
+              </h3>
+              <p className="mt-1 max-w-3xl text-sm text-gray-400">
+                {t('admin.heroImagesDescription', {
+                  defaultValue:
+                    'Add image URLs for the public homepage background slider. Leave the list empty to use the built-in default image.',
+                })}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={addSiteHeroImage}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-cyan/30 bg-gray-cyan/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-gray-cyan/20"
+            >
+              <Plus size={16} />
+              <span>{t('admin.addHeroImage', { defaultValue: 'Add image' })}</span>
+            </button>
+          </div>
+
+          {siteSettingsDraft.homeHeroImages.length === 0 ? (
+            renderEmptyState(
+              t('admin.noHeroImagesConfigured', {
+                defaultValue: 'No custom hero images are configured. The homepage will use the built-in default background.',
+              }),
+            )
+          ) : (
+            <div className="space-y-4">
+              {siteSettingsDraft.homeHeroImages.map((image, index) => (
+                <article
+                  key={image.id}
+                  className="rounded-xl border border-white/10 bg-black/20 p-4"
+                >
+                  <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+                    <div className="overflow-hidden rounded-lg border border-white/10 bg-slate-950">
+                      {image.imageUrl ? (
+                        <img
+                          src={image.imageUrl}
+                          alt={image.alt || `Hero ${index + 1}`}
+                          className="aspect-video w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex aspect-video w-full items-center justify-center text-gray-500">
+                          <ImageIcon size={28} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <p className="text-sm font-semibold text-white">
+                          {t('admin.heroImageLabel', {
+                            defaultValue: 'Hero image {{index}}',
+                            index: index + 1,
+                          })}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => removeSiteHeroImage(image.id)}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-500/20"
+                        >
+                          <Trash2 size={14} />
+                          <span>{t('admin.remove', { defaultValue: 'Remove' })}</span>
+                        </button>
+                      </div>
+                      <label className="block text-sm text-gray-300">
+                        <span>{t('admin.heroImageUrlLabel', { defaultValue: 'Desktop image URL' })}</span>
+                        <input
+                          type="url"
+                          value={image.imageUrl}
+                          placeholder="https://example.com/hero-desktop.webp"
+                          onChange={event => updateSiteHeroImage(image.id, 'imageUrl', event.target.value)}
+                          className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-gray-cyan/70"
+                        />
+                      </label>
+                      <label className="block text-sm text-gray-300">
+                        <span>{t('admin.heroMobileImageUrlLabel', { defaultValue: 'Mobile image URL' })}</span>
+                        <input
+                          type="url"
+                          value={image.mobileImageUrl ?? ''}
+                          placeholder="https://example.com/hero-mobile.webp"
+                          onChange={event => updateSiteHeroImage(image.id, 'mobileImageUrl', event.target.value)}
+                          className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-gray-cyan/70"
+                        />
+                      </label>
+                      <label className="block text-sm text-gray-300">
+                        <span>{t('admin.heroImageAltLabel', { defaultValue: 'Internal alt text' })}</span>
+                        <input
+                          type="text"
+                          value={image.alt ?? ''}
+                          placeholder={t('admin.heroImageAltPlaceholder', { defaultValue: 'Electric car interior, dealership, charging scene...' })}
+                          onChange={event => updateSiteHeroImage(image.id, 'alt', event.target.value)}
+                          className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-gray-cyan/70"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    );
+  };
+
   const renderStationsPanel = () => {
     if (stationsLoading) return renderLoadingState();
     if (stationsError) return (
@@ -9460,6 +9851,7 @@ const AdminPage: React.FC = () => {
           {activeTab === 'models' && renderModelsPanel()}
           {activeTab === 'listings' && renderListingsPanel()}
           {activeTab === 'blog' && renderBlogPanel()}
+          {activeTab === 'settings' && renderSiteSettingsPanel()}
           {activeTab === 'stations' && renderStationsPanel()}
           {activeTab === 'placements' && renderPlacementsPanel()}
           {activeTab === 'reports' && renderReportsPanel()}

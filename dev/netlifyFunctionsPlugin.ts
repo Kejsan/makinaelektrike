@@ -38,6 +38,8 @@ const functionModuleLoaders: Record<string, () => Promise<HandlerModule>> = {
   'admin-placement-save': () => import('../netlify/functions/admin-placement-save'),
   'admin-station-lookup': () => import('../netlify/functions/admin-station-lookup'),
   'admin-station-update': () => import('../netlify/functions/admin-station-update'),
+  'admin-site-settings-get': () => import('../netlify/functions/admin-site-settings-get'),
+  'admin-site-settings-save': () => import('../netlify/functions/admin-site-settings-save'),
   'admin-user-lookup': () => import('../netlify/functions/admin-user-lookup'),
   'admin-user-status-update': () => import('../netlify/functions/admin-user-status-update'),
   'api-ninjas-electricvehicle': () => import('../netlify/functions/api-ninjas-electricvehicle'),
@@ -61,6 +63,7 @@ const functionModuleLoaders: Record<string, () => Promise<HandlerModule>> = {
   'ocm-stations': () => import('../netlify/functions/ocm-stations'),
   'public-placement-resolve': () => import('../netlify/functions/public-placement-resolve'),
   'public-placement-track': () => import('../netlify/functions/public-placement-track'),
+  'public-site-settings': () => import('../netlify/functions/public-site-settings'),
 };
 
 const normalizeHeaders = (headers: IncomingMessage['headers']) =>

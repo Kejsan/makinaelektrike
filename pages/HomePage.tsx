@@ -24,8 +24,7 @@ import BlogCard from '../components/BlogCard';
 import PublicPlacementRail from '../components/placements/PublicPlacementRail';
 import { DataContext } from '../contexts/DataContext';
 import { usePublicPlacements } from '../hooks/usePublicPlacements';
-import heroDashboard from '../assets/BYD SEAL.webp';
-import heroDashboardCompact from '../assets/BYD SEAL-960.webp';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import { PUBLIC_PLACEMENT_ZONE_KEYS } from '../utils/placements';
@@ -34,6 +33,7 @@ import { chargingStationsData } from '../data/chargingStationsData';
 const HomePage: React.FC = () => {
   const { t } = useTranslation();
   const { dealers, models, listings, blogPosts, loading: dataLoading } = useContext(DataContext);
+  const { settings: siteSettings } = useSiteSettings();
   const { zonesByKey: placementZones } = usePublicPlacements([
     PUBLIC_PLACEMENT_ZONE_KEYS.homeDealerSpotlight,
     PUBLIC_PLACEMENT_ZONE_KEYS.homeModelSpotlight,
@@ -48,6 +48,9 @@ const HomePage: React.FC = () => {
   const [filteredDealersForSearch, setFilteredDealersForSearch] = useState(dealers.filter(d => d.isFeatured));
   const [isSearching, setIsSearching] = useState(false);
   const heroTaglinesRaw = t('home.heroTaglines', { returnObjects: true }) as unknown;
+  const heroImages = siteSettings.homeHeroImages;
+  const [heroImageIndex, setHeroImageIndex] = useState(0);
+  const activeHeroImage = heroImages[heroImageIndex] ?? heroImages[0];
   const heroTaglines = useMemo(() => {
     if (Array.isArray(heroTaglinesRaw) && heroTaglinesRaw.length > 0) {
       return heroTaglinesRaw as string[];
@@ -82,9 +85,11 @@ const HomePage: React.FC = () => {
     }).slice(0, 4);
   }, [featuredModels, models]);
 
-  const heroImageUrl = typeof window !== 'undefined'
-    ? new URL(heroDashboard, window.location.origin).toString()
-    : heroDashboard;
+  const heroImageUrl = activeHeroImage?.imageUrl
+    ? typeof window !== 'undefined'
+      ? new URL(activeHeroImage.imageUrl, window.location.origin).toString()
+      : activeHeroImage.imageUrl
+    : DEFAULT_OG_IMAGE;
 
   const structuredData = [
     {
@@ -105,10 +110,11 @@ const HomePage: React.FC = () => {
       name: 'Makina Elektrike',
       url: BASE_URL,
       sameAs: [
-        'https://www.facebook.com',
-        'https://www.instagram.com',
-        'https://www.linkedin.com',
-      ],
+        siteSettings.socialLinks.facebook,
+        siteSettings.socialLinks.instagram,
+        siteSettings.socialLinks.twitter,
+        siteSettings.socialLinks.linkedin,
+      ].filter(Boolean),
       description: t('home.metaDescription'),
     },
     {
@@ -146,6 +152,24 @@ const HomePage: React.FC = () => {
 
     return () => window.clearInterval(intervalId);
   }, [heroTaglines.length]);
+
+  useEffect(() => {
+    if (heroImageIndex >= heroImages.length) {
+      setHeroImageIndex(0);
+    }
+  }, [heroImageIndex, heroImages.length]);
+
+  useEffect(() => {
+    if (heroImages.length <= 1) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setHeroImageIndex(prev => (prev + 1) % heroImages.length);
+    }, 7000);
+
+    return () => window.clearInterval(intervalId);
+  }, [heroImages.length]);
 
   useEffect(() => {
     let results = dealers;
@@ -251,14 +275,19 @@ const HomePage: React.FC = () => {
 
       <section className="relative isolate overflow-hidden bg-slate-950">
         <div className="absolute inset-0" aria-hidden="true">
-          <OptimizedImage
-            src={heroDashboard}
-            srcSet={`${heroDashboardCompact} 960w, ${heroDashboard} 1600w`}
-            sizes="100vw"
-            alt=""
-            priority
-            className="h-full w-full object-cover"
-          />
+          {activeHeroImage && (
+            <OptimizedImage
+              key={activeHeroImage.id}
+              src={activeHeroImage.imageUrl}
+              srcSet={activeHeroImage.mobileImageUrl
+                ? `${activeHeroImage.mobileImageUrl} 960w, ${activeHeroImage.imageUrl} 1600w`
+                : undefined}
+              sizes="100vw"
+              alt=""
+              priority
+              className="h-full w-full object-cover transition-opacity duration-700"
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/78 to-slate-950/18" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#020817] via-transparent to-slate-950/55" />
         </div>

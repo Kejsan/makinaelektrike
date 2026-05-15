@@ -230,6 +230,26 @@ export interface AdminEntityNote {
   createdAt?: Timestamp | string | null;
 }
 
+export interface FooterSocialLinks {
+  facebook: string;
+  instagram: string;
+  twitter: string;
+  linkedin: string;
+}
+
+export interface HomeHeroImage {
+  id: string;
+  imageUrl: string;
+  mobileImageUrl?: string;
+  alt?: string;
+}
+
+export interface PublicSiteSettings {
+  socialLinks: FooterSocialLinks;
+  homeHeroImages: HomeHeroImage[];
+  updatedAt?: string | null;
+}
+
 export interface AdminEntityListingSummary {
   id: string;
   title: string;
