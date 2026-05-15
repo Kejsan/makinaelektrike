@@ -165,6 +165,7 @@ import {
   uploadDealerHeroImage,
   uploadModelGalleryImage,
   uploadModelHeroImage,
+  uploadSiteHeroBackgroundImage,
 } from '../services/storage';
 import ModalLayout from '../components/ModalLayout';
 import DashboardInfoTooltip from '../components/DashboardInfoTooltip';
@@ -485,6 +486,10 @@ const AdminPage: React.FC = () => {
   const [siteSettingsLoaded, setSiteSettingsLoaded] = useState(false);
   const [siteSettingsLoading, setSiteSettingsLoading] = useState(false);
   const [siteSettingsSaving, setSiteSettingsSaving] = useState(false);
+  const [siteHeroUploadTarget, setSiteHeroUploadTarget] = useState<{
+    id: string;
+    slot: 'desktop' | 'mobile';
+  } | null>(null);
   const [siteSettingsError, setSiteSettingsError] = useState<string | null>(null);
   const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
   const [adminNotificationsLoading, setAdminNotificationsLoading] = useState(false);
@@ -1083,6 +1088,49 @@ const AdminPage: React.FC = () => {
       }));
     },
     [],
+  );
+
+  const handleSiteHeroImageUpload = useCallback(
+    async (
+      id: string,
+      slot: 'desktop' | 'mobile',
+      event: React.ChangeEvent<HTMLInputElement>,
+    ) => {
+      const file = event.target.files?.[0];
+      if (!file) {
+        return;
+      }
+
+      setSiteHeroUploadTarget({ id, slot });
+      setSiteSettingsError(null);
+      try {
+        const imageUrl = await uploadSiteHeroBackgroundImage(slot, file);
+        updateSiteHeroImage(
+          id,
+          slot === 'desktop' ? 'imageUrl' : 'mobileImageUrl',
+          imageUrl,
+        );
+        addToast(
+          t('admin.siteHeroImageUploaded', {
+            defaultValue: 'Image uploaded. Save settings to publish it.',
+          }),
+          'success',
+        );
+      } catch (error) {
+        console.error('Failed to upload homepage hero image', error);
+        const message = error instanceof Error
+          ? error.message
+          : t('admin.siteHeroImageUploadFailed', {
+              defaultValue: 'Image upload failed. Please try again.',
+            });
+        setSiteSettingsError(message);
+        addToast(message, 'error');
+      } finally {
+        setSiteHeroUploadTarget(null);
+        event.target.value = '';
+      }
+    },
+    [addToast, t, updateSiteHeroImage],
   );
 
   const addSiteHeroImage = useCallback(() => {
@@ -7869,7 +7917,7 @@ const AdminPage: React.FC = () => {
               <p className="mt-1 max-w-3xl text-sm text-gray-400">
                 {t('admin.heroImagesDescription', {
                   defaultValue:
-                    'Add image URLs for the public homepage background slider. Leave the list empty to use the built-in default image.',
+                    'Upload homepage background images to R2 or paste existing URLs. Leave the list empty to use the built-in default image.',
                 })}
               </p>
             </div>
@@ -7891,7 +7939,13 @@ const AdminPage: React.FC = () => {
             )
           ) : (
             <div className="space-y-4">
-              {siteSettingsDraft.homeHeroImages.map((image, index) => (
+              {siteSettingsDraft.homeHeroImages.map((image, index) => {
+                const desktopUploading =
+                  siteHeroUploadTarget?.id === image.id && siteHeroUploadTarget.slot === 'desktop';
+                const mobileUploading =
+                  siteHeroUploadTarget?.id === image.id && siteHeroUploadTarget.slot === 'mobile';
+
+                return (
                 <article
                   key={image.id}
                   className="rounded-xl border border-white/10 bg-black/20 p-4"
@@ -7927,26 +7981,86 @@ const AdminPage: React.FC = () => {
                           <span>{t('admin.remove', { defaultValue: 'Remove' })}</span>
                         </button>
                       </div>
-                      <label className="block text-sm text-gray-300">
-                        <span>{t('admin.heroImageUrlLabel', { defaultValue: 'Desktop image URL' })}</span>
-                        <input
-                          type="url"
-                          value={image.imageUrl}
-                          placeholder="https://example.com/hero-desktop.webp"
-                          onChange={event => updateSiteHeroImage(image.id, 'imageUrl', event.target.value)}
-                          className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-gray-cyan/70"
-                        />
-                      </label>
-                      <label className="block text-sm text-gray-300">
-                        <span>{t('admin.heroMobileImageUrlLabel', { defaultValue: 'Mobile image URL' })}</span>
-                        <input
-                          type="url"
-                          value={image.mobileImageUrl ?? ''}
-                          placeholder="https://example.com/hero-mobile.webp"
-                          onChange={event => updateSiteHeroImage(image.id, 'mobileImageUrl', event.target.value)}
-                          className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-gray-cyan/70"
-                        />
-                      </label>
+                      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                        <label className="block text-sm text-gray-300">
+                          <span>{t('admin.heroImageUrlLabel', { defaultValue: 'Desktop image URL' })}</span>
+                          <input
+                            type="url"
+                            value={image.imageUrl}
+                            placeholder="https://example.com/hero-desktop.webp"
+                            onChange={event => updateSiteHeroImage(image.id, 'imageUrl', event.target.value)}
+                            className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-gray-cyan/70"
+                          />
+                        </label>
+                        <label
+                          className={`inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                            desktopUploading
+                              ? 'cursor-wait border border-white/10 bg-white/5 text-gray-300'
+                              : 'border border-gray-cyan/30 bg-gray-cyan/10 text-cyan-100 hover:bg-gray-cyan/20'
+                          }`}
+                        >
+                          {desktopUploading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                          <span>
+                            {desktopUploading
+                              ? t('admin.uploading', { defaultValue: 'Uploading...' })
+                              : t('admin.uploadDesktopHeroImage', { defaultValue: 'Upload desktop' })}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={Boolean(siteHeroUploadTarget)}
+                            onChange={event => void handleSiteHeroImageUpload(image.id, 'desktop', event)}
+                          />
+                        </label>
+                      </div>
+                      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                        <label className="block text-sm text-gray-300">
+                          <span>{t('admin.heroMobileImageUrlLabel', { defaultValue: 'Mobile image URL' })}</span>
+                          <input
+                            type="url"
+                            value={image.mobileImageUrl ?? ''}
+                            placeholder="https://example.com/hero-mobile.webp"
+                            onChange={event => updateSiteHeroImage(image.id, 'mobileImageUrl', event.target.value)}
+                            className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-gray-cyan/70"
+                          />
+                        </label>
+                        <label
+                          className={`inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                            mobileUploading
+                              ? 'cursor-wait border border-white/10 bg-white/5 text-gray-300'
+                              : 'border border-gray-cyan/30 bg-gray-cyan/10 text-cyan-100 hover:bg-gray-cyan/20'
+                          }`}
+                        >
+                          {mobileUploading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                          <span>
+                            {mobileUploading
+                              ? t('admin.uploading', { defaultValue: 'Uploading...' })
+                              : t('admin.uploadMobileHeroImage', { defaultValue: 'Upload mobile' })}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={Boolean(siteHeroUploadTarget)}
+                            onChange={event => void handleSiteHeroImageUpload(image.id, 'mobile', event)}
+                          />
+                        </label>
+                      </div>
+                      <p className="text-xs leading-5 text-gray-500">
+                        {t('admin.heroImageUploadHint', {
+                          defaultValue:
+                            'Upload from your computer to R2, or paste a URL manually. After uploading, click Save settings to publish the image.',
+                        })}
+                      </p>
                       <label className="block text-sm text-gray-300">
                         <span>{t('admin.heroImageAltLabel', { defaultValue: 'Internal alt text' })}</span>
                         <input
@@ -7960,7 +8074,8 @@ const AdminPage: React.FC = () => {
                     </div>
                   </div>
                 </article>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>

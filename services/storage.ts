@@ -146,6 +146,22 @@ const uploadListingMedia = async (
     },
   });
 
+const uploadSiteHeroMedia = async (
+  slot: 'desktop' | 'mobile',
+  file: File,
+): Promise<string> =>
+  uploadMediaViaFunction({
+    functionName: 'admin-site-media-upload',
+    file,
+    variant: 'hero',
+    fallbackBase: `homepage-hero-${slot}`,
+    maxDimension: slot === 'desktop' ? 2200 : 1200,
+    targetMaxBytes: slot === 'desktop' ? 1_200 * 1024 : 750 * 1024,
+    body: {
+      slot,
+    },
+  });
+
 export const uploadDealerHeroImage = (dealerId: string, file: File) =>
   uploadDealerMedia(dealerId, file, 'hero');
 
@@ -163,3 +179,8 @@ export const uploadListingHeroImage = (dealerId: string, listingId: string, file
 
 export const uploadListingGalleryImage = (dealerId: string, listingId: string, file: File) =>
   uploadListingMedia(dealerId, listingId, file, 'gallery');
+
+export const uploadSiteHeroBackgroundImage = (
+  slot: 'desktop' | 'mobile',
+  file: File,
+) => uploadSiteHeroMedia(slot, file);

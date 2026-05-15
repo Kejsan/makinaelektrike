@@ -40,6 +40,7 @@ const functionModuleLoaders: Record<string, () => Promise<HandlerModule>> = {
   'admin-station-update': () => import('../netlify/functions/admin-station-update'),
   'admin-site-settings-get': () => import('../netlify/functions/admin-site-settings-get'),
   'admin-site-settings-save': () => import('../netlify/functions/admin-site-settings-save'),
+  'admin-site-media-upload': () => import('../netlify/functions/admin-site-media-upload'),
   'admin-user-lookup': () => import('../netlify/functions/admin-user-lookup'),
   'admin-user-status-update': () => import('../netlify/functions/admin-user-status-update'),
   'api-ninjas-electricvehicle': () => import('../netlify/functions/api-ninjas-electricvehicle'),
