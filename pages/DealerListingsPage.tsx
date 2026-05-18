@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { DataContext } from '../contexts/DataContext';
-import { AuthContext } from '../contexts/AuthContext';
+import { AuthContext } from '../contexts/AuthContextCore';
 import { ToastContext } from '../contexts/ToastContext';
 import ListingForm, { ListingFormValues } from '../components/dashboard/ListingForm';
 import { Listing, ListingStatus, Model } from '../types';

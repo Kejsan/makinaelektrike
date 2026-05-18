@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { UserRound, Store, ShieldCheck, ArrowRight } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import SEO from '../components/SEO';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextCore';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import Link from '../components/LocalizedLink';
 import LocalizedNavigate from '../components/LocalizedNavigate';

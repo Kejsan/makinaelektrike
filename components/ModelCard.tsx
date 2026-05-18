@@ -38,6 +38,8 @@ const ModelCard: React.FC<{ model: Model }> = ({ model }) => {
                         src={imageUrl}
                         alt={`${model.brand} ${model.model_name}`}
                         fallbackSrc={MODEL_PLACEHOLDER_IMAGE}
+                        width={640}
+                        height={360}
                         sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
                     />
                     {model.body_type && (

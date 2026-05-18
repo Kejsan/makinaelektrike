@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Building2 } from 'lucide-react';
-import { useAuth, mapErrorToMessage } from '../contexts/AuthContext';
+import { mapErrorToMessage, useAuth } from '../contexts/AuthContextCore';
 import { useToast } from '../contexts/ToastContext';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';

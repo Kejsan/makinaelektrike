@@ -24,10 +24,19 @@ export default defineConfig(({ command, mode }) => {
         }
       },
       build: {
+        modulePreload: false,
         rollupOptions: {
           output: {
             manualChunks(id) {
               const normalizedId = id.split(path.sep).join('/');
+
+              if (normalizedId.includes('vite/preload-helper')) {
+                return 'preload-helper';
+              }
+
+              if (normalizedId.endsWith('/services/firebase.ts')) {
+                return 'firebase-client';
+              }
 
               if (normalizedId.includes('/node_modules/')) {
                 if (
@@ -93,16 +102,6 @@ export default defineConfig(({ command, mode }) => {
                   return 'vendor-maps';
                 }
 
-                if (
-                  normalizedId.includes('/node_modules/papaparse/') ||
-                  normalizedId.includes('/node_modules/xlsx/')
-                ) {
-                  return 'vendor-admin-data';
-                }
-              }
-
-              if (normalizedId.includes('/i18n/locales/')) {
-                return 'content-locales';
               }
 
               if (normalizedId.endsWith('/data/blogPosts.ts')) {

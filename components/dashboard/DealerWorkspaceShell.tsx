@@ -11,7 +11,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import Link from '../LocalizedLink';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextCore';
 import DashboardInfoTooltip from '../DashboardInfoTooltip';
 
 interface DealerWorkspaceShellProps {

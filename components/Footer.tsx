@@ -17,7 +17,7 @@ import Link from './LocalizedLink';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextCore';
 import { subscribeToNewsletter } from '../services/newsletter';
 import { FunctionJsonResponseError, isFunctionHtmlResponseError } from '../services/serverFunctions';
 
@@ -104,7 +104,7 @@ const Footer: React.FC = () => {
           {/* Brand + social */}
           <div className="space-y-6">
             <Link to="/" className="inline-flex items-center text-white" aria-label={t('header.home')}>
-              <img src={SITE_LOGO} alt={SITE_LOGO_ALT} className="h-14 w-auto rounded md:h-16" />
+              <img src={SITE_LOGO} alt={SITE_LOGO_ALT} width={320} height={80} className="h-14 w-auto rounded md:h-16" />
             </Link>
             <p className="max-w-md text-sm leading-relaxed text-gray-300">
               {t('footer.description')}

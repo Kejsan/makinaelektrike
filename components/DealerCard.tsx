@@ -61,6 +61,8 @@ const DealerCard: React.FC<DealerCardProps> = ({ dealer, isLoading = false }) =>
             src={imageUrl}
             alt={dealer.name}
             fallbackSrc={DEALERSHIP_PLACEHOLDER_IMAGE}
+            width={640}
+            height={360}
             sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />

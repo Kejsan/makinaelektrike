@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Loader2, Mail, ShieldCheck, Store, UserPlus } from 'lucide-react';
 import SEO from '../components/SEO';
 import Link from '../components/LocalizedLink';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextCore';
 import { useToast } from '../contexts/ToastContext';
 import { acceptAccessInvite, lookupAccessInvite } from '../services/accessInvites';
 import type { AccessInvite } from '../types';

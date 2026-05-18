@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from './AuthContext';
+import { useAuth } from './AuthContextCore';
 import type { PublicAnnouncement } from '../types';
 import { resolvePublicAnnouncements } from '../services/publicAnnouncements';
 import { trackPublicAnnouncementEvent } from '../services/publicAnnouncementTracking';

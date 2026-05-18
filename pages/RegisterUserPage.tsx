@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextCore';
 import { useToast } from '../contexts/ToastContext';
-import { auth, firestore } from '../services/firebase';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { UserPlus } from 'lucide-react';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
@@ -101,6 +99,10 @@ const RegisterUserPage: React.FC = () => {
         platformRulesAcceptedAt: acceptedAt,
       });
 
+      const [{ auth, firestore }, { doc, serverTimestamp, setDoc }] = await Promise.all([
+        import('../services/firebase'),
+        import('firebase/firestore'),
+      ]);
       const currentUser = auth.currentUser;
       if (currentUser) {
         await setDoc(

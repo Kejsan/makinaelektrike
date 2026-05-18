@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { AlertTriangle, FileText, Loader2, Upload, Download } from 'lucide-react';
 import { DataContext } from '../../contexts/DataContext';
 import { useToast } from '../../contexts/ToastContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextCore';
 import { BlogPost } from '../../types';
 
 interface BlogTextImportModalProps {
