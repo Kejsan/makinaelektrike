@@ -56,7 +56,7 @@ import {
   deleteDealerModel as apiDeleteDealerModel,
   softDeleteDealerRecord,
 } from '../services/api';
-import { useAuth } from './AuthContextCore';
+import { useAuth } from './AuthContext';
 import type { UserRole } from '../types';
 import { useToast } from './ToastContext';
 import type { FirestoreError, Unsubscribe } from 'firebase/firestore';

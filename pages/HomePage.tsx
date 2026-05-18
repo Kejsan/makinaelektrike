@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Link from '../components/LocalizedLink';
 import { BlogPost } from '../types';
@@ -23,9 +23,9 @@ import ModelCard from '../components/ModelCard';
 import BlogCard from '../components/BlogCard';
 import PublicPlacementRail from '../components/placements/PublicPlacementRail';
 import VisitorEngagementSection from '../components/engagement/VisitorEngagementSection';
+import { DataContext } from '../contexts/DataContext';
 import { usePublicPlacements } from '../hooks/usePublicPlacements';
 import { useSiteSettings } from '../hooks/useSiteSettings';
-import { usePublicHomeSummary } from '../hooks/usePublicHomeSummary';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 import { PUBLIC_PLACEMENT_ZONE_KEYS } from '../utils/placements';
@@ -33,7 +33,7 @@ import { chargingStationsData } from '../data/chargingStationsData';
 
 const HomePage: React.FC = () => {
   const { t } = useTranslation();
-  const { dealers, models, listings, blogPosts, loading: dataLoading } = usePublicHomeSummary();
+  const { dealers, models, listings, blogPosts, loading: dataLoading } = useContext(DataContext);
   const { settings: siteSettings } = useSiteSettings();
   const { zonesByKey: placementZones } = usePublicPlacements([
     PUBLIC_PLACEMENT_ZONE_KEYS.homeDealerSpotlight,
@@ -285,8 +285,6 @@ const HomePage: React.FC = () => {
                 : undefined}
               sizes="100vw"
               alt=""
-              width={1600}
-              height={900}
               priority
               className="h-full w-full object-cover transition-opacity duration-700"
             />

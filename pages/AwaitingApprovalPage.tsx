@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Hourglass } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContextCore';
+import { useAuth } from '../contexts/AuthContext';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 

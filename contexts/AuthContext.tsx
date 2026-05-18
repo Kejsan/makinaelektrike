@@ -1,5 +1,7 @@
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useState,
@@ -32,6 +34,7 @@ import type {
   UserProfile,
   UserRole,
 } from '../types';
+import i18n from '../i18n/config';
 import {
   getDealerPlanDefinition,
   getDealerPlanEntitlements,
@@ -40,9 +43,69 @@ import {
   isMasterAdminProfile,
   normalizeUserProfile,
 } from '../utils/accessControl';
-import { AuthContext, mapErrorToMessage, useAuth, type AuthContextType } from './AuthContextCore';
+
+interface AuthContextType {
+  user: User | null;
+  role: UserRole | null;
+  profile: UserProfile | null;
+  accountType: AccountType | null;
+  accountStatus: AccountStatus | null;
+  adminRoleIds: AdminRoleId[];
+  dealerPlanId: DealerPlanId | null;
+  dealerPlan: DealerPlanDefinition | null;
+  dealerEntitlements: DealerPlanEntitlements | null;
+  isAdmin: boolean;
+  isMasterAdmin: boolean;
+  loading: boolean;
+  initializing: boolean;
+  error: string | null;
+  registerUser: (
+    email: string,
+    password: string,
+    profile?: Partial<UserProfile>
+  ) => Promise<void>;
+  registerDealer: (
+    email: string,
+    password: string,
+    profile?: Partial<UserProfile>
+  ) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  logout: () => Promise<void>;
+  hasPermission: (permission: PermissionKey) => boolean;
+  refreshProfile: () => Promise<void>;
+}
+
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 type FirestoreUser = DocumentData & Partial<UserProfile>;
+
+export const mapErrorToMessage = (error: any): string => {
+  if (typeof error === 'string') {
+    return error;
+  }
+  
+  const code = error?.code;
+  switch (code) {
+    case 'auth/email-already-in-use':
+      return i18n.t('auth.errors.emailInUse');
+    case 'auth/weak-password':
+      return i18n.t('auth.errors.weakPassword');
+    case 'auth/invalid-email':
+      return i18n.t('auth.errors.invalidEmail');
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+      return i18n.t('auth.errors.invalidCredentials');
+    case 'auth/user-disabled':
+      return i18n.t('auth.errors.accountDisabled');
+    case 'auth/too-many-requests':
+      return i18n.t('auth.errors.tooManyRequests');
+    case 'auth/network-request-failed':
+      return i18n.t('auth.errors.networkFailed');
+    default:
+      return error?.message || i18n.t('auth.errors.generic');
+  }
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -354,4 +417,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export { AuthContext, mapErrorToMessage, useAuth };
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

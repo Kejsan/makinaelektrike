@@ -23,7 +23,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import { DataContext } from '../contexts/DataContext';
-import { useAuth } from '../contexts/AuthContextCore';
+import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import {
   uploadDealerGalleryImage,

@@ -1,6 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { FirestoreError, Unsubscribe } from 'firebase/firestore';
-import { useAuth } from '../contexts/AuthContextCore';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  serverTimestamp,
+  setDoc,
+  type FirestoreError,
+  type Unsubscribe,
+} from 'firebase/firestore';
+import { firestore } from '../services/firebase';
+import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import type { FavouriteEntry, UserRole } from '../types';
 
@@ -49,6 +59,8 @@ const writeLocalFavorites = (favorites: LocalFavorite[]) => {
   }
 };
 
+const favouritesCollection = (uid: string) => collection(firestore, 'users', uid, 'favourites');
+
 export const useFavorites = () => {
   const { user, initializing, role } = useAuth();
   const { addToast } = useToast();
@@ -84,19 +96,11 @@ export const useFavorites = () => {
     }
 
     setLoading(true);
-    let cancelled = false;
-    let activeUnsubscribe: Unsubscribe | null = null;
+    const collectionRef = favouritesCollection(user.uid);
 
-    void Promise.all([import('firebase/firestore'), import('../services/firebase')])
-      .then(([firestoreModule, firebaseModule]) => {
-        if (cancelled) {
-          return;
-        }
-
-        const collectionRef = firestoreModule.collection(firebaseModule.firestore, 'users', user.uid, 'favourites');
-        activeUnsubscribe = firestoreModule.onSnapshot(
-          collectionRef,
-          snapshot => {
+    const unsubscribe = onSnapshot(
+      collectionRef,
+      snapshot => {
         const remoteEntries = snapshot.docs.map<FavouriteEntry>(docSnapshot => {
           const data = docSnapshot.data() as Partial<FavouriteEntry> | undefined;
           return {
@@ -137,31 +141,12 @@ export const useFavorites = () => {
         );
         setLoading(false);
       },
-        );
+    );
 
-        unsubscribeRef.current = activeUnsubscribe;
-      })
-      .catch(error => {
-        console.error('Failed to load remote favourites support', error);
-        const localFavorites = readLocalFavorites();
-        setFavorites(localFavorites.map(f => f.itemId));
-        setEntries(
-          localFavorites.map<FavouriteEntry>((fav) => ({
-            id: fav.itemId,
-            itemId: fav.itemId,
-            userId: 'local-user',
-            role: null,
-            createdAt: null,
-            updatedAt: null,
-            collection: fav.collection,
-          })),
-        );
-        setLoading(false);
-      });
+    unsubscribeRef.current = unsubscribe;
 
     return () => {
-      cancelled = true;
-      activeUnsubscribe?.();
+      unsubscribe();
       unsubscribeRef.current = null;
     };
   }, [addToast, initializing, user, role]);
@@ -206,32 +191,25 @@ export const useFavorites = () => {
         return;
       }
 
-      try {
-        const [firestoreModule, firebaseModule] = await Promise.all([
-          import('firebase/firestore'),
-          import('../services/firebase'),
-        ]);
-        const favouriteRef = firestoreModule.doc(
-          firestoreModule.collection(firebaseModule.firestore, 'users', user.uid, 'favourites'),
-          itemId,
-        );
+      const favouriteRef = doc(favouritesCollection(user.uid), itemId);
 
+      try {
         if (wasFavorite) {
-          await firestoreModule.deleteDoc(favouriteRef);
+          await deleteDoc(favouriteRef);
         } else {
           const payload: any = {
             itemId: itemId,
             userId: user.uid,
             collection: collectionName,
-            updatedAt: firestoreModule.serverTimestamp(),
-            createdAt: firestoreModule.serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            createdAt: serverTimestamp(),
           };
 
           if (role) {
             payload.role = role;
           }
 
-          await firestoreModule.setDoc(favouriteRef, payload);
+          await setDoc(favouriteRef, payload);
         }
       } catch (error) {
         console.error('Failed to toggle favourite', error);

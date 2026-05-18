@@ -5,7 +5,7 @@ import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Upload } from 'l
 import { useTranslation } from 'react-i18next';
 import { DataContext } from '../../contexts/DataContext';
 import { useToast } from '../../contexts/ToastContext';
-import { useAuth } from '../../contexts/AuthContextCore';
+import { useAuth } from '../../contexts/AuthContext';
 import type { DealerDocument, DealerStatus, Model, BlogPost } from '../../types';
 
 export type BulkImportEntity = 'dealers' | 'models' | 'blog';

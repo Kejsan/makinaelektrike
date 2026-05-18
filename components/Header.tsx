@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate as useRouterNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Bell, Globe, Settings, LogOut, Menu, X, UserRound, Loader2, ChevronDown, Heart } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContextCore';
+import { useAuth } from '../contexts/AuthContext';
 import { SITE_LOGO, SITE_LOGO_ALT } from '../constants/media';
 import Link from './LocalizedLink';
 import useLocalizedNavigate from '../hooks/useLocalizedNavigate';
@@ -236,8 +236,6 @@ const Header: React.FC = () => {
             <img
               src={SITE_LOGO}
               alt={SITE_LOGO_ALT}
-              width={320}
-              height={80}
               className="h-12 w-auto rounded sm:h-14 lg:h-16"
             />
           </Link>

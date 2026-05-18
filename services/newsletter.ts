@@ -1,3 +1,4 @@
+import { auth } from './firebase';
 import { fetchFunctionJson } from './serverFunctions';
 import type {
   NewsletterSubscribeResponse,
@@ -18,7 +19,6 @@ export const subscribeToNewsletter = async (payload: {
   });
 
 const getRequiredIdToken = async () => {
-  const { auth } = await import('./firebase');
   const currentUser = auth.currentUser;
   if (!currentUser) {
     throw new Error('You must be signed in to view newsletter subscribers.');

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Shield } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContextCore';
+import { useAuth } from '../contexts/AuthContext';
 import SEO from '../components/SEO';
 import { BASE_URL, DEFAULT_OG_IMAGE } from '../constants/seo';
 

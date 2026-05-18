@@ -16,14 +16,7 @@
 /llms.txt
   Content-Type: text/plain; charset=utf-8
 
-/assets/*
-  Cache-Control: public, max-age=31536000, immutable
-
-/images/*
-  Cache-Control: public, max-age=31536000, immutable
-
 /__prerendered/*
-  Cache-Control: public, max-age=300, stale-while-revalidate=300
   X-Robots-Tag: noindex, nofollow
 
 /admin/*

@@ -1,8 +1,11 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useContext, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ScrollToTopButton from './components/ScrollToTopButton';
+import DealerWorkspaceShell from './components/dashboard/DealerWorkspaceShell';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { DataContext, DataProvider } from './contexts/DataContext';
 import { ToastProvider, ToastContainer } from './contexts/ToastContext';
 import { PublicAnnouncementsProvider } from './contexts/PublicAnnouncementsContext';
 import PublicAnnouncementSurface from './components/announcements/PublicAnnouncementSurface';
@@ -14,7 +17,6 @@ import {
   buildLocalizedRoutePath,
   stripLocalePrefix,
 } from './utils/localizedRouting';
-import type { AuthRoutePage } from './components/auth/AuthenticatedRouteContent';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
 const DealersListPage = lazy(() => import('./pages/DealersListPage'));
@@ -25,15 +27,27 @@ const BlogPage = lazy(() => import('./pages/BlogPage'));
 const BlogPostPage = lazy(() => import('./pages/BlogPostPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
+const FavoritesPage = lazy(() => import('./pages/FavoritesPage'));
 const ChargingStationsAlbaniaPage = lazy(() => import('./pages/ChargingStationsAlbaniaPage'));
+const RegisterUserPage = lazy(() => import('./pages/RegisterUserPage'));
+const RegisterDealerPage = lazy(() => import('./pages/RegisterDealerPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
+const DesignSystemPage = lazy(() => import('./pages/DesignSystemPage'));
+const AwaitingApprovalPage = lazy(() => import('./pages/AwaitingApprovalPage'));
+const DealerDashboardPage = lazy(() => import('./pages/DealerDashboardPage'));
+const DealerListingsPage = lazy(() => import('./pages/DealerListingsPage'));
+const DealerGuidePage = lazy(() => import('./pages/DealerGuidePage'));
+const MasterAdminGuidePage = lazy(() => import('./pages/MasterAdminGuidePage'));
+const AcceptInvitePage = lazy(() => import('./pages/AcceptInvitePage'));
 const ListingsPage = lazy(() => import('./pages/ListingsPage'));
 const ListingDetailPage = lazy(() => import('./pages/ListingDetailPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SitemapPage = lazy(() => import('./pages/SitemapPage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
 const CookiesPolicyPage = lazy(() => import('./pages/CookiesPolicyPage'));
 const HelpCenterPage = lazy(() => import('./pages/HelpCenterPage'));
-const AuthenticatedRouteContent = lazy(() => import('./components/auth/AuthenticatedRouteContent'));
 
 const PUBLIC_ROUTE_DEFINITIONS: Array<{ path: string; element: React.ReactElement }> = [
   { path: '/', element: <HomePage /> },
@@ -49,6 +63,12 @@ const PUBLIC_ROUTE_DEFINITIONS: Array<{ path: string; element: React.ReactElemen
   { path: '/about', element: <AboutPage /> },
   { path: '/help-center', element: <HelpCenterPage /> },
   { path: '/contact', element: <ContactPage /> },
+  { path: '/favorites', element: <FavoritesPage /> },
+  { path: '/awaiting-approval', element: <AwaitingApprovalPage /> },
+  { path: '/accept-invite', element: <AcceptInvitePage /> },
+  { path: '/register', element: <RegisterUserPage /> },
+  { path: '/register-dealer', element: <RegisterDealerPage /> },
+  { path: '/login', element: <LoginPage /> },
   { path: '/sitemap', element: <SitemapPage /> },
   { path: '/privacy-policy', element: <PrivacyPolicyPage /> },
   { path: '/terms', element: <TermsOfServicePage /> },
@@ -84,11 +104,72 @@ const LegacyDefaultLocaleRedirect: React.FC = () => {
   return <Navigate to={`${normalizedPath}${location.search}${location.hash}`} replace />;
 };
 
-const AuthRoute: React.FC<{ page: AuthRoutePage }> = ({ page }) => (
-  <RouteContent>
-    <AuthenticatedRouteContent page={page} />
-  </RouteContent>
-);
+const AdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { user, role, loading, initializing } = useAuth();
+
+  if (initializing || loading) {
+    return <LoadingScreen />;
+  }
+
+  if (!user) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  if (role === 'pending') {
+    return <Navigate to="/awaiting-approval" replace />;
+  }
+
+  if (role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
+const DealerRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { user, role, profile, loading: authLoading, initializing } = useAuth();
+  const { dealers, loading: dataLoading } = useContext(DataContext);
+
+  const dealerRecord = useMemo(() => {
+    if (!user) {
+      return null;
+    }
+    const dealerStaffDealerId =
+      profile?.accountType === 'dealer_staff' && typeof profile.dealerId === 'string'
+        ? profile.dealerId
+        : null;
+    return (
+      dealers.find(
+        dealer =>
+          dealer.id === user.uid ||
+          dealer.ownerUid === user.uid ||
+          (dealerStaffDealerId ? dealer.id === dealerStaffDealerId : false),
+      ) ?? null
+    );
+  }, [dealers, profile, user]);
+
+  if (initializing || authLoading || dataLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (role !== 'dealer') {
+    return <Navigate to="/" replace />;
+  }
+
+  const dealerStatus = dealerRecord?.status ?? (dealerRecord?.approved === false ? 'pending' : 'approved');
+  const dealerIsActive =
+    dealerRecord && dealerRecord.isDeleted !== true && dealerRecord.isActive !== false && dealerStatus === 'approved';
+
+  if (!dealerRecord || !dealerIsActive) {
+    return <Navigate to="/awaiting-approval" replace />;
+  }
+
+  return children;
+};
 
 const AppRoutes = () => (
   <Routes>
@@ -120,53 +201,81 @@ const AppRoutes = () => (
         />
       </React.Fragment>
     ))}
-    <Route path="/admin/login" element={<AuthRoute page="admin-login" />} />
-    <Route path="/login" element={<AuthRoute page="login" />} />
-    <Route path="/register" element={<AuthRoute page="register" />} />
-    <Route path="/register-dealer" element={<AuthRoute page="register-dealer" />} />
-    <Route path="/awaiting-approval" element={<AuthRoute page="awaiting-approval" />} />
-    <Route path="/accept-invite" element={<AuthRoute page="accept-invite" />} />
-    <Route path="/favorites" element={<AuthRoute page="favorites" />} />
+    <Route path="/admin/login" element={<RouteContent><AdminLoginPage /></RouteContent>} />
     <Route
       path="/dealer/listings"
       element={
-        <AuthRoute page="dealer-listings" />
+        <RouteContent>
+          <DealerRoute>
+            <DealerWorkspaceShell>
+              <DealerListingsPage />
+            </DealerWorkspaceShell>
+          </DealerRoute>
+        </RouteContent>
       }
     />
     <Route
       path="/dealer/guide"
       element={(
-        <AuthRoute page="dealer-guide" />
+        <RouteContent>
+          <DealerRoute>
+            <DealerWorkspaceShell>
+              <DealerGuidePage />
+            </DealerWorkspaceShell>
+          </DealerRoute>
+        </RouteContent>
       )}
     />
     <Route
       path="/dealer/dashboard"
       element={(
-        <AuthRoute page="dealer-dashboard" />
+        <RouteContent>
+          <DealerRoute>
+            <DealerWorkspaceShell>
+              <DealerDashboardPage />
+            </DealerWorkspaceShell>
+          </DealerRoute>
+        </RouteContent>
       )}
     />
     <Route
       path="/admin/guide"
       element={(
-        <AuthRoute page="admin-guide" />
+        <RouteContent>
+          <AdminRoute>
+            <MasterAdminGuidePage />
+          </AdminRoute>
+        </RouteContent>
       )}
     />
     <Route
       path="/admin/dealer-guide"
       element={(
-        <AuthRoute page="admin-dealer-guide" />
+        <RouteContent>
+          <AdminRoute>
+            <DealerGuidePage adminView />
+          </AdminRoute>
+        </RouteContent>
       )}
     />
     <Route
       path="/admin/design-system"
       element={(
-        <AuthRoute page="admin-design-system" />
+        <RouteContent>
+          <AdminRoute>
+            <DesignSystemPage />
+          </AdminRoute>
+        </RouteContent>
       )}
     />
     <Route
       path="/admin"
       element={(
-        <AuthRoute page="admin" />
+        <RouteContent>
+          <AdminRoute>
+            <AdminPage />
+          </AdminRoute>
+        </RouteContent>
       )}
     />
   </Routes>
@@ -203,7 +312,11 @@ const App: React.FC = () => {
       <LocalePathSync />
       <ScrollRestoration />
       <ToastProvider>
-        <AppShell />
+        <AuthProvider>
+          <DataProvider>
+            <AppShell />
+          </DataProvider>
+        </AuthProvider>
       </ToastProvider>
     </BrowserRouter>
   );
