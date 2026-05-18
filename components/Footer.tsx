@@ -1,19 +1,45 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Facebook, Instagram, Twitter, Linkedin } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Facebook,
+  Instagram,
+  Linkedin,
+  Loader2,
+  Mail,
+  Send,
+  Twitter,
+} from 'lucide-react';
 import { SITE_LOGO, SITE_LOGO_ALT } from '../constants/media';
 import Link from './LocalizedLink';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { subscribeToNewsletter } from '../services/newsletter';
+import { FunctionJsonResponseError, isFunctionHtmlResponseError } from '../services/serverFunctions';
+
+const isLocalStaticPreview = () => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const { hostname, port } = window.location;
+  return ['localhost', '127.0.0.1', '::1', '[::1]'].includes(hostname) && ['4173', '5173'].includes(port);
+};
 
 const Footer: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
   const { role } = useAuth();
   const { settings } = useSiteSettings();
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterConsent, setNewsletterConsent] = useState(false);
+  const [newsletterCompany, setNewsletterCompany] = useState('');
+  const [newsletterStatus, setNewsletterStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [newsletterMessage, setNewsletterMessage] = useState('');
   
   const isAdminDashboard = (role === 'admin' || location.pathname.startsWith('/admin')) && location.pathname.startsWith('/admin');
 
@@ -27,6 +53,48 @@ const Footer: React.FC = () => {
     { key: 'twitter', label: 'Twitter', href: settings.socialLinks.twitter, icon: Twitter },
     { key: 'linkedin', label: 'LinkedIn', href: settings.socialLinks.linkedin, icon: Linkedin },
   ].filter(item => item.href);
+
+  const handleNewsletterSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isLocalStaticPreview()) {
+      setNewsletterStatus('error');
+      setNewsletterMessage(t('footer.newsletterPreviewUnavailable'));
+      return;
+    }
+
+    setNewsletterStatus('submitting');
+    setNewsletterMessage('');
+
+    try {
+      await subscribeToNewsletter({
+        email: newsletterEmail,
+        consent: newsletterConsent,
+        locale: i18n.language,
+        pagePath: location.pathname,
+        company: newsletterCompany,
+      });
+      setNewsletterStatus('success');
+      setNewsletterMessage(t('footer.newsletterSuccess'));
+      setNewsletterEmail('');
+      setNewsletterConsent(false);
+      setNewsletterCompany('');
+    } catch (error) {
+      const isLocalFunctionPreviewError =
+        isFunctionHtmlResponseError(error) ||
+        (error instanceof FunctionJsonResponseError && error.status === 404);
+      if (!isLocalFunctionPreviewError) {
+        console.error('Newsletter subscription failed', error);
+      }
+      setNewsletterStatus('error');
+      setNewsletterMessage(
+        isLocalFunctionPreviewError
+          ? t('footer.newsletterPreviewUnavailable')
+          : error instanceof Error
+            ? error.message
+            : t('footer.newsletterError'),
+      );
+    }
+  };
 
   return (
     <footer className="bg-transparent text-white mt-20 border-t border-white/10">
@@ -67,6 +135,79 @@ const Footer: React.FC = () => {
                 </>
               )}
             </div>
+            <form
+              onSubmit={handleNewsletterSubmit}
+              className="rounded-2xl border border-gray-cyan/25 bg-white/[0.04] p-4 shadow-[0_18px_50px_rgba(0,0,128,0.22)] ring-1 ring-white/5"
+            >
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-cyan/30 bg-gray-cyan/15 text-gray-cyan">
+                  <Mail size={19} />
+                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-white">{t('footer.newsletterTitle')}</h3>
+                  <p className="mt-1 text-sm leading-6 text-gray-300">{t('footer.newsletterDescription')}</p>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <label className="sr-only" htmlFor="footer-newsletter-email">
+                  {t('footer.newsletterEmailLabel')}
+                </label>
+                <input
+                  id="footer-newsletter-email"
+                  type="email"
+                  value={newsletterEmail}
+                  onChange={event => setNewsletterEmail(event.target.value)}
+                  required
+                  autoComplete="email"
+                  placeholder={t('footer.newsletterPlaceholder')}
+                  className="min-h-11 flex-1 rounded-xl border border-white/10 bg-black/25 px-3 text-sm text-white outline-none transition placeholder:text-gray-500 focus:border-gray-cyan/70 focus:ring-2 focus:ring-gray-cyan/20"
+                />
+                <button
+                  type="submit"
+                  disabled={newsletterStatus === 'submitting'}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gray-cyan px-4 text-sm font-bold text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {newsletterStatus === 'submitting' ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  {newsletterStatus === 'submitting'
+                    ? t('footer.newsletterSubmitting')
+                    : t('footer.newsletterSubmit')}
+                </button>
+              </div>
+              <input
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                value={newsletterCompany}
+                onChange={event => setNewsletterCompany(event.target.value)}
+                className="hidden"
+                aria-hidden="true"
+              />
+              <label className="mt-3 flex items-start gap-2 text-xs leading-5 text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={newsletterConsent}
+                  onChange={event => setNewsletterConsent(event.target.checked)}
+                  required
+                  className="mt-1 h-4 w-4 rounded border-white/20 bg-black/30 text-gray-cyan focus:ring-gray-cyan/30"
+                />
+                <span>{t('footer.newsletterConsent')}</span>
+              </label>
+              {newsletterMessage && (
+                <p
+                  className={`mt-3 flex items-start gap-2 text-xs leading-5 ${
+                    newsletterStatus === 'success' ? 'text-cyan-100' : 'text-red-100'
+                  }`}
+                  role={newsletterStatus === 'error' ? 'alert' : 'status'}
+                >
+                  {newsletterStatus === 'success' && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-gray-cyan" />}
+                  <span>{newsletterMessage}</span>
+                </p>
+              )}
+            </form>
           </div>
 
           {/* Explore / company / legal – right side */}

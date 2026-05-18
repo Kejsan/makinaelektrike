@@ -64,6 +64,7 @@ export type AuditAction =
   | 'sponsorship_product.updated'
   | 'sponsorship_order.updated'
   | 'promotional_campaign.updated'
+  | 'public_announcement.updated'
   | 'blog_post.updated';
 export type AuditEntityType =
   | 'invite'
@@ -76,6 +77,7 @@ export type AuditEntityType =
   | 'sponsorship_product'
   | 'sponsorship_order'
   | 'promotional_campaign'
+  | 'public_announcement'
   | 'blog_post';
 export type PlacementEntityType =
   | 'dealer'
@@ -110,6 +112,29 @@ export type PromotionalCampaignStatus =
   | 'archived';
 export type PromotionalCampaignPromotionType = 'house_promotion' | 'sponsored_promotion';
 export type PlacementAnalyticsEventType = 'impression' | 'click';
+export type PublicAnnouncementType =
+  | 'feature_release'
+  | 'model_batch'
+  | 'dealer_added'
+  | 'blog_post'
+  | 'charging_update'
+  | 'platform_notice'
+  | 'promotion'
+  | 'maintenance';
+export type PublicAnnouncementSeverity = 'info' | 'highlight' | 'critical';
+export type PublicAnnouncementStatus = 'draft' | 'scheduled' | 'active' | 'paused' | 'archived';
+export type PublicAnnouncementDisplayMode = 'feed_only' | 'banner' | 'modal';
+export type PublicAnnouncementSegment = 'all' | 'anonymous' | 'signed_in' | 'dealer';
+export type PublicAnnouncementSourceType = 'manual' | 'auto_suggestion';
+export type PublicAnnouncementAnalyticsEventType =
+  | 'impression'
+  | 'click'
+  | 'dismiss'
+  | 'feed_open'
+  | 'modal_view'
+  | 'banner_view';
+export type NewsletterSubscriberStatus = 'active' | 'unsubscribed' | 'bounced';
+export type NewsletterProviderSyncStatus = 'not_configured' | 'synced' | 'failed';
 export type AdminNotificationSeverity = 'info' | 'attention' | 'urgent';
 export type AdminNotificationType =
   | 'dealer_approval'
@@ -155,6 +180,11 @@ export type PermissionKey =
   | 'placements.override'
   | 'placements.analytics_read'
   | 'placements.billing_read'
+  | 'announcements.read'
+  | 'announcements.create'
+  | 'announcements.edit'
+  | 'announcements.publish'
+  | 'announcements.analytics_read'
   | 'enquiries.read'
   | 'admins.invite'
   | 'admins.assign_permissions'
@@ -218,6 +248,114 @@ export interface AdminNotification {
   entityId: string;
   permissionHint?: PermissionKey | null;
   createdAt?: string | null;
+}
+
+export interface PublicAnnouncement {
+  id: string;
+  type: PublicAnnouncementType;
+  severity: PublicAnnouncementSeverity;
+  status: PublicAnnouncementStatus;
+  displayMode: PublicAnnouncementDisplayMode;
+  title: string;
+  summary: string;
+  body?: string | null;
+  ctaLabel?: string | null;
+  destinationUrl?: string | null;
+  imageUrl?: string | null;
+  localeTargets: string[];
+  pageTargets: string[];
+  segmentTargets: PublicAnnouncementSegment[];
+  startAt?: string | null;
+  endAt?: string | null;
+  priority: number;
+  dismissible: boolean;
+  maxViewsPerVisitor: number;
+  sourceType: PublicAnnouncementSourceType;
+  sourceEntityType?: PlacementEntityType | 'feature' | 'system' | null;
+  sourceEntityId?: string | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface PublicAnnouncementFormValues {
+  type: PublicAnnouncementType;
+  severity: PublicAnnouncementSeverity;
+  status: PublicAnnouncementStatus;
+  displayMode: PublicAnnouncementDisplayMode;
+  title: string;
+  summary: string;
+  body: string;
+  ctaLabel: string;
+  destinationUrl: string;
+  imageUrl: string;
+  localeTargets: string[];
+  pageTargets: string[];
+  segmentTargets: PublicAnnouncementSegment[];
+  startAt: string;
+  endAt: string;
+  priority: number | '';
+  dismissible: boolean;
+  maxViewsPerVisitor: number | '';
+  sourceType: PublicAnnouncementSourceType;
+  sourceEntityType: PlacementEntityType | 'feature' | 'system' | '';
+  sourceEntityId: string;
+}
+
+export interface PublicAnnouncementAnalyticsSummary {
+  announcementId: string;
+  impressions: number;
+  clicks: number;
+  dismissals: number;
+  feedOpens: number;
+  modalViews: number;
+  bannerViews: number;
+  ctr: number;
+  dismissRate: number;
+  lastImpressionAt?: string | null;
+  lastClickAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface PublicAnnouncementListResponse {
+  ok: true;
+  announcements: PublicAnnouncement[];
+  analytics: PublicAnnouncementAnalyticsSummary[];
+}
+
+export interface PublicAnnouncementResolveResponse {
+  ok: true;
+  announcements: PublicAnnouncement[];
+  resolvedAt: string;
+}
+
+export interface NewsletterSubscriber {
+  id: string;
+  email: string;
+  name?: string | null;
+  locale?: string | null;
+  pagePath?: string | null;
+  source: string;
+  status: NewsletterSubscriberStatus;
+  providerName?: string | null;
+  providerSyncStatus: NewsletterProviderSyncStatus;
+  providerSubscriberId?: string | null;
+  providerError?: string | null;
+  consentAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface NewsletterSubscribeResponse {
+  ok: true;
+  subscriber: NewsletterSubscriber;
+  providerSyncStatus: NewsletterProviderSyncStatus;
+}
+
+export interface NewsletterSubscriberListResponse {
+  ok: true;
+  subscribers: NewsletterSubscriber[];
 }
 
 export interface AdminEntityNote {

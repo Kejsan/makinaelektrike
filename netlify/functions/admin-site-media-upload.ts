@@ -19,6 +19,7 @@ import {
   sanitizePathSegment,
 } from './_lib/mediaUpload';
 import { uploadBufferToR2 } from './_lib/r2';
+import { hasPermission } from '../../utils/accessControl';
 
 interface SiteMediaUploadBody {
   slot?: unknown;
@@ -32,8 +33,8 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 const parseHeroSlot = (value: unknown) => {
   const slot = getRequiredUploadString(value, 'slot', 32);
-  if (slot !== 'desktop' && slot !== 'mobile') {
-    throw new Error('slot must be either desktop or mobile.');
+  if (slot !== 'desktop' && slot !== 'mobile' && slot !== 'announcement') {
+    throw new Error('slot must be desktop, mobile, or announcement.');
   }
 
   return slot;
@@ -45,15 +46,27 @@ export const handler = async (event: FunctionEvent) => {
   }
 
   try {
-    await requireAdminPermission(event, 'blog.publish');
+    const { profile } = await requireAdminPermission(event, 'blog.publish').catch(async error => {
+      const message = error instanceof Error ? error.message : '';
+      if (message.startsWith('Missing required permission')) {
+        return requireAdminPermission(event, 'announcements.create');
+      }
+      throw error;
+    });
     const body = parseJsonBody<SiteMediaUploadBody>(event);
     const slot = parseHeroSlot(body.slot);
+    if (slot === 'announcement' && !hasPermission(profile, 'announcements.create')) {
+      return forbidden('Missing required permission: announcements.create.');
+    }
     const variant = parseMediaVariant(body.variant);
     const contentType = parseImageContentType(body.contentType);
     const fileName = parseMediaFileName(body.fileName, contentType, `homepage-hero-${slot}`);
     const imageBody = decodeBase64Image(body.dataBase64, MAX_IMAGE_BYTES);
 
-    const key = `site/home/${variant}/${sanitizePathSegment(slot)}/${fileName}`;
+    const key =
+      slot === 'announcement'
+        ? `site/announcements/${variant}/${fileName}`
+        : `site/home/${variant}/${sanitizePathSegment(slot)}/${fileName}`;
     const url = await uploadBufferToR2({
       key,
       contentType,

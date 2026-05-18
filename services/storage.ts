@@ -147,7 +147,7 @@ const uploadListingMedia = async (
   });
 
 const uploadSiteHeroMedia = async (
-  slot: 'desktop' | 'mobile',
+  slot: 'desktop' | 'mobile' | 'announcement',
   file: File,
 ): Promise<string> =>
   uploadMediaViaFunction({
@@ -184,3 +184,6 @@ export const uploadSiteHeroBackgroundImage = (
   slot: 'desktop' | 'mobile',
   file: File,
 ) => uploadSiteHeroMedia(slot, file);
+
+export const uploadAnnouncementImage = (file: File) =>
+  uploadSiteHeroMedia('announcement', file);

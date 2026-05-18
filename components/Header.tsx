@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate as useRouterNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Globe, Settings, LogOut, Menu, X, UserRound, Loader2, ChevronDown, Heart } from 'lucide-react';
+import { Bell, Globe, Settings, LogOut, Menu, X, UserRound, Loader2, ChevronDown, Heart } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { SITE_LOGO, SITE_LOGO_ALT } from '../constants/media';
 import Link from './LocalizedLink';
@@ -12,6 +12,7 @@ import {
   normalizeAppLocale,
   stripLocalePrefix,
 } from '../utils/localizedRouting';
+import { usePublicAnnouncementsContext } from '../contexts/PublicAnnouncementsContext';
 
 const LanguageSwitcher: React.FC = () => {
   const { i18n, t } = useTranslation();
@@ -79,6 +80,7 @@ const Header: React.FC = () => {
   const location = useLocation();
   const navigate = useLocalizedNavigate();
   const { user, role, logout, loading } = useAuth();
+  const { unreadCount, openFeed } = usePublicAnnouncementsContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -296,6 +298,19 @@ const Header: React.FC = () => {
           <div className="hidden lg:flex items-center gap-6">
             {/* Utility icons */}
             <div className="flex items-center gap-4 border-r border-slate-700 pr-5">
+              <button
+                type="button"
+                onClick={openFeed}
+                className="relative text-slate-300 transition-colors hover:text-gray-cyan"
+                aria-label={t('announcements.feedTitle', { defaultValue: 'Platform updates' })}
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-vivid-red px-1 text-[10px] font-bold text-white">
+                    {Math.min(unreadCount, 9)}
+                  </span>
+                )}
+              </button>
               <Link
                 to="/favorites"
                 className="relative text-slate-300 transition-colors hover:text-red-400"
@@ -438,6 +453,21 @@ const Header: React.FC = () => {
                       <Heart className="h-5 w-5" />
                       <span>{t('header.favorites')}</span>
                     </Link>
+                    <button
+                      type="button"
+                      onClick={openFeed}
+                      className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium text-white transition-colors hover:bg-white/5 hover:text-gray-cyan"
+                    >
+                      <span className="relative inline-flex">
+                        <Bell className="h-5 w-5" />
+                        {unreadCount > 0 && (
+                          <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-vivid-red px-1 text-[10px] font-bold text-white">
+                            {Math.min(unreadCount, 9)}
+                          </span>
+                        )}
+                      </span>
+                      <span>{t('announcements.feedTitle', { defaultValue: 'Platform updates' })}</span>
+                    </button>
                   </div>
                 </div>
               )}
@@ -463,13 +493,30 @@ const Header: React.FC = () => {
               </div>
 
               {!user && (
-                <Link
-                  to="/favorites"
-                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-100 hover:bg-slate-900"
-                >
-                  <Heart className="h-5 w-5" />
-                  <span>{t('header.favorites')}</span>
-                </Link>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <Link
+                    to="/favorites"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-100 hover:bg-slate-900"
+                  >
+                    <Heart className="h-5 w-5" />
+                    <span>{t('header.favorites')}</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={openFeed}
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-100 hover:bg-slate-900"
+                  >
+                    <span className="relative inline-flex">
+                      <Bell className="h-5 w-5" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-vivid-red px-1 text-[10px] font-bold text-white">
+                          {Math.min(unreadCount, 9)}
+                        </span>
+                      )}
+                    </span>
+                    <span>{t('announcements.feedTitle', { defaultValue: 'Platform updates' })}</span>
+                  </button>
+                </div>
               )}
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

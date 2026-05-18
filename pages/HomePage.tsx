@@ -22,6 +22,7 @@ import DealerCard from '../components/DealerCard';
 import ModelCard from '../components/ModelCard';
 import BlogCard from '../components/BlogCard';
 import PublicPlacementRail from '../components/placements/PublicPlacementRail';
+import VisitorEngagementSection from '../components/engagement/VisitorEngagementSection';
 import { DataContext } from '../contexts/DataContext';
 import { usePublicPlacements } from '../hooks/usePublicPlacements';
 import { useSiteSettings } from '../hooks/useSiteSettings';
@@ -473,6 +474,13 @@ const HomePage: React.FC = () => {
         eyebrow={t('placements.eyebrow', { defaultValue: 'Platform spotlight' })}
         title={t('home.sponsoredDealerSpotlight', { defaultValue: 'Sponsored dealer spotlight' })}
         className="pb-10 pt-2"
+      />
+
+      <VisitorEngagementSection
+        models={models}
+        dealers={dealers}
+        listings={listings}
+        stationCount={chargingStationsData.length}
       />
 
       <section className="me-section">

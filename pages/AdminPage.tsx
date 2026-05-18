@@ -81,6 +81,7 @@ import PlacementZoneForm from '../components/admin/PlacementZoneForm';
 import SponsorshipProductForm from '../components/admin/SponsorshipProductForm';
 import SponsorshipOrderForm from '../components/admin/SponsorshipOrderForm';
 import PromotionalCampaignForm from '../components/admin/PromotionalCampaignForm';
+import VisitorEngagementTab from '../components/admin/VisitorEngagementTab';
 import type { BulkImportEntity } from '../components/admin/BulkImportModal';
 import BlogTextImportModal from '../components/admin/BlogTextImportModal';
 import OfflineQueuePanel from '../components/admin/OfflineQueuePanel';
@@ -218,6 +219,7 @@ type TabKey =
   | 'listings'
   | 'blog'
   | 'settings'
+  | 'engagement'
   | 'stations'
   | 'placements'
   | 'reports'
@@ -233,6 +235,7 @@ const TAB_KEYS: readonly TabKey[] = [
   'listings',
   'blog',
   'settings',
+  'engagement',
   'stations',
   'placements',
   'reports',
@@ -621,13 +624,23 @@ const AdminPage: React.FC = () => {
     hasPermission('placements.override');
   const canOverridePlacements = hasPermission('placements.override');
   const canReadPlacementAnalytics = hasPermission('placements.analytics_read');
+  const canReadAnnouncements =
+    hasPermission('announcements.read') ||
+    hasPermission('announcements.create') ||
+    hasPermission('announcements.edit') ||
+    hasPermission('announcements.publish') ||
+    hasPermission('announcements.analytics_read');
   const canReadBlog =
     hasPermission('blog.read') ||
     hasPermission('blog.publish') ||
     hasPermission('blog.schedule');
   const canManageSiteSettings = isMasterAdmin || hasPermission('blog.publish');
   const canViewAudit = hasPermission('audit.view');
-  const canViewReports = hasPermission('reports.export') || canReadPlacementAnalytics || canViewAudit;
+  const canViewReports =
+    hasPermission('reports.export') ||
+    canReadPlacementAnalytics ||
+    hasPermission('announcements.analytics_read') ||
+    canViewAudit;
   const canExportReports = hasPermission('reports.export');
   const canReadAdminNotifications =
     canReadDealers ||
@@ -636,6 +649,7 @@ const AdminPage: React.FC = () => {
     canReadModels ||
     canReadStations ||
     canReadPlacements ||
+    canReadAnnouncements ||
     canReadBlog ||
     canManageAdminAccess ||
     canInviteAdmins ||
@@ -923,6 +937,17 @@ const AdminPage: React.FC = () => {
             },
           ]
         : []),
+      ...(canReadAnnouncements
+        ? [
+            {
+              id: 'engagement' as TabKey,
+              label: t('admin.visitorEngagementTab', { defaultValue: 'Visitor engagement' }),
+              description: t('admin.tooltips.visitorEngagementTab', {
+                defaultValue: 'Publish public platform updates, review announcement drafts, manage engagement modules, and monitor visitor notification analytics.',
+              }),
+            },
+          ]
+        : []),
       {
         id: 'stations' as TabKey,
         label: t('admin.manageStations', { defaultValue: 'Charging stations' }),
@@ -985,6 +1010,7 @@ const AdminPage: React.FC = () => {
     [
       canManageAdminAccess,
       canManageSiteSettings,
+      canReadAnnouncements,
       canReadPlacements,
       canReadUsers,
       canViewAudit,
@@ -1005,7 +1031,7 @@ const AdminPage: React.FC = () => {
       },
       {
         label: 'Content and growth',
-        ids: ['blog', 'settings', 'stations', 'placements', 'reports'] as TabKey[],
+        ids: ['blog', 'settings', 'engagement', 'stations', 'placements', 'reports'] as TabKey[],
       },
       {
         label: 'Governance',
@@ -2148,6 +2174,12 @@ const AdminPage: React.FC = () => {
       setActiveTab('overview');
     }
   }, [activeTab, canManageSiteSettings]);
+
+  useEffect(() => {
+    if (!canReadAnnouncements && activeTab === 'engagement') {
+      setActiveTab('overview');
+    }
+  }, [activeTab, canReadAnnouncements]);
 
   const getDealerPlanDraft = useCallback(
     (dealer: Dealer): DealerPlanDraft => ({
@@ -9967,6 +9999,7 @@ const AdminPage: React.FC = () => {
           {activeTab === 'listings' && renderListingsPanel()}
           {activeTab === 'blog' && renderBlogPanel()}
           {activeTab === 'settings' && renderSiteSettingsPanel()}
+          {activeTab === 'engagement' && <VisitorEngagementTab />}
           {activeTab === 'stations' && renderStationsPanel()}
           {activeTab === 'placements' && renderPlacementsPanel()}
           {activeTab === 'reports' && renderReportsPanel()}

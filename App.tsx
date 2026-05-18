@@ -7,6 +7,8 @@ import DealerWorkspaceShell from './components/dashboard/DealerWorkspaceShell';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataContext, DataProvider } from './contexts/DataContext';
 import { ToastProvider, ToastContainer } from './contexts/ToastContext';
+import { PublicAnnouncementsProvider } from './contexts/PublicAnnouncementsContext';
+import PublicAnnouncementSurface from './components/announcements/PublicAnnouncementSurface';
 import ScrollRestoration from './components/ScrollRestoration';
 import LocalePathSync from './components/LocalePathSync';
 import LocalizedNavigate from './components/LocalizedNavigate';
@@ -285,17 +287,20 @@ const AppShell = () => {
 
   return (
     <div className={isFocusedWorkspace ? 'min-h-screen' : 'flex min-h-screen flex-col'}>
-      {!isFocusedWorkspace && <Header />}
-      {isFocusedWorkspace ? (
-        <AppRoutes />
-      ) : (
-        <main className="flex-grow">
+      <PublicAnnouncementsProvider disabled={isFocusedWorkspace}>
+        {!isFocusedWorkspace && <Header />}
+        {!isFocusedWorkspace && <PublicAnnouncementSurface />}
+        {isFocusedWorkspace ? (
           <AppRoutes />
-        </main>
-      )}
-      {!isFocusedWorkspace && <Footer />}
-      {!isFocusedWorkspace && <ScrollToTopButton />}
-      <ToastContainer />
+        ) : (
+          <main className="flex-grow">
+            <AppRoutes />
+          </main>
+        )}
+        {!isFocusedWorkspace && <Footer />}
+        {!isFocusedWorkspace && <ScrollToTopButton />}
+        <ToastContainer />
+      </PublicAnnouncementsProvider>
     </div>
   );
 };
